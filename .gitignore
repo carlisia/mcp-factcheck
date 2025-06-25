@@ -1,0 +1,11 @@
+# Built binaries
+/bin/
+/factcheck-client
+/factcheck-server
+/factcheck
+
+# Go workspace file
+go.work
+
+# OS generated files
+.DS_Store
