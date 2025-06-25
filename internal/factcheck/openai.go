@@ -11,15 +11,14 @@ import (
 
 var openaiClient *openai.Client
 
-func init() {
+func InitOpenAI() error {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		fmt.Println("⚠️  Warning: OPENAI_API_KEY environment variable is not set.")
-		fmt.Println("❌ Exiting: You must set OPENAI_API_KEY to use the verifier.")
-		os.Exit(1)
+		return fmt.Errorf("OPENAI_API_KEY environment variable is not set")
 	}
 
 	openaiClient = openai.NewClient(apiKey)
+	return nil
 }
 
 func AskOpenAI(userText string, specChunks []string) (string, error) {
