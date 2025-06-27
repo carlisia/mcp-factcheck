@@ -6,8 +6,9 @@ import (
 )
 
 type VerifyRequest struct {
-	Content string `json:"content"`
-	Type    string `json:"type"` // "file" or "blurb"
+	Content     string `json:"content"`
+	Type        string `json:"type"`        // "file" or "blurb"
+	SpecVersion string `json:"spec_version"` // MCP spec version (optional, defaults to latest)
 }
 
 // Validate checks if the request is valid
