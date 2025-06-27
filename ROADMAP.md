@@ -2,184 +2,133 @@
 
 ## **Project Overview**
 
-Transform the current HTTP-based fact-checking prototype into a proper MCP-compliant client and server implementation that validates content about the Model Context Protocol against the official specification.
+Transform the HTTP-based fact-checking prototype into a full MCP-compliant server implementation that validates content about the Model Context Protocol against the official specification.
 
 ---
 
-## **📦 MCP Server Implementation**
+## **✅ Completed Features**
 
-### **Phase 1: Foundation & Core Functionality**
+### **MCP Server Implementation**
 
-| **Task**                    | **Status** | **Description**                                 |
-| --------------------------- | ---------- | ----------------------------------------------- |
-| Basic HTTP server setup     | ✅         | HTTP server running on configurable port        |
-| Request/response types      | ✅         | `VerifyRequest` and `VerifyResponse` structures |
-| OpenAI integration          | ✅         | GPT-4 client with API key validation            |
-| Content validation endpoint | ✅         | `/verify` endpoint accepting JSON requests      |
-| Basic input validation      | ✅         | JSON schema validation and request sanitization |
-| Environment configuration   | ✅         | PORT and OPENAI_API_KEY environment variables   |
+- ✅ Full MCP server using official mark3labs/mcp-go library
+- ✅ JSON-RPC 2.0 stdio transport implementation
+- ✅ Four MCP tools: validate_content, validate_code, search_spec, list_spec_versions
+- ✅ Support for multiple MCP spec versions (draft, 2025-06-18, 2025-03-26, 2024-11-05)
+- ✅ Semantic search using OpenAI embeddings
+- ✅ Embedded debug interface with lifecycle management
+- ✅ Tool interaction monitoring and visualization
+- ✅ Processing time tracking and statistics
 
-### **Phase 2: Enhanced Validation & Processing**
+### **Infrastructure & Tools**
 
-| **Task**                       | **Status** | **Description**                                       |
-| ------------------------------ | ---------- | ----------------------------------------------------- |
-| MCP specification loader       | ❌         | Load and parse official MCP spec markdown files       |
-| Embedding-based comparison     | ❌         | Use Ada v2 embeddings for semantic content analysis   |
-| Structured feedback generation | ❌         | Generate detailed, section-specific feedback          |
-| Content type detection         | ❌         | Identify and handle different content formats         |
-| MCP spec version selection     | ❌         | Allow users to specify which MCP spec version to validate against |
-| Spec version listing           | ❌         | Implement backend support for listing available MCP versions |
-| Spec section retrieval         | ❌         | Backend support for retrieving specific MCP spec sections |
-| Code example validation        | ❌         | Validate MCP implementation code snippets |
-| Fact-checking processor        | ❌         | Replace placeholder with actual AI-powered validation |
-
-### **Phase 3: Server MCP Protocol Compliance**
-
-| **Task**                    | **Status** | **Description**                                    |
-| --------------------------- | ---------- | -------------------------------------------------- |
-| JSON-RPC 2.0 implementation | ❌         | Replace HTTP with JSON-RPC protocol                |
-| MCP tool definition         | ❌         | Define `validate_content` tool with proper schema  |
-| Additional MCP tools        | ❌         | Implement `list_spec_versions`, `get_spec_section`, `validate_code_examples` tools |
-| Tool parameter validation   | ❌         | Validate tool calls against MCP tool schema        |
-| MCP resource advertisement  | ❌         | Advertise available validation tools and resources |
-| Stdio transport layer       | ❌         | Implement MCP stdio communication protocol         |
-
-### **Phase 4: Server Features & Observability**
-
-| **Task**              | **Status** | **Description**                                 |
-| --------------------- | ---------- | ----------------------------------------------- |
-| Comprehensive logging | ❌         | Request/response logging with correlation IDs   |
-| Error handling        | ❌         | MCP-compliant error responses and handling      |
-| Tool execution gating | ❌         | Auth/consent validation before tool execution   |
-| Registry endpoint     | ❌         | `/registry` endpoint describing available tools |
-| Rate limiting         | ❌         | Prevent abuse and manage API usage              |
-| Health check endpoint | ❌         | Server health and readiness monitoring          |
+- ✅ Spec extraction from GitHub repositories
+- ✅ Embedding generation utilities
+- ✅ Vector database for semantic search
+- ✅ Test client for MCP server validation
+- ✅ Claude Desktop integration
+- ✅ Comprehensive project documentation
 
 ---
 
-## **🖥️ MCP Client Implementation**
+## **🚧 Future Enhancements**
 
-### **Phase 1: Foundation & HTTP Client**
+### **Phase 1: Code Validation Improvements**
 
-| **Task**                 | **Status** | **Description**                              |
-| ------------------------ | ---------- | -------------------------------------------- |
-| CLI framework setup      | ✅         | Cobra-based command structure                |
-| Basic HTTP client        | ✅         | HTTP POST requests to server endpoint        |
-| File input handling      | ✅         | `--file` flag for reading content from files |
-| Text input handling      | ✅         | `--blurb` flag for direct text input         |
-| Server URL configuration | ✅         | `--server` flag with default localhost:8080  |
-| Response parsing         | ✅         | Parse JSON responses and display feedback    |
+| **Task**                   | **Status** | **Description**                                                  |
+| -------------------------- | ---------- | ---------------------------------------------------------------- |
+| Schema-based validation    | ❌         | Validate code against MCP JSON schemas rather than documentation |
+| Language-specific patterns | ❌         | Add pattern detection for Python, TypeScript, etc.               |
+| Implementation examples    | ❌         | Return working code examples for common patterns                 |
+| Error recovery suggestions | ❌         | Provide specific fixes for detected issues                       |
 
-### **Phase 2: Enhanced Client Features**
+### **Phase 2: Enhanced Features**
 
-| **Task**                     | **Status** | **Description**                               |
-| ---------------------------- | ---------- | --------------------------------------------- |
-| Content type detection       | ❌         | Auto-detect file types (markdown, text, etc.) |
-| Input validation             | ❌         | Validate content before sending to server     |
-| MCP spec version flag        | ❌         | `--spec-version` flag to specify target MCP version |
-| Structured output formatting | ❌         | Pretty-print feedback in readable format      |
-| Configuration file support   | ❌         | Support for client configuration files        |
-| Multiple file processing     | ❌         | Batch processing of multiple files            |
+| **Task**              | **Status** | **Description**                                |
+| --------------------- | ---------- | ---------------------------------------------- |
+| Batch validation      | ❌         | Validate multiple files/content in one request |
+| Diff-based validation | ❌         | Validate changes between versions              |
+| Custom rule sets      | ❌         | Allow users to define validation rules         |
+| Validation reports    | ❌         | Generate detailed validation reports           |
+| CI/CD integration     | ❌         | GitHub Actions for automated validation        |
 
-### **Phase 3: Client MCP Protocol Compliance**
+### **Phase 3: Advanced Capabilities**
 
-| **Task**                    | **Status** | **Description**                                |
-| --------------------------- | ---------- | ---------------------------------------------- |
-| JSON-RPC client             | ❌         | Replace HTTP with JSON-RPC MCP client          |
-| MCP tool call structure     | ❌         | Build proper `tools/call` requests             |
-| Tool parameter construction | ❌         | Create structured tool parameters              |
-| MCP response handling       | ❌         | Parse `tool_result` responses properly         |
-| Server capability discovery | ❌         | Query server for available tools and resources |
-
-### **Phase 4: User Experience & Security**
-
-| **Task**                | **Status** | **Description**                               |
-| ----------------------- | ---------- | --------------------------------------------- |
-| Pre-execution consent   | ❌         | Ask user permission before tool execution     |
-| Authentication handling | ❌         | Support for MCP server authentication         |
-| Interactive mode        | ❌         | Interactive content validation session        |
-| Progress indicators     | ❌         | Show progress for long-running validations    |
-| Result caching          | ❌         | Cache validation results for repeated content |
-| Offline mode            | ❌         | Basic validation without server connection    |
+| **Task**                 | **Status** | **Description**                                  |
+| ------------------------ | ---------- | ------------------------------------------------ |
+| Fine-tuned models        | ❌         | Train specialized models for MCP validation      |
+| Specification monitoring | ❌         | Auto-update when new MCP versions release        |
+| Community contributions  | ❌         | Accept validation rules from community           |
+| Multi-language support   | ❌         | Validate content in languages other than English |
+| MCP registry integration | ❌         | Integrate with official MCP tool registry        |
 
 ---
 
-## **🔧 Infrastructure & DevOps**
+## **📋 Technical Debt & Improvements**
 
-### **Development & Testing**
+### **Code Quality**
 
-| **Task**          | **Status** | **Description**                                   |
-| ----------------- | ---------- | ------------------------------------------------- |
-| Go modules setup  | ✅         | Proper go.mod with dependencies                   |
-| Build system      | ❌         | Makefile or build scripts for binaries            |
-| Unit tests        | ❌         | Test coverage for core functionality              |
-| Integration tests | ❌         | End-to-end testing of client-server communication |
-| CI/CD pipeline    | ❌         | Automated testing and building                    |
-| Docker support    | ❌         | Containerization for easy deployment              |
+- ❌ Add comprehensive test coverage
+- ❌ Implement proper error handling throughout
+- ❌ Add structured logging with levels
+- ❌ Create integration test suite
 
-### **Documentation & Examples**
+### **Performance**
 
-| **Task**             | **Status** | **Description**                          |
-| -------------------- | ---------- | ---------------------------------------- |
-| README documentation | ✅         | Comprehensive project documentation      |
-| License file         | ✅         | LICENSE file added                       |
-| Project roadmap      | ✅         | ROADMAP.md with implementation plan      |
-| Usage examples       | ❌         | Example content and validation results   |
-| API documentation    | ❌         | MCP tool and resource specifications     |
-| Developer guide      | ❌         | Contributing and development setup guide |
-| MCP compliance guide | ❌         | Documentation of MCP protocol adherence  |
+- ❌ Implement caching for repeated validations
+- ❌ Optimize embedding search algorithms
+- ❌ Add connection pooling for OpenAI API
+- ❌ Implement request queuing and batching
+
+### **Configuration & Flexibility**
+
+- ❌ Support multiple embedding model options (OpenAI, local models, etc.)
+- ❌ Configurable model parameters and providers
+- ❌ Runtime model switching capabilities
+
+### **Security**
+
+- ❌ Add rate limiting per API key
+- ❌ Implement request validation and sanitization
+- ❌ Add authentication for debug interface
+- ❌ Restrict debug server to localhost only
 
 ---
 
 ## **🎯 Milestones**
 
-### **Milestone 1: Enhanced Prototype** (Current → Functional)
+### **Milestone 1: Production Ready** ✅ COMPLETED
 
-- ✅ Complete Phase 1 tasks for both client and server
-- ❌ Implement actual fact-checking processor
-- ❌ Add MCP specification loading and comparison
+- ✅ Full MCP protocol implementation
+- ✅ All core validation tools working
+- ✅ Debug interface for development
+- ✅ Documentation and examples
 
-### **Milestone 2: MCP Protocol Migration** (Functional → MCP-Compliant)
+### **Milestone 2: Enhanced Validation** (Next)
 
-- ❌ Replace HTTP with JSON-RPC MCP protocol
-- ❌ Implement proper MCP tool definitions and calls
-- ❌ Add stdio transport layer
+- ❌ Schema-based code validation
+- ❌ Improved error messages and suggestions
+- ❌ Performance optimizations
+- ❌ Test coverage > 80%
 
-### **Milestone 3: Production Ready** (MCP-Compliant → Production)
+### **Milestone 3: Enterprise Features**
 
-- ❌ Add comprehensive testing and documentation
-- ❌ Implement security, logging, and monitoring
-- ❌ Add advanced features like batch processing and caching
+- ❌ Batch processing capabilities
+- ❌ CI/CD integrations
+- ❌ Advanced reporting
+- ❌ Multi-tenant support
 
-### **Milestone 4: Ecosystem Integration** (Production → MCP Ecosystem)
+### **Milestone 4: Ecosystem Integration**
 
-- ❌ Publish as official MCP validation tool
-- ❌ Integration with MCP registries and toolchains
-- ❌ Community adoption and feedback incorporation
-
----
-
-## **📋 Dependencies & Prerequisites**
-
-### **Current Dependencies**
-
-- ✅ Go 1.24.1+
-- ✅ OpenAI API access and key
-- ✅ Cobra CLI framework
-- ✅ Standard HTTP libraries
-
-### **Future Dependencies**
-
-- ❌ MCP Go SDK (or custom JSON-RPC implementation)
-- ❌ MCP specification files (markdown)
-- ❌ Vector database for embeddings (optional)
-- ❌ Testing frameworks (testify, etc.)
+- ❌ Official MCP registry listing
+- ❌ Community contribution framework
+- ❌ Plugin architecture
+- ❌ Cross-tool integrations
 
 ---
 
 **Status Legend:**
 
 - ✅ **Completed** - Feature is implemented and working
-- ❌ **Not Started** - Feature needs to be implemented
-- ⚠️ **In Progress** - Feature is partially implemented or being worked on
+- ❌ **Planned** - Feature is planned for future implementation
+- 🚧 **In Progress** - Feature is currently being developed
 
