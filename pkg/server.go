@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
@@ -10,6 +11,7 @@ import (
 	"github.com/carlisia/mcp-factcheck/pkg/observability"
 	"github.com/carlisia/mcp-factcheck/pkg/spec"
 	"github.com/carlisia/mcp-factcheck/pkg/validator"
+	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -69,12 +71,18 @@ func NewObservabilityWrapper(observer observability.Observer) observability.Tool
 }
 
 type observabilityWrapper struct {
-	observer observability.Observer
+	observer        observability.Observer
+	lastRequestTime time.Time
+	currentRequestID string
+	mu              sync.Mutex
 }
 
 func (w *observabilityWrapper) WrapHandler(toolName string, originalHandler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		start := time.Now()
+		
+		// Generate or reuse request ID
+		requestID := w.getRequestID(start)
 		
 		// Call original handler and record interaction
 		result, err := originalHandler(ctx, req)
@@ -82,6 +90,7 @@ func (w *observabilityWrapper) WrapHandler(toolName string, originalHandler func
 		// Record the interaction
 		interaction := observability.ToolInteraction{
 			ToolName:     toolName,
+			RequestID:    requestID,
 			Arguments:    req.Params.Arguments,
 			Timestamp:    start,
 			ProcessingMs: time.Since(start).Milliseconds(),
@@ -97,6 +106,20 @@ func (w *observabilityWrapper) WrapHandler(toolName string, originalHandler func
 		
 		return result, err
 	}
+}
+
+// getRequestID generates a new request ID or reuses the current one if within time window
+func (w *observabilityWrapper) getRequestID(timestamp time.Time) string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	
+	// If more than 30 seconds since last request, start a new request group
+	if w.currentRequestID == "" || timestamp.Sub(w.lastRequestTime) > 30*time.Second {
+		w.currentRequestID = uuid.New().String()[:8] // Short ID for readability
+	}
+	
+	w.lastRequestTime = timestamp
+	return w.currentRequestID
 }
 
 // registerTools registers all fact-check tools with the MCP server
