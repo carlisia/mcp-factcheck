@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MCP Fact-Check Debug</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .stats { background: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .interaction { background: white; padding: 15px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #007acc; }
+        .timestamp { color: #666; font-size: 0.9em; }
+        .tool-name { color: #8e44ad; font-weight: bold; }
+        pre { background: #f8f8f8; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MCP Fact-Check Debug Interface</h1>
+        
+        <div class="stats">
+            <h3>Statistics</h3>
+            <div id="stats">Loading...</div>
+        </div>
+
+        <div>
+            <h3>Recent Interactions</h3>
+            <div id="interactions">Loading...</div>
+        </div>
+    </div>
+
+    <script src="/debug.js"></script>
+</body>
+</html>
