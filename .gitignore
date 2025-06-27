@@ -1,13 +1,17 @@
 # Built binaries
 /bin/
-/factcheck-client
-/factcheck-server
-/factcheck
 
 # Go workspace file
 go.work
+
+.claude
+CLAUDE.md
 
 # OS generated files
 .DS_Store
 
 .env
+
+# Debug logs
+debug-server-test.log
+nohup.out

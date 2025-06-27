@@ -1,163 +1,162 @@
 # MCP Fact-Check Tool
 
-An MCP Server for validating content about the **Model Context Protocol (MCP)** against the official specification to ensure technical accuracy and prevent the spread of misinformation.
+An MCP Server that validates content and code against the official Model Context Protocol specifications using semantic search and AI-powered analysis.
 
 ## Overview
 
-The MCP Fact-Check Tool is a specialized MCP Server designed to combat misinformation in the rapidly evolving MCP ecosystem. As MCP gains adoption, ensuring accurate technical documentation and content becomes critical for maintaining ecosystem integrity and preventing vulnerabilities that could arise from incorrect implementations based on inaccurate information.
+The MCP Fact-Check Tool helps ensure technical accuracy when writing about MCP by comparing content against official specifications. It uses:
 
-This tool helps technical writers, developers, and content creators validate their MCP-related content for accuracy by using AI-powered analysis to compare user content against the official MCP specification. It provides detailed feedback on potential inaccuracies, ambiguities, or missing information that could lead to incorrect implementations or issues.
-
-**Current Status**: HTTP-based prototype with plans to migrate to full MCP protocol compliance.
+- **Semantic search** with OpenAI embeddings to find relevant specification sections
+- **AI-powered validation** to detect inaccuracies and suggest corrections
+- **Multiple spec versions** support (draft, 2025-06-18, 2025-03-26, 2024-11-05)
 
 ## Features
 
-### ✅ Current Capabilities
+### MCP Tools Exposed
 
-- **CLI Interface**: Command-line tool for easy content validation
-- **Multiple Input Methods**: Validate content from files (`--file`) or direct text (`--blurb`)
-- **AI-Powered Analysis**: Uses OpenAI GPT-4 for intelligent content comparison
-- **Client-Server Architecture**: Separate client and server components
-- **Configurable**: Environment-based configuration for API keys and server settings
+1. **`validate_content`** - Validates text content against MCP specification
 
-### 🚧 Planned Features
+   - Provides corrected versions when content is inaccurate
+   - Shows relevant specification references
+   - Returns confidence scores
 
-- **MCP Protocol Compliance**: Full JSON-RPC MCP client/server implementation
-- **Embedding-Based Analysis**: Semantic content comparison using text embeddings
-- **Batch Processing**: Validate multiple files simultaneously
-- **Interactive Mode**: Real-time content validation session
-- **Structured Feedback**: Detailed, section-specific guidance and suggestions
+2. **`validate_code`** - Validates code implementations against MCP patterns
+
+   - Detects MCP protocol usage patterns
+   - Validates against specification requirements
+   - Supports multiple programming languages
+
+3. **`search_spec`** - Searches MCP specifications using semantic similarity
+
+   - Returns most relevant specification sections
+   - Supports all specification versions
+
+4. **`list_spec_versions`** - Lists available MCP specification versions
+   - Shows version dates and descriptions
+   - Indicates which version is current
 
 ## Installation
 
-### Prerequisites
+### Claude Desktop Integration
 
-- Go 1.24.1 or later
-- OpenAI API key
-
-### Build from Source
+1. Build the server:
 
 ```bash
-# Clone the repository
-git clone https://github.com/carlisia/mcp-factcheck.git
-cd mcp-factcheck
-
-# Build the binaries
-go build -o bin/factcheck-client ./cmd/factcheck-client
-go build -o bin/factcheck-server ./cmd/factcheck-server
+go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
 ```
 
-## Usage
+2. Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
-### 1. Start the Server
+```json
+{
+  "mcpServers": {
+    "mcp-factcheck": {
+      "command": "/path/to/bin/mcp-factcheck-server",
+      "args": ["--data-dir", "/path/to/data/embeddings"],
+      "env": {
+        "OPENAI_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Debug Mode
+
+To see what data is being passed to the LLM, add the `--debug` flag:
+
+```json
+{
+  "mcpServers": {
+    "mcp-factcheck": {
+      "command": "/path/to/bin/mcp-factcheck-server",
+      "args": ["--data-dir", "/path/to/data/embeddings", "--debug"],
+      "env": {
+        "OPENAI_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+The debug server will automatically start on port 8083 when the MCP server starts and shut down when it stops. Access the debug interface at `http://localhost:8083`
+
+Optional: Use `--debug-port 8084` to run the debug server on a different port.
+
+## Development
+
+### Building
 
 ```bash
-export OPENAI_API_KEY="your-api-key-here"
-./bin/factcheck-server
+# Build all components
+go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
+go build -o bin/specloader ./utils/cmd
+
+# Run tests
+go test ./...
 ```
 
-The server will start on port 8080 by default (configurable via `PORT` environment variable).
+### Updating Specifications
 
-### 2. Use the Client
-
-**Validate a file:**
+1. Extract latest specs from GitHub:
 
 ```bash
-./bin/factcheck-client verify --file content.md
+./bin/specloader spec --version draft
+./bin/specloader spec --version 2025-06-18
 ```
 
-**Validate text directly:**
+2. Generate embeddings:
 
 ```bash
-./bin/factcheck-client verify --blurb "Your MCP content here"
+./bin/specloader embed --version draft
+./bin/specloader embed --version 2025-06-18
 ```
 
-**Use custom server URL:**
+### Testing Tools
+
+Test the server using the included test client:
 
 ```bash
-./bin/factcheck-client verify --server http://localhost:9000 --file content.md
+# Build test client
+go build -o bin/factcheck-curl ./cmd/factcheck-curl
+
+# Test tools
+./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings tools/list
+./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings tools/call validate_content '{"content":"MCP is a protocol"}'
 ```
-
-### Command Reference
-
-```bash
-# Show help
-./bin/factcheck-client --help
-./bin/factcheck-client verify --help
-
-# Validate content
-./bin/factcheck-client verify --file path/to/content.md
-./bin/factcheck-client verify --blurb "MCP content to validate"
-./bin/factcheck-client verify --server http://custom-server:8080 --file content.md
-```
-
-## Configuration
-
-### Environment Variables
-
-- `OPENAI_API_KEY`: Required for server operation
-- `PORT`: Server port (default: 8080)
 
 ## Architecture
 
 ```text
-┌─────────────────┐    HTTP/JSON    ┌─────────────────┐
-│                 │ ────────────────► │                 │
-│ factcheck-client│                  │ factcheck-server│
-│                 │ ◄──────────────── │                 │
-└─────────────────┘                  └─────────────────┘
-                                             │
-                                             ▼
-                                      ┌─────────────┐
-                                      │ OpenAI API  │
-                                      │ (GPT-4)     │
-                                      └─────────────┘
+cmd/
+├── mcp-factcheck-server/   # Main MCP server
+└── factcheck-curl/         # Test client
+
+utils/
+└── cmd/                    # Specification extraction tool
+
+pkg/
+├── spec/                   # MCP specification tools
+│   ├── list.go            # list_spec_versions implementation
+│   └── search.go          # search_spec implementation
+├── validator/             # Content/code validation
+│   ├── content.go         # validate_content implementation
+│   └── code.go            # validate_code implementation
+└── observability/         # Debug interface
+    ├── interface.go       # Observer interface
+    └── debug.go           # HTTP debug server
+
+data/
+├── specs/                 # Extracted MCP specifications
+└── embeddings/            # Pre-generated embeddings
 ```
 
-## Roadmap
+## Environment Variables
 
-This project is actively being developed toward full MCP protocol compliance. See our detailed [ROADMAP.md](ROADMAP.md) for:
-
-- **Current implementation status** (17 features completed ✅)
-- **Planned features** (49 features in development ❌)
-- **Migration path** from HTTP to MCP protocol
-- **Development phases** and milestones
-
-### Key Milestones
-
-1. **Enhanced Prototype**: Complete fact-checking functionality
-2. **MCP Protocol Migration**: Replace HTTP with JSON-RPC MCP protocol
-3. **Production Ready**: Add testing, security, and monitoring
-4. **Ecosystem Integration**: Publish as official MCP validation tool
-
-## Contributing
-
-This project is in active development. Contributions are welcome!
-
-### Development Setup
-
-```bash
-# Install dependencies
-go mod download
-
-# Run tests (when available)
-go test ./...
-
-# Build and test locally
-go build ./...
-./bin/factcheck-server &
-./bin/factcheck-client verify --blurb "Test content"
-```
+- `OPENAI_API_KEY` - Required for embedding generation and content validation
+- `GITHUB_TOKEN` - Optional, for higher GitHub API rate limits when extracting specs
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Support
-
-For issues, questions, or contributions, please visit the project repository or open an issue.
-
----
-
-**Note**: This is a prototype implementation. The tool currently uses HTTP for communication but will be refactored to use the native MCP protocol as outlined in the [roadmap](ROADMAP.md).
+MIT License. See [LICENSE](LICENSE) for details.
 
