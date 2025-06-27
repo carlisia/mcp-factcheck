@@ -10,6 +10,7 @@ import (
 // ToolInteraction represents a single tool invocation
 type ToolInteraction struct {
 	ID           string        `json:"id"`
+	RequestID    string        `json:"request_id,omitempty"`
 	Timestamp    time.Time     `json:"timestamp"`
 	ToolName     string        `json:"tool_name"`
 	Arguments    any           `json:"arguments"`
