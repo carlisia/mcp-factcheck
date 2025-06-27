@@ -98,18 +98,18 @@ go test ./...
 
 ### Updating Specifications
 
-1. Extract latest specs from GitHub:
+The project includes pre-extracted MCP specifications and embeddings for all versions up to 2025-06-18, plus the draft specification as of 2025-06-26.
 
+**To update the draft specification:**
 ```bash
 ./bin/specloader spec --version draft
-./bin/specloader spec --version 2025-06-18
+./bin/specloader embed --version draft
 ```
 
-2. Generate embeddings:
-
+**To add a new specification version:**
 ```bash
-./bin/specloader embed --version draft
-./bin/specloader embed --version 2025-06-18
+./bin/specloader spec --version 2025-12-15
+./bin/specloader embed --version 2025-12-15
 ```
 
 ### Testing Tools
