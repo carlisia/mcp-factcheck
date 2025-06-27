@@ -3,10 +3,13 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/carlisia/mcp-factcheck/pkg"
-	"github.com/carlisia/mcp-factcheck/pkg/debug"
+	"github.com/carlisia/mcp-factcheck/pkg/observability"
 	"github.com/joho/godotenv"
 )
 
@@ -16,8 +19,8 @@ func main() {
 
 	// Parse command line flags
 	dataDir := flag.String("data-dir", "/Users/carlisiacampos/code/src/github.com/carlisia/mcp-factcheck/data/embeddings", "Directory containing vector database")
-	debugMode := flag.Bool("debug", false, "Enable debug mode with IPC communication")
-	debugSocket := flag.String("debug-socket", "/tmp/mcp-factcheck-debug.sock", "Unix socket path for debug IPC")
+	debug := flag.Bool("debug", false, "Enable debug server on port 8083")
+	debugPort := flag.Int("debug-port", 8083, "Debug server port")
 	flag.Parse()
 
 	// Convert to absolute path if relative
@@ -26,21 +29,32 @@ func main() {
 		log.Fatalf("Failed to resolve data directory path: %v", err)
 	}
 
-	// Create debug IPC client if enabled
-	var debugClient *debug.IPCClient
-	if *debugMode {
-		debugClient = debug.NewIPCClient(*debugSocket)
-		log.Printf("Debug mode enabled - sending data to socket %s", *debugSocket)
-	} else {
-		log.Printf("Debug mode disabled")
+	// Create observer (debug or no-op)
+	var observer observability.Observer
+	if *debug {
+		debugObserver := observability.NewDebugObserver(*debugPort)
+		if err := debugObserver.Start(); err != nil {
+			log.Fatalf("Failed to start debug server: %v", err)
+		}
+		observer = debugObserver
+		
+		// Setup graceful shutdown for debug server
+		go func() {
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+			<-sigChan
+			log.Println("Shutting down debug server...")
+			debugObserver.Stop()
+		}()
 	}
 
-	// Create and run MCP fact-check server
-	server, err := pkg.NewFactCheckServer(absDataDir, debugClient)
+	// Create MCP fact-check server with observer
+	server, err := pkg.NewFactCheckServer(absDataDir, observer)
 	if err != nil {
 		log.Fatalf("Failed to create MCP fact-check server: %v", err)
 	}
 
+	// Run MCP server (blocks until shutdown)
 	if err := server.Run(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

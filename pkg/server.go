@@ -3,10 +3,11 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/pkg/debug"
+	"github.com/carlisia/mcp-factcheck/pkg/observability"
 	"github.com/carlisia/mcp-factcheck/pkg/spec"
 	"github.com/carlisia/mcp-factcheck/pkg/validator"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -15,15 +16,15 @@ import (
 
 // FactCheckServer wraps the official MCP server with fact-check specific functionality
 type FactCheckServer struct {
-	vectorDB    *mcpembedding.VectorDB
-	generator   *embedding.Generator
-	mcpServer   *server.MCPServer
-	debugClient *debug.IPCClient
-	toolWrapper *debug.ToolWrapper
+	vectorDB  *mcpembedding.VectorDB
+	generator *embedding.Generator
+	mcpServer *server.MCPServer
+	observer  observability.Observer
+	wrapper   observability.ToolWrapper
 }
 
 // NewFactCheckServer creates a new fact-check server instance using the official MCP library
-func NewFactCheckServer(dataDir string, debugClient *debug.IPCClient) (*FactCheckServer, error) {
+func NewFactCheckServer(dataDir string, observer observability.Observer) (*FactCheckServer, error) {
 	vectorDB := mcpembedding.NewVectorDB(dataDir)
 	
 	generator, err := embedding.NewGenerator()
@@ -37,25 +38,65 @@ func NewFactCheckServer(dataDir string, debugClient *debug.IPCClient) (*FactChec
 		"0.1.0",
 	)
 
-	// Create tool wrapper for debug capture
-	var toolWrapper *debug.ToolWrapper
-	if debugClient != nil {
-		toolWrapper = debug.NewToolWrapperWithIPC(debugClient, true)
-	} else {
+	// Use no-op observer if none provided
+	if observer == nil {
+		observer = observability.NoOpObserver{}
+	}
+
+	// Create tool wrapper for observability
+	var wrapper observability.ToolWrapper = observability.NoOpWrapper{}
+	if observer != nil {
+		wrapper = NewObservabilityWrapper(observer)
 	}
 
 	factCheckServer := &FactCheckServer{
-		vectorDB:    vectorDB,
-		generator:   generator,
-		mcpServer:   mcpServer,
-		debugClient: debugClient,
-		toolWrapper: toolWrapper,
+		vectorDB:  vectorDB,
+		generator: generator,
+		mcpServer: mcpServer,
+		observer:  observer,
+		wrapper:   wrapper,
 	}
 
 	// Register tools with the official MCP server
 	factCheckServer.registerTools()
 
 	return factCheckServer, nil
+}
+
+// NewObservabilityWrapper creates a tool wrapper that records interactions
+func NewObservabilityWrapper(observer observability.Observer) observability.ToolWrapper {
+	return &observabilityWrapper{observer: observer}
+}
+
+type observabilityWrapper struct {
+	observer observability.Observer
+}
+
+func (w *observabilityWrapper) WrapHandler(toolName string, originalHandler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		start := time.Now()
+		
+		// Call original handler and record interaction
+		result, err := originalHandler(ctx, req)
+		
+		// Record the interaction
+		interaction := observability.ToolInteraction{
+			ToolName:     toolName,
+			Arguments:    req.Params.Arguments,
+			Timestamp:    start,
+			ProcessingMs: time.Since(start).Milliseconds(),
+		}
+		
+		if err != nil {
+			interaction.Error = err.Error()
+		} else if result != nil {
+			interaction.Response = result.Content
+		}
+		
+		w.observer.RecordInteraction(interaction)
+		
+		return result, err
+	}
 }
 
 // registerTools registers all fact-check tools with the MCP server
@@ -93,13 +134,11 @@ func (s *FactCheckServer) registerTools() {
 		return &mcp.CallToolResult{Content: content}, nil
 	}
 
-	// Wrap handlers with debug capture if enabled
-	if s.toolWrapper != nil {
-		validateContentHandler = s.toolWrapper.WrapHandler("validate_content", validateContentHandler)
-		validateCodeHandler = s.toolWrapper.WrapHandler("validate_code", validateCodeHandler)
-		searchSpecHandler = s.toolWrapper.WrapHandler("search_spec", searchSpecHandler)
-		listVersionsHandler = s.toolWrapper.WrapHandler("list_spec_versions", listVersionsHandler)
-	}
+	// Wrap handlers with observability
+	validateContentHandler = s.wrapper.WrapHandler("validate_content", validateContentHandler)
+	validateCodeHandler = s.wrapper.WrapHandler("validate_code", validateCodeHandler)
+	searchSpecHandler = s.wrapper.WrapHandler("search_spec", searchSpecHandler)
+	listVersionsHandler = s.wrapper.WrapHandler("list_spec_versions", listVersionsHandler)
 
 	// Register tools with wrapped handlers
 	s.mcpServer.AddTool(validator.GetValidateContentTool(), validateContentHandler)
