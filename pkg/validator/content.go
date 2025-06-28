@@ -1,21 +1,69 @@
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/mark3labs/mcp-go/mcp"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const ValidateContentToolName = "validate_content"
 
+// Helper function for debugging
+func getKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// Helper functions for OpenInference
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func getMaxSimilarity(results []embedding.SearchResult) float64 {
+	if len(results) == 0 {
+		return 0.0
+	}
+	max := results[0].Similarity
+	for _, result := range results {
+		if result.Similarity > max {
+			max = result.Similarity
+		}
+	}
+	return max
+}
+
+func getMinSimilarity(results []embedding.SearchResult) float64 {
+	if len(results) == 0 {
+		return 0.0
+	}
+	min := results[0].Similarity
+	for _, result := range results {
+		if result.Similarity < min {
+			min = result.Similarity
+		}
+	}
+	return min
+}
+
 type ValidateContentArgs struct {
 	Content     string `json:"content"`
 	SpecVersion string `json:"spec_version,omitempty"`
+	UseChunking bool   `json:"use_chunking,omitempty"` // Enable chunk-level validation
 }
 
 func GetValidateContentTool() mcp.Tool {
@@ -24,7 +72,13 @@ func GetValidateContentTool() mcp.Tool {
 		"properties": map[string]any{
 			"content": map[string]any{
 				"type":        "string",
-				"description": "Content to validate against MCP specification",
+				"description": "Content to validate against MCP specification. Checks accuracy of claims AND identifies missing spec requirements. Supports large documents (24k+ characters).",
+			},
+			"contextType": map[string]any{
+				"type":        "string",
+				"description": "Type of content being validated to determine which spec sections are relevant",
+				"enum":        []string{"full-implementation", "client", "server", "transport", "protocol-overview", "tutorial", "documentation", "blog post"},
+				"default":     "full-implementation",
 			},
 			"specVersion": map[string]any{
 				"type":        "string",
@@ -32,20 +86,43 @@ func GetValidateContentTool() mcp.Tool {
 				"enum":        specs.ValidSpecVersions,
 				"default":     specs.DefaultSpecVersion,
 			},
+			"useChunking": map[string]any{
+				"type":        "boolean",
+				"description": "Enable chunk-level validation for long content (default: false)",
+				"default":     false,
+			},
 		},
 		"required": []string{"content"},
 	}
 	schemaBytes, _ := json.Marshal(schema)
-	return mcp.NewToolWithRawSchema(ValidateContentToolName, "Validate content against MCP specification and provide corrected version if inaccurate. Uses the most current spec version by default. On first use, inform the user that other versions (2025-03-26, 2024-11-05, draft) are available by specifying specVersion parameter.", schemaBytes)
+
+	description := `Strictly validate MCP content against the embedded official MCP specification. 
+
+USE THIS WHEN YOU SEE:
+- Any text explaining MCP concepts or architecture
+- Documentation describing MCP features or behavior
+- Claims about what MCP "does", "requires", or "supports"
+- MCP protocol descriptions, explanations, tutorials, blog posts, etc.
+
+Returns specific spec violations with section references and correct language from the official specification.
+
+Be explicit about limitations: If validation tools show high confidence but you haven't verified specific claims, state that clearly rather than giving blanket approval.`
+
+	return mcp.NewToolWithRawSchema(ValidateContentToolName, description, schemaBytes)
 }
 
-func HandleValidateContent(vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
 	params, ok := args.(map[string]any)
 	if !ok {
+		log.Printf("ERROR: args is not a map[string]any, got %T", args)
 		return nil, fmt.Errorf("arguments must be a map")
 	}
+
+	log.Printf("Params keys: %v", getKeys(params))
+
 	content, ok := params["content"].(string)
 	if !ok {
+		log.Printf("ERROR: content is not a string, got %T: %+v", params["content"], params["content"])
 		return nil, fmt.Errorf("content must be a string")
 	}
 
@@ -54,30 +131,51 @@ func HandleValidateContent(vectorDB *mcpembedding.VectorDB, generator *embedding
 		specVersion = specs.DefaultSpecVersion
 	}
 
+	useChunking, ok := params["useChunking"].(bool)
+	if !ok {
+		useChunking = false
+	}
+
 	if !specs.IsValidSpecVersion(specVersion) {
 		return nil, fmt.Errorf("invalid spec version: %s", specVersion)
 	}
 
-	// Generate embedding for content
-	contentEmbedding, err := generator.GenerateEmbedding(content)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate content embedding: %w", err)
+	// Start parent span with actual content and parameters
+	ctx, requestSpan := telemetry.StartValidationSpan(ctx, content, specVersion, useChunking)
+	defer requestSpan.End()
+
+	// Add debug logging
+	log.Printf("Content length received: %d characters", len(content))
+	log.Printf("Content preview: %.100s...", content) // First 100 chars
+
+	// Check if we should use chunking based on content length or explicit request
+	shouldChunk := useChunking || len(content) > 500 // Auto-chunk for moderately long content
+
+	var result []mcp.Content
+	var err error
+
+	if shouldChunk {
+		requestSpan.SetAttributes(attribute.String("validation.strategy", "chunked"))
+		result, err = HandleChunkedValidation(ctx, vectorDB, generator, content, specVersion)
+	} else {
+		requestSpan.SetAttributes(attribute.String("validation.strategy", "single"))
+		result, err = handleSingleValidation(ctx, vectorDB, generator, content, specVersion)
 	}
 
-	// Search for relevant spec sections
-	results, err := vectorDB.Search(specVersion, contentEmbedding, 5)
+	// Add result attributes to parent span
 	if err != nil {
-		return nil, fmt.Errorf("failed to search specifications: %w", err)
+		requestSpan.SetAttributes(attribute.String("validation.error", err.Error()))
+		requestSpan.RecordError(err)
+	} else {
+		resultJSON, _ := json.Marshal(result)
+		requestSpan.SetAttributes(
+			attribute.String("output.value", string(resultJSON)),
+			attribute.String("output.mime_type", "application/json"),
+			attribute.Bool("validation.success", true),
+		)
 	}
 
-	// Analyze validation results
-	validationResult := analyzeContentValidation(content, results, specVersion)
-	matches := summarizeContentMatches(results, 3)
-	
-	// Create optimized response
-	response := FormatValidationResult(validationResult, matches)
-	
-	return []mcp.Content{mcp.NewTextContent(response)}, nil
+	return result, err
 }
 
 // analyzeContentValidation determines if content is valid and provides insights
@@ -132,7 +230,7 @@ func summarizeContentMatches(results []embedding.SearchResult, maxMatches int) [
 	var matches []ValidationMatch
 	for i := 0; i < maxMatches; i++ {
 		result := results[i]
-		
+
 		// Extract topic from content (first meaningful line)
 		lines := strings.Split(result.Chunk.Content, "\n")
 		topic := "MCP Specification"
@@ -161,4 +259,82 @@ func summarizeContentMatches(results []embedding.SearchResult, maxMatches int) [
 		})
 	}
 	return matches
+}
+
+func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content, specVersion string) ([]mcp.Content, error) {
+	// Start embedding generation span using telemetry builder
+	embeddingCtx, embeddingSpan := telemetry.StartEmbeddingSpan(ctx, content)
+
+	// Generate embedding for content
+	contentEmbedding, err := generator.GenerateEmbedding(content)
+	embeddingSpan.End()
+	if err != nil {
+		embeddingSpan.SetAttributes(attribute.String("embedding.error", err.Error()))
+		embeddingSpan.RecordError(err)
+		return nil, fmt.Errorf("failed to generate content embedding: %w", err)
+	}
+
+	// Start vector search span using telemetry builder
+	searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, 5)
+
+	// Search for relevant spec sections
+	results, err := vectorDB.Search(specVersion, contentEmbedding, 5)
+	if err != nil {
+		searchSpan.SetAttributes(attribute.String("search.error", err.Error()))
+		searchSpan.RecordError(err)
+		searchSpan.End()
+		return nil, fmt.Errorf("failed to search specifications: %w", err)
+	}
+
+	// Convert search results for telemetry
+	var retrievalDocs []telemetry.RetrievalDocument
+	var totalSimilarity float64
+	for i, result := range results {
+		retrievalDocs = append(retrievalDocs, telemetry.RetrievalDocument{
+			ID:      fmt.Sprintf("mcp_doc_%d", i),
+			Score:   result.Similarity,
+			Content: result.Chunk.Content,
+			Metadata: map[string]interface{}{
+				"source":     "mcp_specification",
+				"version":    specVersion,
+				"chunk_type": "specification_section",
+			},
+		})
+		totalSimilarity += result.Similarity
+	}
+
+	avgSimilarity := totalSimilarity / float64(len(results))
+
+	// Add retrieval results to span using telemetry builder
+	searchSpan.SetAttributes(
+		attribute.String("retrieval.query", content[:min(200, len(content))]),
+		attribute.Int("retrieval.top_k", 5),
+		attribute.Float64("retrieval.similarity.avg", avgSimilarity),
+		attribute.Float64("retrieval.similarity.max", getMaxSimilarity(results)),
+		attribute.Float64("retrieval.similarity.min", getMinSimilarity(results)),
+	)
+
+	// Use telemetry builder to add retrieval documents properly
+	// Note: Additional attributes could be set here if needed
+
+	searchSpan.End()
+
+	// Start validation analysis span using telemetry builder
+	_, analysisSpan := telemetry.StartAnalysisSpan(searchCtx, len(results), avgSimilarity)
+
+	// Analyze validation results
+	validationResult := analyzeContentValidation(content, results, specVersion)
+	matches := summarizeContentMatches(results, 3)
+
+	analysisSpan.SetAttributes(
+		attribute.Bool("validation.is_valid", validationResult.IsValid),
+		attribute.Float64("validation.confidence", validationResult.Confidence),
+		attribute.String("validation.spec_version", validationResult.SpecVersion),
+	)
+	analysisSpan.End()
+
+	// Create optimized response
+	response := FormatValidationResult(validationResult, matches)
+
+	return []mcp.Content{mcp.NewTextContent(response)}, nil
 }

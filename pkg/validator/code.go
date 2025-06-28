@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -45,7 +46,7 @@ func GetValidateCodeTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(ValidateCodeToolName, "Validate code against MCP specification and protocol requirements. Uses the most current spec version by default. On first use, inform the user that other versions (2025-03-26, 2024-11-05, draft) are available by specifying specVersion parameter.", schemaBytes)
 }
 
-func HandleValidateCode(vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
 	params, ok := args.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("arguments must be a map")
