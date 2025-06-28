@@ -3,171 +3,143 @@ package pkg
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/pkg/observability"
 	"github.com/carlisia/mcp-factcheck/pkg/spec"
+	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/carlisia/mcp-factcheck/pkg/validator"
-	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// FactCheckServer wraps the official MCP server with fact-check specific functionality
+// FactCheckServer wraps the actual MCP server with fact-check specific functionality
 type FactCheckServer struct {
-	vectorDB  *mcpembedding.VectorDB
-	generator *embedding.Generator
-	mcpServer *server.MCPServer
-	observer  observability.Observer
-	wrapper   observability.ToolWrapper
+	vectorDB   *mcpembedding.VectorDB
+	generator  *embedding.Generator
+	mcpServer  *server.MCPServer
+	provider   any
+	middleware any
 }
 
-// NewFactCheckServer creates a new fact-check server instance using the official MCP library
-func NewFactCheckServer(dataDir string, observer observability.Observer) (*FactCheckServer, error) {
+// NewFactCheckServer creates a new fact-check server instance using clean telemetry abstractions
+func NewFactCheckServer(dataDir string, provider any, middleware any) (*FactCheckServer, error) {
 	vectorDB := mcpembedding.NewVectorDB(dataDir)
-	
+
 	generator, err := embedding.NewGenerator()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create embedding generator: %w", err)
 	}
 
-	// Create official MCP server
+	// Create the actual MCP server
 	mcpServer := server.NewMCPServer(
 		"mcp-factcheck-server",
 		"0.1.0",
 	)
 
-	// Use no-op observer if none provided
-	if observer == nil {
-		observer = observability.NoOpObserver{}
-	}
-
-	// Create tool wrapper for observability
-	var wrapper observability.ToolWrapper = observability.NoOpWrapper{}
-	if observer != nil {
-		wrapper = NewObservabilityWrapper(observer)
-	}
+	// Store provider and middleware as-is (can be nil)
 
 	factCheckServer := &FactCheckServer{
-		vectorDB:  vectorDB,
-		generator: generator,
-		mcpServer: mcpServer,
-		observer:  observer,
-		wrapper:   wrapper,
+		vectorDB:   vectorDB,
+		generator:  generator,
+		mcpServer:  mcpServer,
+		provider:   provider,
+		middleware: middleware,
 	}
 
-	// Register tools with the official MCP server
+	// Register tools with the MCP server
 	factCheckServer.registerTools()
 
 	return factCheckServer, nil
 }
 
-// NewObservabilityWrapper creates a tool wrapper that records interactions
-func NewObservabilityWrapper(observer observability.Observer) observability.ToolWrapper {
-	return &observabilityWrapper{observer: observer}
-}
-
-type observabilityWrapper struct {
-	observer        observability.Observer
-	lastRequestTime time.Time
-	currentRequestID string
-	mu              sync.Mutex
-}
-
-func (w *observabilityWrapper) WrapHandler(toolName string, originalHandler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		start := time.Now()
-		
-		// Generate or reuse request ID
-		requestID := w.getRequestID(start)
-		
-		// Call original handler and record interaction
-		result, err := originalHandler(ctx, req)
-		
-		// Record the interaction
-		interaction := observability.ToolInteraction{
-			ToolName:     toolName,
-			RequestID:    requestID,
-			Arguments:    req.Params.Arguments,
-			Timestamp:    start,
-			ProcessingMs: time.Since(start).Milliseconds(),
+// wrapToolHandler wraps a tool handler with telemetry if middleware is available
+func (s *FactCheckServer) wrapToolHandler(toolName string, handler telemetry.ToolHandler) telemetry.ToolHandler {
+	if s.middleware != nil {
+		if mw, ok := s.middleware.(interface {
+			WrapToolHandler(string, telemetry.ToolHandler) telemetry.ToolHandler
+		}); ok {
+			return mw.WrapToolHandler(toolName, handler)
 		}
-		
-		if err != nil {
-			interaction.Error = err.Error()
-		} else if result != nil {
-			interaction.Response = result.Content
-		}
-		
-		w.observer.RecordInteraction(interaction)
-		
-		return result, err
 	}
-}
-
-// getRequestID generates a new request ID or reuses the current one if within time window
-func (w *observabilityWrapper) getRequestID(timestamp time.Time) string {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	
-	// If more than 30 seconds since last request, start a new request group
-	if w.currentRequestID == "" || timestamp.Sub(w.lastRequestTime) > 30*time.Second {
-		w.currentRequestID = uuid.New().String()[:8] // Short ID for readability
-	}
-	
-	w.lastRequestTime = timestamp
-	return w.currentRequestID
+	return handler
 }
 
 // registerTools registers all fact-check tools with the MCP server
 func (s *FactCheckServer) registerTools() {
-	// Create handlers with optional debug wrapping
-	validateContentHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		content, err := validator.HandleValidateContent(s.vectorDB, s.generator, req.Params.Arguments)
+	// Create base tool handlers
+	validateContentHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
+		return validator.HandleValidateContent(ctx, s.vectorDB, s.generator, req)
+	})
+
+	validateCodeHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
+		return validator.HandleValidateCode(ctx, s.vectorDB, s.generator, req)
+	})
+
+	searchSpecHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
+		return spec.HandleSearchSpec(s.vectorDB, s.generator, req)
+	})
+
+	listVersionsHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
+		return spec.HandleListSpecVersions(s.vectorDB, req)
+	})
+
+	// Wrap handlers with telemetry middleware
+	validateContentHandler = s.wrapToolHandler("validate_content", validateContentHandler)
+	validateCodeHandler = s.wrapToolHandler("validate_code", validateCodeHandler)
+	searchSpecHandler = s.wrapToolHandler("search_spec", searchSpecHandler)
+	listVersionsHandler = s.wrapToolHandler("list_spec_versions", listVersionsHandler)
+
+	// Convert to MCP-compatible handlers
+	mcpValidateContentHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := validateContentHandler(ctx, req.Params.Arguments)
 		if err != nil {
 			return nil, err
 		}
-		return &mcp.CallToolResult{Content: content}, nil
+		if content, ok := result.([]mcp.Content); ok {
+			return &mcp.CallToolResult{Content: content}, nil
+		}
+		return nil, fmt.Errorf("unexpected result type from validate_content")
 	}
 
-	validateCodeHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		content, err := validator.HandleValidateCode(s.vectorDB, s.generator, req.Params.Arguments)
+	mcpValidateCodeHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := validateCodeHandler(ctx, req.Params.Arguments)
 		if err != nil {
 			return nil, err
 		}
-		return &mcp.CallToolResult{Content: content}, nil
+		if content, ok := result.([]mcp.Content); ok {
+			return &mcp.CallToolResult{Content: content}, nil
+		}
+		return nil, fmt.Errorf("unexpected result type from validate_code")
 	}
 
-	searchSpecHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		content, err := spec.HandleSearchSpec(s.vectorDB, s.generator, req.Params.Arguments)
+	mcpSearchSpecHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := searchSpecHandler(ctx, req.Params.Arguments)
 		if err != nil {
 			return nil, err
 		}
-		return &mcp.CallToolResult{Content: content}, nil
+		if content, ok := result.([]mcp.Content); ok {
+			return &mcp.CallToolResult{Content: content}, nil
+		}
+		return nil, fmt.Errorf("unexpected result type from search_spec")
 	}
 
-	listVersionsHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		content, err := spec.HandleListSpecVersions(s.vectorDB, req.Params.Arguments)
+	mcpListVersionsHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := listVersionsHandler(ctx, req.Params.Arguments)
 		if err != nil {
 			return nil, err
 		}
-		return &mcp.CallToolResult{Content: content}, nil
+		if content, ok := result.([]mcp.Content); ok {
+			return &mcp.CallToolResult{Content: content}, nil
+		}
+		return nil, fmt.Errorf("unexpected result type from list_spec_versions")
 	}
 
-	// Wrap handlers with observability
-	validateContentHandler = s.wrapper.WrapHandler("validate_content", validateContentHandler)
-	validateCodeHandler = s.wrapper.WrapHandler("validate_code", validateCodeHandler)
-	searchSpecHandler = s.wrapper.WrapHandler("search_spec", searchSpecHandler)
-	listVersionsHandler = s.wrapper.WrapHandler("list_spec_versions", listVersionsHandler)
-
-	// Register tools with wrapped handlers
-	s.mcpServer.AddTool(validator.GetValidateContentTool(), validateContentHandler)
-	s.mcpServer.AddTool(validator.GetValidateCodeTool(), validateCodeHandler)
-	s.mcpServer.AddTool(spec.GetSearchSpecTool(), searchSpecHandler)
-	s.mcpServer.AddTool(spec.GetListSpecVersionsTool(), listVersionsHandler)
+	// Register tools with the MCP server
+	s.mcpServer.AddTool(validator.GetValidateContentTool(), mcpValidateContentHandler)
+	s.mcpServer.AddTool(validator.GetValidateCodeTool(), mcpValidateCodeHandler)
+	s.mcpServer.AddTool(spec.GetSearchSpecTool(), mcpSearchSpecHandler)
+	s.mcpServer.AddTool(spec.GetListSpecVersionsTool(), mcpListVersionsHandler)
 }
 
 // Run starts the MCP server using stdio transport
@@ -184,3 +156,4 @@ func (s *FactCheckServer) GetVectorDB() *mcpembedding.VectorDB {
 func (s *FactCheckServer) GetGenerator() *embedding.Generator {
 	return s.generator
 }
+
