@@ -1,10 +1,10 @@
-# MCP Fact-Check Tool
+# MCP Fact-Check MCP Server
 
-An MCP Server that validates content and code against the official Model Context Protocol specifications using semantic search and AI-powered analysis.
+An MCP Server for validating code or content against the official **Model Context Protocol (MCP)** specification to ensure technical accuracy and prevent the spread of misinformation.
 
 ## Overview
 
-The MCP Fact-Check Tool helps ensure technical accuracy when writing about MCP by comparing content against official specifications. It uses:
+The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or writing about MCP by comparing content against official specifications. It uses:
 
 - **Semantic search** with OpenAI embeddings to find relevant specification sections
 - **AI-powered validation** to detect inaccuracies and suggest corrections
@@ -37,7 +37,7 @@ The MCP Fact-Check Tool helps ensure technical accuracy when writing about MCP b
 
 ## Installation
 
-### Claude Desktop Integration
+### Client Integration
 
 1. Build the server:
 
@@ -45,7 +45,9 @@ The MCP Fact-Check Tool helps ensure technical accuracy when writing about MCP b
 go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
 ```
 
-2. Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+2. Add to the Host config
+
+Example for Claude Code: (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
@@ -61,16 +63,36 @@ go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
 }
 ```
 
-### Debug Mode
+### Observability
 
-To see what data is being passed to the LLM, add the `--debug` flag:
+#### Visual Tracing with Arize Phoenix
+
+For a beautiful, AI-focused trace visualization UI, set up Arize Phoenix:
+
+1. **Install and start Phoenix:**
+
+```bash
+# Install Phoenix
+pipx install arize-phoenix
+
+# Start Phoenix server
+phoenix serve
+```
+
+2. **Update the Host config to send traces to Phoenix:**
 
 ```json
 {
   "mcpServers": {
     "mcp-factcheck": {
       "command": "/path/to/bin/mcp-factcheck-server",
-      "args": ["--data-dir", "/path/to/data/embeddings", "--debug"],
+      "args": [
+        "--data-dir",
+        "/path/to/data/embeddings",
+        "--telemetry",
+        "--otlp-endpoint",
+        "http://localhost:6006"
+      ],
       "env": {
         "OPENAI_API_KEY": "your-api-key"
       }
@@ -79,9 +101,19 @@ To see what data is being passed to the LLM, add the `--debug` flag:
 }
 ```
 
-The debug server will automatically start on port 8083 when the MCP server starts and shut down when it stops. Access the debug interface at `http://localhost:8083`
+3. **View traces at:** http://localhost:6006
 
-Optional: Use `--debug-port 8084` to run the debug server on a different port.
+**What you'll see in Phoenix:**
+
+- Beautiful AI-focused interface designed for LLM applications
+- Complete validation pipeline timeline with clear visual hierarchy
+- Embedding generation performance and OpenAI API call tracking
+- Vector search visualization with similarity scores
+- Per-chunk validation confidence levels and quality metrics
+- Cost tracking for OpenAI API usage (or whichever llm is being used for embedding the input content/code)
+- Clean, intuitive navigation focused on AI workflows
+
+Phoenix is specifically designed for AI/ML observability and provides a much more user-friendly experience than traditional tracing tools.
 
 ## Development
 
@@ -101,12 +133,14 @@ go test ./...
 The project includes pre-extracted MCP specifications and embeddings for all versions up to 2025-06-18, plus the draft specification as of 2025-06-26.
 
 **To update the draft specification:**
+
 ```bash
 ./bin/specloader spec --version draft
 ./bin/specloader embed --version draft
 ```
 
 **To add a new specification version:**
+
 ```bash
 ./bin/specloader spec --version 2025-12-15
 ./bin/specloader embed --version 2025-12-15
@@ -142,9 +176,17 @@ pkg/
 ├── validator/             # Content/code validation
 │   ├── content.go         # validate_content implementation
 │   └── code.go            # validate_code implementation
-└── observability/         # Debug interface
-    ├── interface.go       # Observer interface
-    └── debug.go           # HTTP debug server
+└── telemetry/             # Clean telemetry abstractions
+    ├── interfaces.go      # Provider, Middleware interfaces
+    └── builder.go         # Fluent span builder
+
+internal/
+└── integrations/
+    └── arizephoenix/      # Phoenix telemetry implementation
+        ├── config.go      # Phoenix configuration
+        ├── provider.go    # Phoenix provider
+        ├── middleware.go  # Phoenix middleware
+        └── init.go        # Initialization helpers
 
 data/
 ├── specs/                 # Extracted MCP specifications
@@ -159,4 +201,3 @@ data/
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
-
