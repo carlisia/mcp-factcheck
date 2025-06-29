@@ -9,7 +9,9 @@ import (
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
+	"go.uber.org/zap"
 )
 
 const ValidateCodeToolName = "validate_code"
@@ -18,6 +20,18 @@ type ValidateCodeArgs struct {
 	Code        string `json:"code"`
 	SpecVersion string `json:"spec_version,omitempty"`
 	Language    string `json:"language,omitempty"`
+}
+
+// Helper function to get code preview for logging
+func getCodePreview(code string, maxLen int) string {
+	// Replace newlines with spaces for cleaner log output
+	preview := strings.ReplaceAll(code, "\n", " ")
+	preview = strings.ReplaceAll(preview, "\t", " ")
+	
+	if len(preview) <= maxLen {
+		return preview
+	}
+	return preview[:maxLen] + "..."
 }
 
 func GetValidateCodeTool() mcp.Tool {
@@ -47,43 +61,76 @@ func GetValidateCodeTool() mcp.Tool {
 }
 
 func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+	// Get structured logger with request ID
+	log := logger.WithRequestID(ctx)
+	
 	params, ok := args.(map[string]any)
 	if !ok {
+		log.Error("Invalid arguments type for validate_code", 
+			zap.String("expected", "map[string]any"),
+			zap.String("actual", fmt.Sprintf("%T", args)))
 		return nil, fmt.Errorf("arguments must be a map")
 	}
+	
 	code, ok := params["code"].(string)
 	if !ok {
+		log.Error("Invalid code parameter", 
+			zap.String("expected", "string"),
+			zap.String("actual", fmt.Sprintf("%T", params["code"])),
+			zap.Any("value", params["code"]))
 		return nil, fmt.Errorf("code must be a string")
 	}
 
 	specVersion, ok := params["specVersion"].(string)
 	if !ok {
 		specVersion = specs.DefaultSpecVersion
+		log.Debug("Using default spec version for code validation", zap.String("version", specVersion))
 	}
 
 	language, ok := params["language"].(string)
 	if !ok {
 		language = "go"
+		log.Debug("Using default language for code validation", zap.String("language", language))
 	}
 
 	if !specs.IsValidSpecVersion(specVersion) {
+		log.Error("Invalid spec version for code validation", 
+			zap.String("version", specVersion),
+			zap.Strings("valid_versions", specs.ValidSpecVersions))
 		return nil, fmt.Errorf("invalid spec version: %s", specVersion)
 	}
 
+	log.Info("Starting code validation", 
+		zap.Int("code_length", len(code)),
+		zap.String("spec_version", specVersion),
+		zap.String("language", language),
+		zap.String("code_preview", getCodePreview(code, 100)))
+
 	// Analyze code to extract MCP-relevant patterns and concepts
+	log.Debug("Analyzing code for MCP patterns", zap.String("language", language))
 	codeAnalysis := analyzeCodeForMCPPatterns(code, language)
 	
 	// Generate embedding for the code analysis
+	log.Debug("Generating embedding for code analysis")
 	codeEmbedding, err := generator.GenerateEmbedding(codeAnalysis)
 	if err != nil {
+		log.Error("Failed to generate code embedding", zap.Error(err))
 		return nil, fmt.Errorf("failed to generate code embedding: %w", err)
 	}
 
 	// Search for relevant spec sections
+	log.Debug("Searching for relevant spec sections", 
+		zap.String("spec_version", specVersion),
+		zap.Int("max_results", 8))
 	results, err := vectorDB.Search(specVersion, codeEmbedding, 8)
 	if err != nil {
+		log.Error("Failed to search specifications", zap.Error(err))
 		return nil, fmt.Errorf("failed to search specifications: %w", err)
 	}
+
+	log.Debug("Found spec matches", 
+		zap.Int("result_count", len(results)),
+		zap.Float64("max_similarity", getMaxSimilarity(results)))
 
 	// Analyze code validation results
 	validationResult := analyzeCodeValidation(code, codeAnalysis, results, specVersion)
@@ -91,6 +138,9 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 	
 	// Create optimized response
 	response := FormatValidationResult(validationResult, matches)
+	
+	log.Info("Code validation completed successfully", 
+		zap.Int("response_length", len(response)))
 	
 	return []mcp.Content{mcp.NewTextContent(response)}, nil
 }

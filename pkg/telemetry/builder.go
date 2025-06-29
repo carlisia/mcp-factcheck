@@ -147,7 +147,8 @@ func min(a, b int) int {
 func StartValidationSpan(ctx context.Context, content, specVersion string, useChunking bool) (context.Context, trace.Span) {
 	estimatedTokens := len(content) / 4
 	
-	return NewSpanBuilder().
+	// Add request ID to span attributes if available
+	builder := NewSpanBuilder().
 		WithKind("CHAIN").
 		WithInput(content, "text/plain").
 		WithCustom(
@@ -155,43 +156,67 @@ func StartValidationSpan(ctx context.Context, content, specVersion string, useCh
 			attribute.Bool("validation.use_chunking", useChunking),
 			attribute.Int("content.length", len(content)),
 			attribute.Int("content.estimated_tokens", estimatedTokens),
-		).
-		Start(ctx, "validate_content_request")
+		)
+	
+	// Add request ID if available in context
+	if requestID := GetRequestID(ctx); requestID != "" {
+		builder = builder.WithCustom(attribute.String("request.id", requestID))
+	}
+	
+	return builder.Start(ctx, "validate_content_request")
 }
 
 // StartEmbeddingSpan creates an embedding generation span
 func StartEmbeddingSpan(ctx context.Context, text string) (context.Context, trace.Span) {
 	estimatedTokens := len(text) / 4
 	
-	return NewSpanBuilder().
+	builder := NewSpanBuilder().
 		WithKind("EMBEDDING").
 		WithModel("text-embedding-3-small", "openai", "openai").
 		WithTokens(estimatedTokens, 0, estimatedTokens).
 		WithCustom(
 			attribute.String("embedding.summary", fmt.Sprintf("Generating embedding for %d chars (%d tokens)", len(text), estimatedTokens)),
 			attribute.Int("embedding.content_length", len(text)),
-		).
-		Start(ctx, "embedding.generation")
+		)
+	
+	// Add request ID if available in context
+	if requestID := GetRequestID(ctx); requestID != "" {
+		builder = builder.WithCustom(attribute.String("request.id", requestID))
+	}
+	
+	return builder.Start(ctx, "embedding.generation")
 }
 
 // StartRetrievalSpan creates a vector search span
 func StartRetrievalSpan(ctx context.Context, specVersion string, topK int) (context.Context, trace.Span) {
-	return NewSpanBuilder().
+	builder := NewSpanBuilder().
 		WithKind("RETRIEVER").
 		WithCustom(
 			attribute.String("spec_version", specVersion),
 			attribute.Int("top_k", topK),
-		).
-		Start(ctx, "vector.search")
+		)
+	
+	// Add request ID if available in context
+	if requestID := GetRequestID(ctx); requestID != "" {
+		builder = builder.WithCustom(attribute.String("request.id", requestID))
+	}
+	
+	return builder.Start(ctx, "vector.search")
 }
 
 // StartAnalysisSpan creates a validation analysis span
 func StartAnalysisSpan(ctx context.Context, numMatches int, avgSimilarity float64) (context.Context, trace.Span) {
-	return NewSpanBuilder().
+	builder := NewSpanBuilder().
 		WithKind("CHAIN").
 		WithCustom(
 			attribute.Int("analysis.num_matches", numMatches),
 			attribute.Float64("analysis.avg_similarity", avgSimilarity),
-		).
-		Start(ctx, "validation.analysis")
+		)
+	
+	// Add request ID if available in context
+	if requestID := GetRequestID(ctx); requestID != "" {
+		builder = builder.WithCustom(attribute.String("request.id", requestID))
+	}
+	
+	return builder.Start(ctx, "validation.analysis")
 }

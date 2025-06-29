@@ -6,11 +6,13 @@ import (
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/pkg/spec"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/carlisia/mcp-factcheck/pkg/validator"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"go.uber.org/zap"
 )
 
 // FactCheckServer wraps the actual MCP server with fact-check specific functionality
@@ -67,21 +69,85 @@ func (s *FactCheckServer) wrapToolHandler(toolName string, handler telemetry.Too
 
 // registerTools registers all fact-check tools with the MCP server
 func (s *FactCheckServer) registerTools() {
-	// Create base tool handlers
+	// Create base tool handlers with request ID tracking and logging
 	validateContentHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
-		return validator.HandleValidateContent(ctx, s.vectorDB, s.generator, req)
+		// Add request ID to context
+		ctx = telemetry.WithRequestID(ctx)
+		
+		// Create structured logger with request ID
+		log := logger.WithRequestID(ctx)
+		log.Info("Starting validate_content request", 
+			zap.String("tool", "validate_content"),
+			zap.Any("request", req))
+		
+		result, err := validator.HandleValidateContent(ctx, s.vectorDB, s.generator, req)
+		if err != nil {
+			log.Error("validate_content request failed", zap.Error(err))
+		} else {
+			log.Info("validate_content request completed successfully")
+		}
+		
+		return result, err
 	})
 
 	validateCodeHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
-		return validator.HandleValidateCode(ctx, s.vectorDB, s.generator, req)
+		// Add request ID to context
+		ctx = telemetry.WithRequestID(ctx)
+		
+		// Create structured logger with request ID
+		log := logger.WithRequestID(ctx)
+		log.Info("Starting validate_code request", 
+			zap.String("tool", "validate_code"),
+			zap.Any("request", req))
+		
+		result, err := validator.HandleValidateCode(ctx, s.vectorDB, s.generator, req)
+		if err != nil {
+			log.Error("validate_code request failed", zap.Error(err))
+		} else {
+			log.Info("validate_code request completed successfully")
+		}
+		
+		return result, err
 	})
 
 	searchSpecHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
-		return spec.HandleSearchSpec(s.vectorDB, s.generator, req)
+		// Add request ID to context
+		ctx = telemetry.WithRequestID(ctx)
+		
+		// Create structured logger with request ID
+		log := logger.WithRequestID(ctx)
+		log.Info("Starting search_spec request", 
+			zap.String("tool", "search_spec"),
+			zap.Any("request", req))
+		
+		result, err := spec.HandleSearchSpec(s.vectorDB, s.generator, req)
+		if err != nil {
+			log.Error("search_spec request failed", zap.Error(err))
+		} else {
+			log.Info("search_spec request completed successfully")
+		}
+		
+		return result, err
 	})
 
 	listVersionsHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
-		return spec.HandleListSpecVersions(s.vectorDB, req)
+		// Add request ID to context
+		ctx = telemetry.WithRequestID(ctx)
+		
+		// Create structured logger with request ID
+		log := logger.WithRequestID(ctx)
+		log.Info("Starting list_spec_versions request", 
+			zap.String("tool", "list_spec_versions"),
+			zap.Any("request", req))
+		
+		result, err := spec.HandleListSpecVersions(s.vectorDB, req)
+		if err != nil {
+			log.Error("list_spec_versions request failed", zap.Error(err))
+		} else {
+			log.Info("list_spec_versions request completed successfully")
+		}
+		
+		return result, err
 	})
 
 	// Wrap handlers with telemetry middleware
