@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/mark3labs/mcp-go/mcp"
 	"go.opentelemetry.io/otel/attribute"
+	"go.uber.org/zap"
 )
 
 const ValidateContentToolName = "validate_content"
@@ -24,6 +25,14 @@ func getKeys(m map[string]any) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// Helper function to get content preview for logging
+func getContentPreview(content string, maxLen int) string {
+	if len(content) <= maxLen {
+		return content
+	}
+	return content[:maxLen] + "..."
 }
 
 // Helper functions for OpenInference
@@ -112,23 +121,33 @@ Be explicit about limitations: If validation tools show high confidence but you 
 }
 
 func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+	// Get structured logger with request ID
+	log := logger.WithRequestID(ctx)
+	
 	params, ok := args.(map[string]any)
 	if !ok {
-		log.Printf("ERROR: args is not a map[string]any, got %T", args)
+		log.Error("Invalid arguments type", 
+			zap.String("expected", "map[string]any"),
+			zap.String("actual", fmt.Sprintf("%T", args)))
 		return nil, fmt.Errorf("arguments must be a map")
 	}
 
-	log.Printf("Params keys: %v", getKeys(params))
+	log.Debug("Processing validate_content request", 
+		zap.Strings("param_keys", getKeys(params)))
 
 	content, ok := params["content"].(string)
 	if !ok {
-		log.Printf("ERROR: content is not a string, got %T: %+v", params["content"], params["content"])
+		log.Error("Invalid content parameter", 
+			zap.String("expected", "string"),
+			zap.String("actual", fmt.Sprintf("%T", params["content"])),
+			zap.Any("value", params["content"]))
 		return nil, fmt.Errorf("content must be a string")
 	}
 
 	specVersion, ok := params["specVersion"].(string)
 	if !ok {
 		specVersion = specs.DefaultSpecVersion
+		log.Debug("Using default spec version", zap.String("version", specVersion))
 	}
 
 	useChunking, ok := params["useChunking"].(bool)
@@ -137,6 +156,9 @@ func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB,
 	}
 
 	if !specs.IsValidSpecVersion(specVersion) {
+		log.Error("Invalid spec version", 
+			zap.String("version", specVersion),
+			zap.Strings("valid_versions", specs.ValidSpecVersions))
 		return nil, fmt.Errorf("invalid spec version: %s", specVersion)
 	}
 
@@ -144,9 +166,12 @@ func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB,
 	ctx, requestSpan := telemetry.StartValidationSpan(ctx, content, specVersion, useChunking)
 	defer requestSpan.End()
 
-	// Add debug logging
-	log.Printf("Content length received: %d characters", len(content))
-	log.Printf("Content preview: %.100s...", content) // First 100 chars
+	// Add structured logging for request details
+	log.Info("Starting content validation", 
+		zap.Int("content_length", len(content)),
+		zap.String("spec_version", specVersion),
+		zap.Bool("use_chunking", useChunking),
+		zap.String("content_preview", getContentPreview(content, 100)))
 
 	// Check if we should use chunking based on content length or explicit request
 	shouldChunk := useChunking || len(content) > 500 // Auto-chunk for moderately long content
