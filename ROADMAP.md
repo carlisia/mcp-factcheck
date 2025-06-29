@@ -10,29 +10,35 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 
 ### **MCP Server Implementation**
 
-- ✅ Full MCP server using official mark3labs/mcp-go library
+- ✅ Full MCP server using the mark3labs/mcp-go library
 - ✅ JSON-RPC 2.0 stdio transport implementation
 - ✅ Four MCP tools: validate_content, validate_code, search_spec, list_spec_versions
 - ✅ Support for multiple MCP spec versions (draft, 2025-06-18, 2025-03-26, 2024-11-05)
 - ✅ Semantic search using OpenAI embeddings
-- ✅ Embedded debug interface with lifecycle management
 - ✅ Tool interaction monitoring and visualization
-- ✅ Processing time tracking and statistics
 
 ### **Infrastructure & Tools**
 
 - ✅ Spec extraction from GitHub repositories
 - ✅ Embedding generation utilities
-- ✅ Vector database for semantic search
+- ✅ Vector database for semantic search (json files for now)
 - ✅ Test client for MCP server validation
-- ✅ Claude Desktop integration
 - ✅ Comprehensive project documentation
 
 ---
 
 ## **🚧 Future Enhancements**
 
-### **Phase 1: Code Validation Improvements**
+### **Phase 1: Content Chunking & Long-Form Validation** (In Progress)
+
+| **Task**                  | **Status** | **Description**                                                    |
+| ------------------------- | ---------- | ------------------------------------------------------------------ |
+| Content chunking strategy | ✅         | Split long-form content into logical chunks (paragraphs, sections) |
+| Chunk-level validation    | ✅         | Validate each chunk individually against MCP specs                 |
+| Enhanced coverage mapping | ❌         | Show per-paragraph/section validation results                      |
+| Progressive processing    | ❌         | Stream validation for long content with real-time progress         |
+
+### **Phase 2: Code Validation Improvements**
 
 | **Task**                   | **Status** | **Description**                                                  |
 | -------------------------- | ---------- | ---------------------------------------------------------------- |
@@ -41,7 +47,7 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 | Implementation examples    | ❌         | Return working code examples for common patterns                 |
 | Error recovery suggestions | ❌         | Provide specific fixes for detected issues                       |
 
-### **Phase 2: Enhanced Features**
+### **Phase 3: Enhanced Features**
 
 | **Task**              | **Status** | **Description**                                |
 | --------------------- | ---------- | ---------------------------------------------- |
@@ -51,15 +57,13 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 | Validation reports    | ❌         | Generate detailed validation reports           |
 | CI/CD integration     | ❌         | GitHub Actions for automated validation        |
 
-### **Phase 3: Advanced Capabilities**
+### **Phase 4: Advanced Capabilities**
 
 | **Task**                 | **Status** | **Description**                                  |
 | ------------------------ | ---------- | ------------------------------------------------ |
 | Fine-tuned models        | ❌         | Train specialized models for MCP validation      |
-| Specification monitoring | ❌         | Auto-update when new MCP versions release        |
-| Community contributions  | ❌         | Accept validation rules from community           |
 | Multi-language support   | ❌         | Validate content in languages other than English |
-| MCP registry integration | ❌         | Integrate with official MCP tool registry        |
+| MCP registry integration | ❌         | Integrate with an MCP tool registry              |
 
 ---
 
@@ -76,14 +80,13 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 
 - ❌ Implement caching for repeated validations
 - ❌ Optimize embedding search algorithms
-- ❌ Add connection pooling for OpenAI API
-- ❌ Implement request queuing and batching
+- ❌ Implement request queuing and batching?
 
 ### **Configuration & Flexibility**
 
 - ❌ Support multiple embedding model options (OpenAI, local models, etc.)
 - ❌ Configurable model parameters and providers
-- ❌ Runtime model switching capabilities
+- ❌ Runtime model switching capabilities?
 
 ### **Security**
 
@@ -96,7 +99,7 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 
 ## **🎯 Milestones**
 
-### **Milestone 1: Production Ready** ✅ COMPLETED
+### **Milestone 1: Basic Functionality** ✅ COMPLETED
 
 - ✅ Full MCP protocol implementation
 - ✅ All core validation tools working
@@ -110,19 +113,15 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 - ❌ Performance optimizations
 - ❌ Test coverage > 80%
 
-### **Milestone 3: Enterprise Features**
+### **Milestone 3: Automation**
 
 - ❌ Batch processing capabilities
 - ❌ CI/CD integrations
-- ❌ Advanced reporting
-- ❌ Multi-tenant support
 
 ### **Milestone 4: Ecosystem Integration**
 
-- ❌ Official MCP registry listing
+- ❌ MCP registry listing
 - ❌ Community contribution framework
-- ❌ Plugin architecture
-- ❌ Cross-tool integrations
 
 ---
 
@@ -131,4 +130,3 @@ Transform the HTTP-based fact-checking prototype into a full MCP-compliant serve
 - ✅ **Completed** - Feature is implemented and working
 - ❌ **Planned** - Feature is planned for future implementation
 - 🚧 **In Progress** - Feature is currently being developed
-
