@@ -56,6 +56,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  resources/list                - List available resources\n")
 		fmt.Fprintf(os.Stderr, "  resources/read <uri>          - Read a resource\n")
 		fmt.Fprintf(os.Stderr, "  prompts/list                  - List available prompts\n")
+		fmt.Fprintf(os.Stderr, "  prompts/get <name> <args>     - Get a prompt with JSON arguments\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s tools/list\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s tools/call validate_content '{\"content\":\"MCP uses JSON-RPC\"}'\n", os.Args[0])
@@ -92,6 +93,11 @@ func main() {
 		err = client.ReadResource(args[0])
 	case "prompts/list":
 		err = client.ListPrompts()
+	case "prompts/get":
+		if len(args) < 2 {
+			log.Fatalf("prompts/get requires prompt name and arguments")
+		}
+		err = client.GetPrompt(args[0], args[1])
 	default:
 		log.Fatalf("Unknown command: %s", command)
 	}
@@ -316,6 +322,33 @@ func (c *MCPClient) ListPrompts() error {
 
 	if resp.Error != nil {
 		return fmt.Errorf("prompts/list error: %s", resp.Error.Message)
+	}
+
+	output, _ := json.MarshalIndent(resp.Result, "", "  ")
+	fmt.Println(string(output))
+	return nil
+}
+
+func (c *MCPClient) GetPrompt(name, argsJSON string) error {
+	// Parse the arguments JSON
+	var args map[string]any
+	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+		return fmt.Errorf("invalid arguments JSON: %w", err)
+	}
+
+	// Create the prompts/get request parameters
+	params := map[string]any{
+		"name":      name,
+		"arguments": args,
+	}
+
+	resp, err := c.sendRequest("prompts/get", params)
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return fmt.Errorf("prompts/get error: %s", resp.Error.Message)
 	}
 
 	output, _ := json.MarshalIndent(resp.Result, "", "  ")

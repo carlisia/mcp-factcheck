@@ -2,6 +2,8 @@
 
 An MCP Server for validating code or content against the official **Model Context Protocol (MCP)** specification to ensure technical accuracy and prevent the spread of misinformation.
 
+📋 **[View Project Roadmap](ROADMAP.md)** - See planned features and development progress
+
 ## Overview
 
 The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or writing about MCP by comparing content against official specifications. It uses:
@@ -45,9 +47,14 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
 go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
 ```
 
-2. Add to the Host config
+2. Configure your MCP client
 
-Example for Claude Code: (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+**For Claude Desktop App:**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+Example configuration:
 
 ```json
 {

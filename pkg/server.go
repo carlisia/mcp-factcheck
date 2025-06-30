@@ -7,6 +7,7 @@ import (
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
+	"github.com/carlisia/mcp-factcheck/pkg/prompts"
 	"github.com/carlisia/mcp-factcheck/pkg/spec"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/carlisia/mcp-factcheck/pkg/validator"
@@ -17,11 +18,12 @@ import (
 
 // FactCheckServer wraps the actual MCP server with fact-check specific functionality
 type FactCheckServer struct {
-	vectorDB   *mcpembedding.VectorDB
-	generator  *embedding.Generator
-	mcpServer  *server.MCPServer
-	provider   any
-	middleware any
+	vectorDB      *mcpembedding.VectorDB
+	generator     *embedding.Generator
+	mcpServer     *server.MCPServer
+	provider      any
+	middleware    any
+	promptService *prompts.Service
 }
 
 // NewFactCheckServer creates a new fact-check server instance using clean telemetry abstractions
@@ -33,24 +35,30 @@ func NewFactCheckServer(dataDir string, provider any, middleware any) (*FactChec
 		return nil, fmt.Errorf("failed to create embedding generator: %w", err)
 	}
 
+	// Create prompt service
+	promptService, err := prompts.NewService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create prompt service: %w", err)
+	}
+
 	// Create the actual MCP server
 	mcpServer := server.NewMCPServer(
 		"mcp-factcheck-server",
 		"0.1.0",
 	)
 
-	// Store provider and middleware as-is (can be nil)
-
 	factCheckServer := &FactCheckServer{
-		vectorDB:   vectorDB,
-		generator:  generator,
-		mcpServer:  mcpServer,
-		provider:   provider,
-		middleware: middleware,
+		vectorDB:      vectorDB,
+		generator:     generator,
+		mcpServer:     mcpServer,
+		provider:      provider,
+		middleware:    middleware,
+		promptService: promptService,
 	}
 
-	// Register tools with the MCP server
+	// Register tools and prompts with the MCP server
 	factCheckServer.registerTools()
+	factCheckServer.registerPrompts()
 
 	return factCheckServer, nil
 }
@@ -206,6 +214,58 @@ func (s *FactCheckServer) registerTools() {
 	s.mcpServer.AddTool(validator.GetValidateCodeTool(), mcpValidateCodeHandler)
 	s.mcpServer.AddTool(spec.GetSearchSpecTool(), mcpSearchSpecHandler)
 	s.mcpServer.AddTool(spec.GetListSpecVersionsTool(), mcpListVersionsHandler)
+
+	// Register prompts with the MCP server
+	s.registerPrompts()
+}
+
+// registerPrompts registers all prompts with the MCP server using the new service
+func (s *FactCheckServer) registerPrompts() {
+	// Get all prompts from the service
+	listResult, err := s.promptService.ListPrompts(context.Background())
+	if err != nil {
+		// Log error but don't fail server startup
+		log := logger.Get()
+		log.Error("Failed to list prompts during registration", zap.Error(err))
+		return
+	}
+
+	// Register each prompt with the MCP server
+	for _, prompt := range listResult.Prompts {
+		// Convert our arguments back to MCP format
+		var mcpArgs []mcp.PromptOption
+		mcpArgs = append(mcpArgs, mcp.WithPromptDescription(prompt.Description))
+		
+		for _, arg := range prompt.Arguments {
+			argOptions := []mcp.ArgumentOption{
+				mcp.ArgumentDescription(arg.Description),
+			}
+			if arg.Required {
+				argOptions = append(argOptions, mcp.RequiredArgument())
+			}
+			mcpArgs = append(mcpArgs, mcp.WithArgument(arg.Name, argOptions...))
+		}
+
+		// Create the MCP prompt and handler
+		mcpPrompt := mcp.NewPrompt(prompt.Name, mcpArgs...)
+		handler := s.createPromptHandler(prompt.Name)
+		
+		// Register with the MCP server
+		s.mcpServer.AddPrompt(mcpPrompt, handler)
+	}
+}
+
+// createPromptHandler creates a prompt handler with logging and request ID tracking
+func (s *FactCheckServer) createPromptHandler(promptName string) func(context.Context, mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+	return func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		// Add request ID to context
+		ctx = telemetry.WithRequestID(ctx)
+		
+		// Delegate to the prompt service
+		result, err := s.promptService.GetPrompt(ctx, promptName, request.Params.Arguments)
+		
+		return result, err
+	}
 }
 
 // Run starts the MCP server using stdio transport
