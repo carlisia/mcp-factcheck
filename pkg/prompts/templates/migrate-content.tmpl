@@ -1,67 +1,104 @@
-Please help me update MCP content from {{.current_version}} to {{.target_version}}.
+MCP Content Migration Assistant
 
-**Migration Configuration:**
+You are helping update MCP content from version {{.current_version}} to {{.target_version}}.
+
+Migration Configuration:
 - Current spec version: {{.current_version}}
 - Target spec version: {{.target_version}}
 - Content type: {{.content_type}}
 - Target audience: {{.target_audience}}
 - Update scope: {{.update_scope}}
 
-I'll analyze the content you provide in this conversation and guide you through the migration process.
+---
+
+I'll analyze the content you provide & guide you through each migration step.
 
 ---
 
-**Step 1: Validate Current Content Against Source Specification**
-First, use the validate_content tool to assess the provided content against {{.current_version}} specification:
-- Identify any existing inaccuracies that need fixing
-- Check for missing context or incomplete information
-- Verify example accuracy and completeness
-- Establish a baseline of content quality before migration
+Step 1: Validate Current Content Against {{.current_version}}
+1. Use the validate_content tool to check the provided content:
+   - List any existing inaccuracies
+   - Flag missing or incomplete context
+   - Assess example accuracy & completeness
+   - Summarize content quality as a baseline
 
-**Step 2: Analyze Specification Changes**
-Use the search_spec tool to identify changes between {{.current_version}} and {{.target_version}} that affect:
-- Terminology and concepts mentioned in the content
-- Features, APIs, or protocols described
-- Examples and code snippets referenced
-- Best practices and recommendations
+Output:
+- JSON or markdown list of findings:
+  - inaccuracies
+  - missing_info
+  - incorrect_examples
+  - overall_quality
 
-**Step 3: Identify Content Update Requirements**
-Based on the validation results and specification changes, determine:
-- **Pre-existing issues**: Problems found in Step 1 that should be fixed regardless of migration
-- **Migration updates**: Changes required due to specification differences
-- **New content**: Features/concepts that should be added for {{.target_version}}
-- **Deprecated content**: Information that should be removed or marked as outdated
-- **Enhanced explanations**: Areas that benefit from {{.target_version}} improvements
+---
 
-**Step 4: Create Updated Content Strategy**
-Provide a content update plan that addresses:
+Step 2: Analyze Changes from {{.current_version}} to {{.target_version}}
+1. Use the search_spec tool to compare specifications:
+   - List terminology or concept changes
+   - Note new or removed features, APIs, protocols
+   - Highlight example or code snippet changes
+   - Capture updated best practices
+
+Output:
+- Table or bullet list of specification changes relevant to the content
+
+---
+
+Step 3: Identify Content Update Requirements
+- Based on Steps 1 & 2, specify:
+  - Pre-existing issues
+  - Required migration updates
+  - New content to add (for new features or concepts)
+  - Deprecated content (remove or mark as outdated)
+  - Opportunities for enhanced explanation
+
+Output:
+- List, grouped by the categories above
+
+---
+
+Step 4: Create an Updated Content Strategy
 {{if eq .update_scope "critical_only"}}
-- Only critical inaccuracies and breaking changes
-- Minimal disruption to existing content structure
+- Focus only on critical inaccuracies & breaking changes (minimal disruption)
 {{else if eq .update_scope "enhancement_focused"}}
-- Leverage new features and improvements in {{.target_version}}
-- Enhance examples and best practices
-- Improve clarity and completeness
+- Focus on improvements, new features, clarity, & best practices
 {{else}}
-- Comprehensive review and updates
-- New sections for {{.target_version}} features
-- Improved examples and best practices
-- Enhanced clarity for {{.target_audience}}
+- Comprehensive review: all improvements, new sections, & enhanced clarity
 {{end}}
 
-**Step 5: Generate Updated Content**
-Create the revised content with:
-- Updated terminology consistent with {{.target_version}}
-- Corrected examples and code snippets
-- New sections for relevant {{.target_version}} features
-- Clear indicators of version-specific information
-- Maintained tone and style appropriate for {{.target_audience}}
+Output:
+- High-level plan with sections or bullets for each content area to be revised
 
-**Step 6: Validate Updated Content**
-Use the validate_content tool to verify the updated content against {{.target_version}} specification for:
-- Technical accuracy and completeness
-- Proper use of {{.target_version}} terminology
-- Example correctness and best practices
-- Appropriate level of detail for {{.target_audience}}
+---
 
-Once you provide the content to migrate, I'll start with Step 1 by validating it against {{.current_version}} to establish a baseline, then analyze the changes to {{.target_version}} and guide you through the migration process.
+Step 5: Generate Updated Content
+- Revise original content per the strategy:
+  - Use correct {{.target_version}} terminology
+  - Correct or enhance examples & code
+  - Add sections for new features
+  - Clearly mark version-specific information
+  - Maintain tone & style for {{.target_audience}}
+
+Output:
+- Markdown or preferred format with highlighted changes if possible
+
+---
+
+Step 6: Validate Updated Content Against {{.target_version}}
+- Use validate_content to verify:
+  - Technical accuracy
+  - Correct use of terminology
+  - Example or code correctness
+  - Appropriate level for {{.target_audience}}
+
+Output:
+- Validation summary with any final issues or a statement that content is ready
+
+---
+
+Process Note:
+- At each step, output results & wait for confirmation before proceeding.
+- If you need additional content or clarifications, ask the user directly.
+
+---
+
+Once you provide the content, I'll start with Step 1 & establish a quality baseline.
