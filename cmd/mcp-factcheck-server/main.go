@@ -14,13 +14,9 @@ import (
 	"github.com/carlisia/mcp-factcheck/pkg"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/internal/integrations/arizephoenix"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load .env file if it exists
-	_ = godotenv.Load()
-
 	// Initialize structured logging with Zap
 	if err := logger.Initialize(logger.IsDevMode()); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
