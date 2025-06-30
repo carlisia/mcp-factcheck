@@ -37,6 +37,14 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
    - Shows version dates and descriptions
    - Indicates which version is current
 
+### MCP Prompts Available
+
+1. **`migrate-mcp-content`** - Guides content migration between MCP specification versions
+   - Validates content against source specification first
+   - Identifies changes between specification versions
+   - Provides step-by-step migration guidance
+   - Supports various content types (documentation, tutorials, blog posts, etc.)
+
 ## Installation
 
 ### Client Integration
@@ -50,6 +58,7 @@ go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
 2. Configure your MCP client
 
 **For Claude Desktop App:**
+
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Linux**: `~/.config/Claude/claude_desktop_config.json`
@@ -164,6 +173,10 @@ go build -o bin/factcheck-curl ./cmd/factcheck-curl
 # Test tools
 ./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings tools/list
 ./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings tools/call validate_content '{"content":"MCP is a protocol"}'
+
+# Test prompts
+./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/list
+./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{"current_version":"2024-11-05","target_version":"2025-06-18"}'
 ```
 
 ## Architecture
@@ -173,19 +186,9 @@ cmd/
 ├── mcp-factcheck-server/   # Main MCP server
 └── factcheck-curl/         # Test client
 
-utils/
-└── cmd/                    # Specification extraction tool
-
-pkg/
-├── spec/                   # MCP specification tools
-│   ├── list.go            # list_spec_versions implementation
-│   └── search.go          # search_spec implementation
-├── validator/             # Content/code validation
-│   ├── content.go         # validate_content implementation
-│   └── code.go            # validate_code implementation
-└── telemetry/             # Clean telemetry abstractions
-    ├── interfaces.go      # Provider, Middleware interfaces
-    └── builder.go         # Fluent span builder
+data/
+├── specs/                 # Extracted MCP specifications
+└── embeddings/            # Pre-generated embeddings
 
 internal/
 └── integrations/
@@ -195,9 +198,22 @@ internal/
         ├── middleware.go  # Phoenix middleware
         └── init.go        # Initialization helpers
 
-data/
-├── specs/                 # Extracted MCP specifications
-└── embeddings/            # Pre-generated embeddings
+pkg/
+├── spec/                  # MCP specification tools
+│   ├── list.go            # list_spec_versions implementation
+│   └── search.go          # search_spec implementation
+├── validator/             # Content/code validation
+│   ├── content.go         # validate_content implementation
+│   └── code.go            # validate_code implementation
+├── prompts/               # MCP prompt templates
+│   ├── templates/         # Prompt template files
+│   └── service.go         # Prompt service implementation
+└── telemetry/             # Clean telemetry abstractions
+    ├── interfaces.go      # Provider, Middleware interfaces
+    └── builder.go         # Fluent span builder
+
+utils/
+└── cmd/                    # Specification extraction tool
 ```
 
 ## Environment Variables
