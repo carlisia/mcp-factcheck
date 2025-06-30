@@ -4,12 +4,13 @@ import "encoding/json"
 
 // ValidationResult represents a structured validation response
 type ValidationResult struct {
-	IsValid      bool     `json:"is_valid"`
-	Confidence   float64  `json:"confidence"`
-	Issues       []string `json:"issues,omitempty"`
-	Suggestions  []string `json:"suggestions,omitempty"`
-	CorrectedVersion string `json:"corrected_version,omitempty"`
-	SpecVersion  string   `json:"spec_version"`
+	IsValid          bool     `json:"is_valid"`
+	Confidence       float64  `json:"confidence"`
+	ParsedClaims     []string `json:"parsed_claims,omitempty"`     // All claims found in content
+	Issues           []string `json:"issues,omitempty"`
+	Suggestions      []string `json:"suggestions,omitempty"`
+	CorrectedVersion string   `json:"corrected_version,omitempty"`
+	SpecVersion      string   `json:"spec_version"`
 }
 
 // ValidationMatch represents a summarized spec match
