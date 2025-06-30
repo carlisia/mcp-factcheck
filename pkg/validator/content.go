@@ -16,7 +16,30 @@ import (
 	"go.uber.org/zap"
 )
 
-const ValidateContentToolName = "validate_content"
+const (
+	validateContentToolName = "validate_content"
+	
+	// Search configuration
+	defaultSearchTopK = 10  // Number of spec sections to retrieve
+	chunkSearchTopK   = 5   // Number of spec sections per chunk
+	
+	// Display configuration
+	defaultMatchesShown = 5  // Number of matches to show in results
+	chunkMatchesShown   = 2  // Number of matches per chunk
+	
+	// Validation thresholds
+	similarityValidThreshold = 0.7  // Similarity score above which content is considered valid
+	similarityLowThreshold   = 0.5  // Below this is considered low similarity
+	
+	// Content processing
+	autoChunkThreshold = 500  // Content length above which to auto-enable chunking
+	contentPreviewLen  = 100  // Length of content preview in logs
+	
+	// Confidence scores
+	highConfidence      = 0.9  // Confidence when fact-check passes
+	lowConfidence       = 0.3  // Confidence when fact-check fails
+	minimumConfidence   = 0.1  // Minimum confidence when no results
+)
 
 // Helper function for debugging
 func getKeys(m map[string]any) []string {
@@ -117,7 +140,7 @@ Returns specific spec violations with section references and correct language fr
 
 Be explicit about limitations: If validation tools show high confidence but you haven't verified specific claims, state that clearly rather than giving blanket approval.`
 
-	return mcp.NewToolWithRawSchema(ValidateContentToolName, description, schemaBytes)
+	return mcp.NewToolWithRawSchema(validateContentToolName, description, schemaBytes)
 }
 
 func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
@@ -171,10 +194,10 @@ func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB,
 		zap.Int("content_length", len(content)),
 		zap.String("spec_version", specVersion),
 		zap.Bool("use_chunking", useChunking),
-		zap.String("content_preview", getContentPreview(content, 100)))
+		zap.String("content_preview", getContentPreview(content, contentPreviewLen)))
 
 	// Check if we should use chunking based on content length or explicit request
-	shouldChunk := useChunking || len(content) > 500 // Auto-chunk for moderately long content
+	shouldChunk := useChunking || len(content) > autoChunkThreshold
 
 	var result []mcp.Content
 	var err error
@@ -204,45 +227,70 @@ func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB,
 }
 
 // analyzeContentValidation determines if content is valid and provides insights
-func analyzeContentValidation(content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeContentValidation(ctx context.Context, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
-			Confidence:  0.1,
+			Confidence:  minimumConfidence,
 			Issues:      []string{"No relevant MCP specification content found"},
 			SpecVersion: specVersion,
 		}
 	}
 
-	// Calculate average similarity
-	var totalSimilarity float64
+	// Extract spec sections for fact-checking
+	var specSections []string
 	for _, result := range results {
-		totalSimilarity += result.Similarity
+		specSections = append(specSections, result.Chunk.Content)
 	}
-	avgSimilarity := totalSimilarity / float64(len(results))
 
-	// Determine validation based on similarity thresholds
-	isValid := avgSimilarity > 0.7
-	confidence := avgSimilarity
-
-	var issues []string
-	var suggestions []string
-
-	if !isValid {
-		issues = append(issues, "Content may not align with MCP specification")
-		if avgSimilarity < 0.5 {
-			issues = append(issues, "Low similarity to MCP patterns detected")
+	// Use LLM to fact-check the content against spec sections
+	factCheckResult, err := generator.FactCheckAgainstSpec(content, specSections)
+	if err != nil {
+		// Fallback to similarity-based validation if fact-checking fails
+		log := logger.WithRequestID(ctx)
+		log.Error("Fact-checking failed, falling back to similarity validation", zap.Error(err))
+		
+		// Calculate average similarity
+		var totalSimilarity float64
+		for _, result := range results {
+			totalSimilarity += result.Similarity
 		}
-		suggestions = append(suggestions, "Review content against MCP specification")
-		suggestions = append(suggestions, "Consider using standard MCP terminology and patterns")
+		avgSimilarity := totalSimilarity / float64(len(results))
+		
+		return ValidationResult{
+			IsValid:     avgSimilarity > similarityValidThreshold,
+			Confidence:  avgSimilarity,
+			Issues:      []string{"Fact-checking unavailable, using similarity-based validation"},
+			SpecVersion: specVersion,
+		}
+	}
+
+	// Build validation result from fact-check
+	var correctedVersion string
+	if !factCheckResult.IsAccurate && len(factCheckResult.Corrections) > 0 {
+		// Combine corrections into a suggested version
+		correctedVersion = "Suggested corrections:\n"
+		for i, correction := range factCheckResult.Corrections {
+			if i < len(factCheckResult.Inaccuracies) {
+				correctedVersion += fmt.Sprintf("- %s → %s\n", factCheckResult.Inaccuracies[i], correction)
+			}
+		}
+	}
+
+	// Calculate confidence based on fact-check results
+	confidence := highConfidence
+	if !factCheckResult.IsAccurate {
+		confidence = lowConfidence
 	}
 
 	return ValidationResult{
-		IsValid:     isValid,
-		Confidence:  confidence,
-		Issues:      issues,
-		Suggestions: suggestions,
-		SpecVersion: specVersion,
+		IsValid:          factCheckResult.IsAccurate,
+		Confidence:       confidence,
+		ParsedClaims:     factCheckResult.ParsedClaims,
+		Issues:           factCheckResult.Inaccuracies,
+		Suggestions:      factCheckResult.Corrections,
+		CorrectedVersion: correctedVersion,
+		SpecVersion:      specVersion,
 	}
 }
 
@@ -300,10 +348,10 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	}
 
 	// Start vector search span using telemetry builder
-	searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, 5)
+	searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, defaultSearchTopK)
 
 	// Search for relevant spec sections
-	results, err := vectorDB.Search(specVersion, contentEmbedding, 5)
+	results, err := vectorDB.Search(specVersion, contentEmbedding, defaultSearchTopK)
 	if err != nil {
 		searchSpan.SetAttributes(attribute.String("search.error", err.Error()))
 		searchSpan.RecordError(err)
@@ -333,7 +381,7 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	// Add retrieval results to span using telemetry builder
 	searchSpan.SetAttributes(
 		attribute.String("retrieval.query", content[:min(200, len(content))]),
-		attribute.Int("retrieval.top_k", 5),
+		attribute.Int("retrieval.top_k", defaultSearchTopK),
 		attribute.Float64("retrieval.similarity.avg", avgSimilarity),
 		attribute.Float64("retrieval.similarity.max", getMaxSimilarity(results)),
 		attribute.Float64("retrieval.similarity.min", getMinSimilarity(results)),
@@ -348,8 +396,8 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	_, analysisSpan := telemetry.StartAnalysisSpan(searchCtx, len(results), avgSimilarity)
 
 	// Analyze validation results
-	validationResult := analyzeContentValidation(content, results, specVersion)
-	matches := summarizeContentMatches(results, 3)
+	validationResult := analyzeContentValidation(searchCtx, generator, content, results, specVersion)
+	matches := summarizeContentMatches(results, defaultMatchesShown)
 
 	analysisSpan.SetAttributes(
 		attribute.Bool("validation.is_valid", validationResult.IsValid),

@@ -178,10 +178,10 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		}
 		
 		// Search for relevant spec sections using telemetry builder
-		searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, 3)
+		searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, chunkSearchTopK)
 		searchSpan.SetAttributes(attribute.String("chunk_id", chunk.ID))
 		
-		results, err := vectorDB.Search(specVersion, chunkEmbedding, 3)
+		results, err := vectorDB.Search(specVersion, chunkEmbedding, chunkSearchTopK)
 		
 		if err != nil {
 			searchSpan.SetAttributes(attribute.String("search.error", err.Error()))
@@ -216,8 +216,8 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		searchSpan.End()
 		
 		// Analyze validation for this chunk
-		validation := analyzeChunkValidation(chunk.Text, results, specVersion)
-		matches := summarizeChunkMatches(results, 2)
+		validation := analyzeChunkValidation(searchCtx, generator, chunk.Text, results, specVersion)
+		matches := summarizeChunkMatches(results, chunkMatchesShown)
 		
 		// Add chunk validation results to span
 		chunkSpan.SetAttributes(
@@ -242,10 +242,32 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		_ = searchCtx
 	}
 	
-	// Create overall validation summary
+	// Create overall validation summary based on chunk results
 	avgConfidence := totalSimilarity / float64(totalChunks)
+	
+	// Count how many chunks are valid (fact-check passed)
+	validChunks := 0
+	var allIssues []string
+	var allSuggestions []string
+	
+	for _, chunkResult := range chunkResults {
+		if chunkResult.Error == "" && chunkResult.Validation.IsValid {
+			validChunks++
+		}
+		// Collect all issues and suggestions from chunks
+		if len(chunkResult.Validation.Issues) > 0 {
+			allIssues = append(allIssues, chunkResult.Validation.Issues...)
+		}
+		if len(chunkResult.Validation.Suggestions) > 0 {
+			allSuggestions = append(allSuggestions, chunkResult.Validation.Suggestions...)
+		}
+	}
+	
+	// Overall is valid only if ALL chunks pass fact-checking
+	overallIsValid := validChunks == totalChunks
+	
 	overallValidation := ValidationResult{
-		IsValid:     avgConfidence > 0.7,
+		IsValid:     overallIsValid,
 		Confidence:  avgConfidence,
 		SpecVersion: specVersion,
 	}
@@ -253,14 +275,41 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 	// Set overall issues and suggestions
 	if !overallValidation.IsValid {
 		overallValidation.Issues = []string{
-			fmt.Sprintf("%d chunks analyzed with average confidence %.2f", totalChunks, avgConfidence),
+			fmt.Sprintf("%d/%d chunks contain factual inaccuracies", totalChunks-validChunks, totalChunks),
 		}
-		if avgConfidence < 0.5 {
-			overallValidation.Issues = append(overallValidation.Issues, "Multiple sections show low alignment with MCP specification")
+		// Add unique issues from chunks (deduplication would be ideal but keeping it simple)
+		if len(allIssues) > 0 {
+			overallValidation.Issues = append(overallValidation.Issues, "Found inaccuracies across chunks:")
+			// Add first few unique issues as examples
+			seen := make(map[string]bool)
+			exampleCount := 0
+			for _, issue := range allIssues {
+				if !seen[issue] && exampleCount < 3 {
+					overallValidation.Issues = append(overallValidation.Issues, "- "+issue)
+					seen[issue] = true
+					exampleCount++
+				}
+			}
+			if len(allIssues) > 3 {
+				overallValidation.Issues = append(overallValidation.Issues, fmt.Sprintf("... and %d more issues", len(allIssues)-3))
+			}
 		}
+		
+		// Add suggestions
 		overallValidation.Suggestions = []string{
-			"Review flagged sections against MCP specification",
-			"Consider using standard MCP terminology throughout",
+			"Fix factual errors in the flagged chunks",
+			"Verify all claims against MCP specification",
+		}
+		// Add unique suggestions from chunks
+		seen := make(map[string]bool)
+		for _, suggestion := range allSuggestions {
+			if !seen[suggestion] {
+				overallValidation.Suggestions = append(overallValidation.Suggestions, suggestion)
+				seen[suggestion] = true
+				if len(overallValidation.Suggestions) >= 5 {
+					break // Limit to 5 suggestions total
+				}
+			}
 		}
 	}
 	
@@ -278,46 +327,19 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 }
 
 // analyzeChunkValidation determines if a chunk is valid and provides insights
-func analyzeChunkValidation(content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeChunkValidation(ctx context.Context, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
-			Confidence:  0.1,
+			Confidence:  minimumConfidence,
 			Issues:      []string{"No relevant MCP specification content found for this section"},
 			SpecVersion: specVersion,
 		}
 	}
 	
-	// Calculate average similarity
-	var totalSimilarity float64
-	for _, result := range results {
-		totalSimilarity += result.Similarity
-	}
-	avgSimilarity := totalSimilarity / float64(len(results))
-	
-	// Determine validation based on similarity thresholds
-	isValid := avgSimilarity > 0.7
-	confidence := avgSimilarity
-	
-	var issues []string
-	var suggestions []string
-	
-	if !isValid {
-		issues = append(issues, "Content section may not align with MCP specification")
-		if avgSimilarity < 0.5 {
-			issues = append(issues, "Low similarity to MCP patterns detected")
-		}
-		suggestions = append(suggestions, "Review this section against MCP specification")
-		suggestions = append(suggestions, "Consider using standard MCP terminology")
-	}
-	
-	return ValidationResult{
-		IsValid:     isValid,
-		Confidence:  confidence,
-		Issues:      issues,
-		Suggestions: suggestions,
-		SpecVersion: specVersion,
-	}
+	// For chunks, we use the same fact-checking logic as single validation
+	// This ensures consistent validation across both modes
+	return analyzeContentValidation(ctx, generator, content, results, specVersion)
 }
 
 // summarizeChunkMatches creates concise summaries from search results for a chunk
