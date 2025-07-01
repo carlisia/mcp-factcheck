@@ -99,10 +99,10 @@ func (s *Service) convertArguments(rawArgs any) (Arguments, error) {
 	
 	// Handle different argument types from MCP library
 	switch args := rawArgs.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		return Arguments(args), nil
 	case map[string]string:
-		// Convert map[string]string to map[string]interface{}
+		// Convert map[string]string to map[string]any
 		result := make(Arguments)
 		for k, v := range args {
 			result[k] = v

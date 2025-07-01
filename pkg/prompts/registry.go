@@ -32,7 +32,7 @@ type Argument struct {
 }
 
 // Arguments provides type-safe access to prompt arguments
-type Arguments map[string]interface{}
+type Arguments map[string]any
 
 // String safely returns a string argument with fallback to default
 func (a Arguments) String(key, defaultValue string) string {

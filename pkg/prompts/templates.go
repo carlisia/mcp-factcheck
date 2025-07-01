@@ -14,7 +14,7 @@ type PromptTemplate struct {
 	Description string                 `json:"description"`
 	Arguments   []PromptArgument       `json:"arguments,omitempty"`
 	Template    string                 `json:"template"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // PromptArgument defines an argument for a prompt template
@@ -139,7 +139,7 @@ Use the validate_content tool to verify the updated content against {{.target_ve
 - Appropriate level of detail for {{.target_audience}}
 
 Please start with Step 1 by analyzing the key changes between {{.current_version}} and {{.target_version}} that are relevant to this {{.content_type}} content.`,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"category":    "migration",
 				"use_case":    "content_update",
 				"workflow":    "multi_step",
@@ -190,14 +190,14 @@ func GetPromptsListResponse() (*mcp.ListPromptsResult, error) {
 }
 
 // RenderPrompt renders a prompt template with the given arguments
-func RenderPrompt(templateName string, args map[string]interface{}) (*mcp.GetPromptResult, error) {
+func RenderPrompt(templateName string, args map[string]any) (*mcp.GetPromptResult, error) {
 	promptTemplate, err := GetPromptByName(templateName)
 	if err != nil {
 		return nil, err
 	}
 	
 	// Create a copy of args with defaults filled in
-	renderArgs := make(map[string]interface{})
+	renderArgs := make(map[string]any)
 	for _, arg := range promptTemplate.Arguments {
 		if value, exists := args[arg.Name]; exists {
 			renderArgs[arg.Name] = value
