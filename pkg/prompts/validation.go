@@ -26,20 +26,6 @@ func NewMigrateContentPrompt() (Prompt, error) {
 			Type:        "string",
 		},
 		{
-			Name:        "content_type",
-			Description: "documentation, tutorial, blog_post, readme, api_reference, guide",
-			Required:    false,
-			Type:        "string",
-			Default:     "documentation",
-		},
-		{
-			Name:        "target_audience",
-			Description: "developers, users, beginners, advanced, technical_writers",
-			Required:    false,
-			Type:        "string",
-			Default:     "developers",
-		},
-		{
 			Name:        "update_scope",
 			Description: "critical_only, comprehensive, enhancement_focused",
 			Required:    false,

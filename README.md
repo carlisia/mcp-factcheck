@@ -44,18 +44,13 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
    - Validates content against source specification first
    - Identifies changes between specification versions
    - Provides step-by-step migration guidance
-   - Supports various content types (documentation, tutorials, blog posts, etc.)
+   - Works with any type of MCP-related content
+   - Preserves the original tone, style, and voice when making corrections or suggestions
 
    **Parameters:**
 
    - `current_version` (required): Source MCP specification version (e.g., "2024-11-05", "2025-06-18")
    - `target_version` (required): Target MCP specification version to migrate to (e.g., "draft")
-   - `content_type` (optional): Type of content being migrated
-     - Options: `documentation`, `tutorial`, `blog_post`, `readme`, `api_reference`, `guide`
-     - Default: `documentation`
-   - `target_audience` (optional): Intended audience for the content
-     - Options: `developers`, `users`, `beginners`, `advanced`, `technical_writers`
-     - Default: `developers`
    - `update_scope` (optional): Determines how aggressive the migration should be
      - `critical_only`: Fix only critical inaccuracies and breaking changes (minimal changes)
      - `enhancement_focused`: Fix issues and improve clarity, align with best practices
@@ -201,8 +196,6 @@ go build -o bin/factcheck-curl ./cmd/factcheck-curl
 ./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{
   "current_version": "2024-11-05",
   "target_version": "2025-06-18",
-  "content_type": "tutorial",
-  "target_audience": "beginners",
   "update_scope": "critical_only"
 }'
 ```
