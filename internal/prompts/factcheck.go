@@ -4,6 +4,8 @@ import (
 	"bytes"
 	_ "embed"
 	"text/template"
+	
+	"github.com/carlisia/mcp-factcheck/pkg/prompts"
 )
 
 //go:embed templates/fact-check.tmpl
@@ -11,8 +13,10 @@ var factCheckTemplate string
 
 // FactCheckData holds the data for rendering the fact-check prompt
 type FactCheckData struct {
-	Content      string
-	SpecSections []string
+	Content               string
+	SpecSections          []string
+	ClaimExtractionRules  string
+	AccuracyCheckingRules string
 }
 
 // FactCheckPrompt handles rendering of the fact-checking prompt
@@ -37,6 +41,14 @@ func NewFactCheckPrompt() (*FactCheckPrompt, error) {
 
 // Render generates the fact-check prompt with the provided data
 func (p *FactCheckPrompt) Render(data FactCheckData) (string, error) {
+	// Add shared rules to the data if not already provided
+	if data.ClaimExtractionRules == "" {
+		data.ClaimExtractionRules = prompts.ClaimExtractionRules
+	}
+	if data.AccuracyCheckingRules == "" {
+		data.AccuracyCheckingRules = prompts.AccuracyCheckingRules
+	}
+	
 	var buf bytes.Buffer
 	if err := p.tmpl.Execute(&buf, data); err != nil {
 		return "", err

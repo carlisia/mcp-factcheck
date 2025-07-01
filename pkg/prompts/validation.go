@@ -27,17 +27,24 @@ func NewMigrateContentPrompt() (Prompt, error) {
 		},
 		{
 			Name:        "update_scope",
-			Description: "critical_only, comprehensive, enhancement_focused",
+			Description: "comprehensive (default), critical_only, enhancement_focused",
 			Required:    false,
 			Type:        "string",
 			Default:     "comprehensive",
 		},
 	}
 
-	return NewBasePrompt(
+	// Create an extended template that includes the shared rules
+	extendedTemplate := migrateContentTemplate
+
+	return NewBasePromptWithFuncs(
 		"migrate-mcp-content",
 		"Update MCP documentation, tutorials, or content to align with a target specification version",
-		migrateContentTemplate,
+		extendedTemplate,
 		args,
+		map[string]any{
+			"AccuracyCheckingRulesShort":  func() string { return AccuracyCheckingRulesShort },
+			"StylePreservationGuidelines": func() string { return StylePreservationGuidelines },
+		},
 	)
 }

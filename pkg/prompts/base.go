@@ -31,6 +31,21 @@ func NewBasePrompt(name, description, templateText string, args []Argument) (*Ba
 	}, nil
 }
 
+// NewBasePromptWithFuncs creates a new base prompt with template functions
+func NewBasePromptWithFuncs(name, description, templateText string, args []Argument, funcs map[string]any) (*BasePrompt, error) {
+	tmpl, err := template.New(name).Funcs(template.FuncMap(funcs)).Parse(templateText)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &BasePrompt{
+		name:        name,
+		description: description,
+		arguments:   args,
+		template:    tmpl,
+	}, nil
+}
+
 // Name returns the prompt name
 func (p *BasePrompt) Name() string {
 	return p.name
@@ -49,7 +64,7 @@ func (p *BasePrompt) Arguments() []Argument {
 // Render generates the prompt content with the given arguments
 func (p *BasePrompt) Render(ctx context.Context, args Arguments) (*mcp.GetPromptResult, error) {
 	// Create template data with defaults
-	templateData := make(map[string]interface{})
+	templateData := make(map[string]any)
 	
 	// Set defaults first
 	for _, arg := range p.arguments {
