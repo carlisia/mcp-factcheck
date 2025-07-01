@@ -15,7 +15,7 @@ I'll analyze the content you provide & guide you through each migration step.
 
 Step 1: Validate Current Content Against {{.current_version}}
 1. Use the validate_content tool to check the provided content:
-   - List any existing inaccuracies
+   - List any existing inaccuracies (following strict accuracy rules)
    - Flag missing or incomplete context
    - Assess example accuracy & completeness
    - Summarize content quality as a baseline
@@ -72,12 +72,14 @@ Output:
 
 Step 5: Generate Updated Content
 - Revise & update only the content originally provided, according to the update strategy:
-  - Preserve the original tone, voice, & style of the content provided when making revisions or suggestions. Match the level of formality, technicality, & overall style unless otherwise directed.
   - Use correct {{.target_version}} terminology
   - Correct or enhance examples & code present in the original content
   - Update existing sections for {{.target_version}} features if they already appear
   - Clearly mark version-specific information
 - **Do not add new sections, features, or topics not found in the provided content.**
+
+Style Guidelines:
+{{.StylePreservationGuidelines}}
 
 Output:
 - Markdown or preferred format, with highlighted changes if possible, scoped only to revisions of the content supplied
