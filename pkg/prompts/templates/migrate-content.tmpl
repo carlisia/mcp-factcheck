@@ -39,17 +39,17 @@ Step 2: Analyze Changes from {{.current_version}} to {{.target_version}}
    - Capture updated best practices
 
 Output:
-- Table or bullet list of specification changes relevant to the content
+- Table or bullet list of specification changes **that are directly relevant to the content provided**
 
 ---
 
 Step 3: Identify Content Update Requirements
 - Based on Steps 1 & 2, specify:
-  - Pre-existing issues
-  - Required migration updates
-  - New content to add (for new features or concepts)
-  - Deprecated content (remove or mark as outdated)
-  - Opportunities for enhanced explanation
+  - Pre-existing issues in the provided content
+  - Required migration updates for the provided content
+  - New content to add only if it is necessary to align existing sections or examples with {{.target_version}}
+  - Deprecated content (remove or mark as outdated) **only if present in the original content**
+  - Opportunities for enhanced explanation within the scope of the original content
 
 Output:
 - List, grouped by the categories above
@@ -57,29 +57,32 @@ Output:
 ---
 
 Step 4: Create an Updated Content Strategy
+- **The updated content strategy must be strictly scoped to revising, enhancing, or correcting only the material present in the provided content.**
+- Do not add new sections, features, or topics that do not exist in the source material.
 {{if eq .update_scope "critical_only"}}
-- Focus only on critical inaccuracies & breaking changes (minimal disruption)
+- Focus only on critical inaccuracies & breaking changes (minimal disruption to existing structure)
 {{else if eq .update_scope "enhancement_focused"}}
-- Focus on improvements, new features, clarity, & best practices
+- Focus on improvements, clarifying explanations, & aligning with {{.target_version}} best practices **within the bounds of the provided content**
 {{else}}
-- Comprehensive review: all improvements, new sections, & enhanced clarity
+- Comprehensive review: all improvements, better explanations, enhanced clarity—but only within the scope of the supplied content
 {{end}}
 
 Output:
-- High-level plan with sections or bullets for each content area to be revised
+- High-level plan with sections or bullets for each content area to be revised, limited to the material provided
 
 ---
 
 Step 5: Generate Updated Content
-- Revise original content per the strategy:
+- Revise & update only the content originally provided, according to the update strategy:
   - Use correct {{.target_version}} terminology
-  - Correct or enhance examples & code
-  - Add sections for new features
+  - Correct or enhance examples & code present in the original content
+  - Update existing sections for {{.target_version}} features if they already appear
   - Clearly mark version-specific information
   - Maintain tone & style for {{.target_audience}}
+- **Do not add new sections, features, or topics not found in the provided content.**
 
 Output:
-- Markdown or preferred format with highlighted changes if possible
+- Markdown or preferred format, with highlighted changes if possible, scoped only to revisions of the content supplied
 
 ---
 
@@ -89,6 +92,7 @@ Step 6: Validate Updated Content Against {{.target_version}}
   - Correct use of terminology
   - Example or code correctness
   - Appropriate level for {{.target_audience}}
+- **Validation should cover only the revised content, not any external material.**
 
 Output:
 - Validation summary with any final issues or a statement that content is ready
@@ -98,7 +102,8 @@ Output:
 Process Note:
 - At each step, output results & wait for confirmation before proceeding.
 - If you need additional content or clarifications, ask the user directly.
+- **All migration work must remain strictly limited to the content supplied by the user.**
 
 ---
 
-Once you provide the content, I'll start with Step 1 & establish a quality baseline.
+Once you provide the content, I'll start with Step 1 & establish a quality baseline, strictly within the scope of the content you have supplied.

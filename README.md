@@ -40,10 +40,27 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
 ### MCP Prompts Available
 
 1. **`migrate-mcp-content`** - Guides content migration between MCP specification versions
+
    - Validates content against source specification first
    - Identifies changes between specification versions
    - Provides step-by-step migration guidance
    - Supports various content types (documentation, tutorials, blog posts, etc.)
+
+   **Parameters:**
+
+   - `current_version` (required): Source MCP specification version (e.g., "2024-11-05", "2025-06-18")
+   - `target_version` (required): Target MCP specification version to migrate to (e.g., "draft")
+   - `content_type` (optional): Type of content being migrated
+     - Options: `documentation`, `tutorial`, `blog_post`, `readme`, `api_reference`, `guide`
+     - Default: `documentation`
+   - `target_audience` (optional): Intended audience for the content
+     - Options: `developers`, `users`, `beginners`, `advanced`, `technical_writers`
+     - Default: `developers`
+   - `update_scope` (optional): Determines how aggressive the migration should be
+     - `critical_only`: Fix only critical inaccuracies and breaking changes (minimal changes)
+     - `enhancement_focused`: Fix issues and improve clarity, align with best practices
+     - `comprehensive`: Complete review with all improvements and enhanced clarity
+     - Default: `comprehensive`
 
 ## Installation
 
@@ -176,7 +193,18 @@ go build -o bin/factcheck-curl ./cmd/factcheck-curl
 
 # Test prompts
 ./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/list
-./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{"current_version":"2024-11-05","target_version":"2025-06-18"}'
+
+# Get migration prompt with minimal parameters
+./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{"current_version":"2024-11-05","target_version":"draft"}'
+
+# Get migration prompt with all parameters
+./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{
+  "current_version": "2024-11-05",
+  "target_version": "2025-06-18",
+  "content_type": "tutorial",
+  "target_audience": "beginners",
+  "update_scope": "critical_only"
+}'
 ```
 
 ## Architecture
