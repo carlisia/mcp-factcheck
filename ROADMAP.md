@@ -14,7 +14,7 @@
 | Content migration between spec versions (via prompts)   | ✅ Completed   |
 | Test client/CLI tool (factcheck-curl)                   | ✅ Completed   |
 | Spec extraction utilities (specloader)                  | ✅ Completed   |
-| Improved validation accuracy for claims/statements      | 🚧 In Progress |
+| Improved validation accuracy for claims/statements      | ✅ Completed   |
 | Context-aware validation (full statement understanding) | ❌ Planned     |
 | Validation explanation/reasoning output                 | ❌ Planned     |
 | Confidence scoring improvements                         | ❌ Planned     |
@@ -33,6 +33,8 @@
 | Task                                      | Status       |
 | ----------------------------------------- | ------------ |
 | Structured logging with Zap               | ✅ Completed |
+| JSON log output with ordered fields       | ✅ Completed |
+| MCP message request/response logging      | ✅ Completed |
 | OpenTelemetry tracing integration         | ✅ Completed |
 | Request tracking and correlation          | ✅ Completed |
 | Arize Phoenix telemetry integration       | ✅ Completed |
