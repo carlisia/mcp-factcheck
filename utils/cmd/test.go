@@ -15,7 +15,6 @@ var testCmd = &cobra.Command{
 	RunE:  runTest,
 }
 
-
 func runTest(cmd *cobra.Command, args []string) error {
 	log.Println("Testing embedding generation...")
 

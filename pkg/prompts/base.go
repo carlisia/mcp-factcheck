@@ -22,7 +22,7 @@ func NewBasePrompt(name, description, templateText string, args []Argument) (*Ba
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &BasePrompt{
 		name:        name,
 		description: description,
@@ -37,7 +37,7 @@ func NewBasePromptWithFuncs(name, description, templateText string, args []Argum
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &BasePrompt{
 		name:        name,
 		description: description,
@@ -65,25 +65,25 @@ func (p *BasePrompt) Arguments() []Argument {
 func (p *BasePrompt) Render(ctx context.Context, args Arguments) (*mcp.GetPromptResult, error) {
 	// Create template data with defaults
 	templateData := make(map[string]any)
-	
+
 	// Set defaults first
 	for _, arg := range p.arguments {
 		if arg.Default != "" {
 			templateData[arg.Name] = arg.Default
 		}
 	}
-	
+
 	// Override with provided arguments
 	for key, value := range args {
 		templateData[key] = value
 	}
-	
+
 	// Execute template
 	var buf bytes.Buffer
 	if err := p.template.Execute(&buf, templateData); err != nil {
 		return nil, err
 	}
-	
+
 	// Create the MCP result
 	return &mcp.GetPromptResult{
 		Description: p.description,

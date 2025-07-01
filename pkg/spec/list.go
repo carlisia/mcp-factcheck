@@ -12,7 +12,7 @@ const ListSpecVersionsToolName = "list_spec_versions"
 
 func GetListSpecVersionsTool() mcp.Tool {
 	schema := map[string]any{
-		"type": "object",
+		"type":       "object",
 		"properties": map[string]any{},
 	}
 	schemaBytes, _ := json.Marshal(schema)

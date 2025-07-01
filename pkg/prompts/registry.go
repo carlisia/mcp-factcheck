@@ -11,13 +11,13 @@ import (
 type Prompt interface {
 	// Name returns the unique identifier for this prompt
 	Name() string
-	
+
 	// Description returns a human-readable description
 	Description() string
-	
+
 	// Arguments returns the argument definitions for this prompt
 	Arguments() []Argument
-	
+
 	// Render generates the prompt content with the given arguments
 	Render(ctx context.Context, args Arguments) (*mcp.GetPromptResult, error)
 }
@@ -86,11 +86,11 @@ func (r *Registry) Register(prompt Prompt) error {
 	if name == "" {
 		return fmt.Errorf("prompt name cannot be empty")
 	}
-	
+
 	if _, exists := r.prompts[name]; exists {
 		return fmt.Errorf("prompt already registered: %s", name)
 	}
-	
+
 	r.prompts[name] = prompt
 	return nil
 }
@@ -116,7 +116,7 @@ func (r *Registry) List() []Prompt {
 // ListForMCP returns prompts in MCP format for prompts/list
 func (r *Registry) ListForMCP() (*mcp.ListPromptsResult, error) {
 	prompts := make([]mcp.Prompt, 0, len(r.prompts))
-	
+
 	for _, prompt := range r.prompts {
 		// Convert our arguments to MCP prompt arguments
 		var mcpArgs []mcp.PromptArgument
@@ -127,14 +127,14 @@ func (r *Registry) ListForMCP() (*mcp.ListPromptsResult, error) {
 				Required:    arg.Required,
 			})
 		}
-		
+
 		prompts = append(prompts, mcp.Prompt{
 			Name:        prompt.Name(),
 			Description: prompt.Description(),
 			Arguments:   mcpArgs,
 		})
 	}
-	
+
 	return &mcp.ListPromptsResult{
 		Prompts: prompts,
 	}, nil
@@ -146,7 +146,7 @@ func (r *Registry) RenderPrompt(ctx context.Context, name string, args Arguments
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Validate required arguments
 	for _, arg := range prompt.Arguments() {
 		if arg.Required {
@@ -155,6 +155,6 @@ func (r *Registry) RenderPrompt(ctx context.Context, name string, args Arguments
 			}
 		}
 	}
-	
+
 	return prompt.Render(ctx, args)
 }

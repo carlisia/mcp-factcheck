@@ -11,7 +11,7 @@ import (
 type Provider interface {
 	// StartSpan starts a new span with the given name and attributes
 	StartSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span)
-	
+
 	// Shutdown gracefully shuts down the provider
 	Shutdown(ctx context.Context) error
 }
@@ -29,28 +29,28 @@ type ToolHandler func(context.Context, any) (any, error)
 type SpanBuilder interface {
 	// WithKind sets the OpenInference span kind (LLM, RETRIEVER, EMBEDDING, TOOL, CHAIN)
 	WithKind(kind string) SpanBuilder
-	
+
 	// WithInput sets input content and metadata
 	WithInput(content string, mimeType string) SpanBuilder
-	
-	// WithOutput sets output content and metadata  
+
+	// WithOutput sets output content and metadata
 	WithOutput(content string, mimeType string) SpanBuilder
-	
+
 	// WithTokens sets token count information
 	WithTokens(prompt, completion, total int) SpanBuilder
-	
+
 	// WithModel sets model information
 	WithModel(name, system, provider string) SpanBuilder
-	
+
 	// WithRetrieval sets retrieval-specific attributes
 	WithRetrieval(query string, topK int, documents []RetrievalDocument) SpanBuilder
-	
+
 	// WithTool sets tool-specific attributes
 	WithTool(name, description string, parameters any) SpanBuilder
-	
+
 	// WithCustom adds custom attributes
 	WithCustom(attrs ...attribute.KeyValue) SpanBuilder
-	
+
 	// Start creates and starts the span
 	Start(ctx context.Context, name string) (context.Context, trace.Span)
 }

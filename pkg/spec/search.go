@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/internal/specs"
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/specs"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -89,7 +89,7 @@ func HandleSearchSpec(vectorDB *mcpembedding.VectorDB, generator *embedding.Gene
 
 	for _, match := range results {
 		contentParts = append(contentParts, mcp.NewTextContent(
-			fmt.Sprintf("Rank %d (similarity: %.4f):\n%s\n\n", 
+			fmt.Sprintf("Rank %d (similarity: %.4f):\n%s\n\n",
 				match.Rank, match.Similarity, match.Chunk.Content)))
 	}
 

@@ -48,7 +48,7 @@ func (s *Store) Store(specEmbedding *embedding.SpecEmbedding) error {
 // Load retrieves a spec embedding from the database
 func (s *Store) Load(version string) (*embedding.SpecEmbedding, error) {
 	filename := filepath.Join(s.dataDir, fmt.Sprintf("%s.json", version))
-	
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
@@ -91,7 +91,7 @@ func (s *Store) Search(version string, queryEmbedding []float64, topK int) ([]em
 	if topK > len(results) {
 		topK = len(results)
 	}
-	
+
 	for i := 0; i < topK; i++ {
 		results[i].Rank = i + 1
 	}

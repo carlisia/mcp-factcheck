@@ -44,13 +44,13 @@ func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
 	}
 
 	var allChunks []string
-	
+
 	// Find all markdown files in the specified directory
 	for _, entry := range tree.Entries {
 		if entry.Path == nil || entry.Type == nil {
 			continue
 		}
-		
+
 		// Check if file is in the target directory and is a markdown file
 		if strings.HasPrefix(*entry.Path, repoPath) && (strings.HasSuffix(*entry.Path, ".md") || strings.HasSuffix(*entry.Path, ".mdx")) {
 			// Get file content
@@ -60,13 +60,13 @@ func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
 			if err != nil {
 				continue // Skip files we can't read
 			}
-			
+
 			if fileContent != nil {
 				content, err := fileContent.GetContent()
 				if err != nil {
 					continue // Skip files we can't decode
 				}
-				
+
 				chunks := parseMarkdownSections(content)
 				allChunks = append(allChunks, chunks...)
 			}
@@ -83,7 +83,7 @@ func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
 // parseMarkdownSections splits markdown content into logical sections
 func parseMarkdownSections(content string) []string {
 	var chunks []string
-	
+
 	// Split by double newlines to get paragraphs/sections
 	sections := strings.Split(content, "\n\n")
 	for _, section := range sections {
@@ -92,6 +92,6 @@ func parseMarkdownSections(content string) []string {
 			chunks = append(chunks, trimmed)
 		}
 	}
-	
+
 	return chunks
 }

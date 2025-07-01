@@ -84,7 +84,7 @@ func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...Se
 
 	// Create hooks for MCP message logging
 	hooks := &server.Hooks{}
-	
+
 	if cfg.logMCPMessages {
 		// Log all incoming requests
 		hooks.AddBeforeAny(func(ctx context.Context, id any, method mcp.MCPMethod, message any) {
@@ -102,7 +102,7 @@ func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...Se
 			}
 			log.Info("MCP message", fields...)
 		})
-	
+
 		// Log all successful responses
 		hooks.AddOnSuccess(func(ctx context.Context, id any, method mcp.MCPMethod, message any, result any) {
 			log := logger.WithRequestID(ctx)
@@ -119,18 +119,18 @@ func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...Se
 			}
 			log.Info("MCP message", fields...)
 		})
-		
+
 		// Log all error responses
 		hooks.AddOnError(func(ctx context.Context, id any, method mcp.MCPMethod, message any, err error) {
 			log := logger.WithRequestID(ctx)
-			
+
 			// Extract error code if available
 			var errorCode int
 			var errorMessage string
 			// Default to internal error
 			errorCode = -32603
 			errorMessage = err.Error()
-			
+
 			log.Error("MCP message",
 				zap.String("component", "mcp-factcheck"),
 				zap.String("direction", "Server->Client"),
@@ -141,7 +141,7 @@ func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...Se
 				zap.Object("error", zapError{Code: errorCode, Message: errorMessage}),
 			)
 		})
-		
+
 		// Log session lifecycle
 		hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
 			log := logger.Get()
@@ -151,7 +151,7 @@ func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...Se
 				zap.String("session_id", session.SessionID()),
 			)
 		})
-		
+
 		hooks.AddOnUnregisterSession(func(ctx context.Context, session server.ClientSession) {
 			log := logger.Get()
 			log.Info("MCP session",
@@ -203,36 +203,36 @@ func (s *FactCheckServer) registerTools() {
 	validateContentHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
-		
+
 		result, err := validator.HandleValidateContent(ctx, s.vectorDB, s.generator, req)
-		
+
 		return result, err
 	})
 
 	validateCodeHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
-		
+
 		result, err := validator.HandleValidateCode(ctx, s.vectorDB, s.generator, req)
-		
+
 		return result, err
 	})
 
 	searchSpecHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
-		
+
 		result, err := spec.HandleSearchSpec(s.vectorDB, s.generator, req)
-		
+
 		return result, err
 	})
 
 	listVersionsHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
-		
+
 		result, err := spec.HandleListSpecVersions(s.vectorDB, req)
-		
+
 		return result, err
 	})
 
@@ -313,7 +313,7 @@ func (s *FactCheckServer) registerPrompts() {
 		// Convert our arguments back to MCP format
 		var mcpArgs []mcp.PromptOption
 		mcpArgs = append(mcpArgs, mcp.WithPromptDescription(prompt.Description))
-		
+
 		for _, arg := range prompt.Arguments {
 			argOptions := []mcp.ArgumentOption{
 				mcp.ArgumentDescription(arg.Description),
@@ -327,7 +327,7 @@ func (s *FactCheckServer) registerPrompts() {
 		// Create the MCP prompt and handler
 		mcpPrompt := mcp.NewPrompt(prompt.Name, mcpArgs...)
 		handler := s.createPromptHandler(prompt.Name)
-		
+
 		// Register with the MCP server
 		s.mcpServer.AddPrompt(mcpPrompt, handler)
 	}
@@ -338,10 +338,10 @@ func (s *FactCheckServer) createPromptHandler(promptName string) func(context.Co
 	return func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
-		
+
 		// Delegate to the prompt service
 		result, err := s.promptService.GetPrompt(ctx, promptName, request.Params.Arguments)
-		
+
 		return result, err
 	}
 }
@@ -362,4 +362,3 @@ func (s *FactCheckServer) GetVectorDB() *mcpembedding.VectorDB {
 func (s *FactCheckServer) GetGenerator() *embedding.Generator {
 	return s.generator
 }
-

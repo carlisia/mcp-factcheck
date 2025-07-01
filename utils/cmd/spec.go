@@ -27,7 +27,7 @@ var (
 func init() {
 	specCmd.Flags().StringVar(&specVersion, "version", "", "MCP spec version to extract (required)")
 	specCmd.Flags().StringVar(&specOutputPath, "output", "", "Output path for spec JSON file (default: ./data/specs/{version}-spec.json)")
-	
+
 	specCmd.MarkFlagRequired("version")
 }
 

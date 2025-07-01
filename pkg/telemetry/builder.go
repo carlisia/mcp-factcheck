@@ -66,22 +66,22 @@ func (b *spanBuilder) WithRetrieval(query string, topK int, documents []Retrieva
 		attribute.String("retrieval.query", truncateString(query, 200)),
 		attribute.Int("retrieval.top_k", topK),
 	)
-	
+
 	// Format documents for OpenInference
 	if len(documents) > 0 {
 		var docStrings []string
 		var totalSimilarity float64
 		var maxSimilarity, minSimilarity float64
-		
+
 		if len(documents) > 0 {
 			maxSimilarity = documents[0].Score
 			minSimilarity = documents[0].Score
 		}
-		
+
 		for _, doc := range documents {
 			docJSON, _ := json.Marshal(doc)
 			docStrings = append(docStrings, string(docJSON))
-			
+
 			totalSimilarity += doc.Score
 			if doc.Score > maxSimilarity {
 				maxSimilarity = doc.Score
@@ -90,9 +90,9 @@ func (b *spanBuilder) WithRetrieval(query string, topK int, documents []Retrieva
 				minSimilarity = doc.Score
 			}
 		}
-		
+
 		avgSimilarity := totalSimilarity / float64(len(documents))
-		
+
 		b.attributes = append(b.attributes,
 			attribute.StringSlice("retrieval.documents", docStrings),
 			attribute.Int("retrieval.document_count", len(documents)),
@@ -101,13 +101,13 @@ func (b *spanBuilder) WithRetrieval(query string, topK int, documents []Retrieva
 			attribute.Float64("retrieval.similarity.min", minSimilarity),
 		)
 	}
-	
+
 	return b
 }
 
 func (b *spanBuilder) WithTool(name, description string, parameters any) SpanBuilder {
 	paramJSON, _ := json.Marshal(parameters)
-	
+
 	b.attributes = append(b.attributes,
 		attribute.String("tool.name", name),
 		attribute.String("tool.description", description),
@@ -146,7 +146,7 @@ func min(a, b int) int {
 // StartValidationSpan creates a validation request span
 func StartValidationSpan(ctx context.Context, content, specVersion string, useChunking bool) (context.Context, trace.Span) {
 	estimatedTokens := len(content) / 4
-	
+
 	// Add request ID to span attributes if available
 	builder := NewSpanBuilder().
 		WithKind("CHAIN").
@@ -157,19 +157,19 @@ func StartValidationSpan(ctx context.Context, content, specVersion string, useCh
 			attribute.Int("content.length", len(content)),
 			attribute.Int("content.estimated_tokens", estimatedTokens),
 		)
-	
+
 	// Add request ID if available in context
 	if requestID := GetRequestID(ctx); requestID != "" {
 		builder = builder.WithCustom(attribute.String("request.id", requestID))
 	}
-	
+
 	return builder.Start(ctx, "validate_content_request")
 }
 
 // StartEmbeddingSpan creates an embedding generation span
 func StartEmbeddingSpan(ctx context.Context, text string) (context.Context, trace.Span) {
 	estimatedTokens := len(text) / 4
-	
+
 	builder := NewSpanBuilder().
 		WithKind("EMBEDDING").
 		WithModel("text-embedding-3-small", "openai", "openai").
@@ -178,12 +178,12 @@ func StartEmbeddingSpan(ctx context.Context, text string) (context.Context, trac
 			attribute.String("embedding.summary", fmt.Sprintf("Generating embedding for %d chars (%d tokens)", len(text), estimatedTokens)),
 			attribute.Int("embedding.content_length", len(text)),
 		)
-	
+
 	// Add request ID if available in context
 	if requestID := GetRequestID(ctx); requestID != "" {
 		builder = builder.WithCustom(attribute.String("request.id", requestID))
 	}
-	
+
 	return builder.Start(ctx, "embedding.generation")
 }
 
@@ -195,12 +195,12 @@ func StartRetrievalSpan(ctx context.Context, specVersion string, topK int) (cont
 			attribute.String("spec_version", specVersion),
 			attribute.Int("top_k", topK),
 		)
-	
+
 	// Add request ID if available in context
 	if requestID := GetRequestID(ctx); requestID != "" {
 		builder = builder.WithCustom(attribute.String("request.id", requestID))
 	}
-	
+
 	return builder.Start(ctx, "vector.search")
 }
 
@@ -212,11 +212,11 @@ func StartAnalysisSpan(ctx context.Context, numMatches int, avgSimilarity float6
 			attribute.Int("analysis.num_matches", numMatches),
 			attribute.Float64("analysis.avg_similarity", avgSimilarity),
 		)
-	
+
 	// Add request ID if available in context
 	if requestID := GetRequestID(ctx); requestID != "" {
 		builder = builder.WithCustom(attribute.String("request.id", requestID))
 	}
-	
+
 	return builder.Start(ctx, "validation.analysis")
 }

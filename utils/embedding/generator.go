@@ -71,6 +71,6 @@ func generateChunkID(version string, index int, content string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(content))
 	hash := fmt.Sprintf("%x", hasher.Sum(nil))[:8]
-	
+
 	return fmt.Sprintf("%s_%d_%s", version, index, hash)
 }

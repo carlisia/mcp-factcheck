@@ -25,7 +25,7 @@ var (
 func init() {
 	embedCmd.Flags().StringVar(&embedVersion, "version", "", "MCP spec version to generate embeddings for (required)")
 	embedCmd.Flags().StringVar(&embedDataDir, "data-dir", "./data/embeddings", "Directory to store vector database")
-	
+
 	embedCmd.MarkFlagRequired("version")
 }
 
@@ -44,7 +44,7 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 
 	// Generate embeddings
 	log.Println("Generating embeddings...")
-	
+
 	// Create batch embedding generator
 	generator, err := embedding.NewBatchGenerator()
 	if err != nil {
