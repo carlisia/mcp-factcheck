@@ -3,6 +3,8 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
@@ -14,6 +16,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // FactCheckServer wraps the actual MCP server with fact-check specific functionality
@@ -26,8 +29,46 @@ type FactCheckServer struct {
 	promptService *prompts.Service
 }
 
+// zapError implements zap.ObjectMarshaler for structured error logging
+type zapError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+// MarshalLogObject implements zap.ObjectMarshaler
+func (e zapError) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddInt("code", e.Code)
+	enc.AddString("message", e.Message)
+	return nil
+}
+
+// ServerOption is a function that configures the FactCheckServer
+type ServerOption func(*serverConfig)
+
+// serverConfig holds configuration options for the server
+type serverConfig struct {
+	logMCPMessages bool
+	logMCPPayloads bool
+}
+
+// WithMCPLogging enables MCP message logging
+func WithMCPLogging(logMessages, logPayloads bool) ServerOption {
+	return func(cfg *serverConfig) {
+		cfg.logMCPMessages = logMessages
+		cfg.logMCPPayloads = logPayloads
+	}
+}
+
 // NewFactCheckServer creates a new fact-check server instance using clean telemetry abstractions
-func NewFactCheckServer(dataDir string, provider any, middleware any) (*FactCheckServer, error) {
+func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...ServerOption) (*FactCheckServer, error) {
+	// Apply options
+	cfg := &serverConfig{
+		logMCPMessages: true,  // Default to true
+		logMCPPayloads: false, // Default to false for security
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
 	vectorDB := mcpembedding.NewVectorDB(dataDir)
 
 	generator, err := embedding.NewGenerator()
@@ -41,10 +82,91 @@ func NewFactCheckServer(dataDir string, provider any, middleware any) (*FactChec
 		return nil, fmt.Errorf("failed to create prompt service: %w", err)
 	}
 
-	// Create the actual MCP server
+	// Create hooks for MCP message logging
+	hooks := &server.Hooks{}
+	
+	if cfg.logMCPMessages {
+		// Log all incoming requests
+		hooks.AddBeforeAny(func(ctx context.Context, id any, method mcp.MCPMethod, message any) {
+			log := logger.WithRequestID(ctx)
+			fields := []zap.Field{
+				zap.String("component", "mcp-factcheck"),
+				zap.String("direction", "Client->Server"),
+				zap.String("type", "REQUEST"),
+				zap.Any("id", id),
+				zap.String("jsonrpc", "2.0"),
+				zap.String("method", string(method)),
+			}
+			if cfg.logMCPPayloads {
+				fields = append(fields, zap.Any("params", message))
+			}
+			log.Info("MCP message", fields...)
+		})
+	
+		// Log all successful responses
+		hooks.AddOnSuccess(func(ctx context.Context, id any, method mcp.MCPMethod, message any, result any) {
+			log := logger.WithRequestID(ctx)
+			fields := []zap.Field{
+				zap.String("component", "mcp-factcheck"),
+				zap.String("direction", "Server->Client"),
+				zap.String("type", "RESPONSE"),
+				zap.Any("id", id),
+				zap.String("jsonrpc", "2.0"),
+				zap.String("method", string(method)),
+			}
+			if cfg.logMCPPayloads {
+				fields = append(fields, zap.Any("result", result))
+			}
+			log.Info("MCP message", fields...)
+		})
+		
+		// Log all error responses
+		hooks.AddOnError(func(ctx context.Context, id any, method mcp.MCPMethod, message any, err error) {
+			log := logger.WithRequestID(ctx)
+			
+			// Extract error code if available
+			var errorCode int
+			var errorMessage string
+			// Default to internal error
+			errorCode = -32603
+			errorMessage = err.Error()
+			
+			log.Error("MCP message",
+				zap.String("component", "mcp-factcheck"),
+				zap.String("direction", "Server->Client"),
+				zap.String("type", "ERROR"),
+				zap.Any("id", id),
+				zap.String("jsonrpc", "2.0"),
+				zap.String("method", string(method)),
+				zap.Object("error", zapError{Code: errorCode, Message: errorMessage}),
+			)
+		})
+		
+		// Log session lifecycle
+		hooks.AddOnRegisterSession(func(ctx context.Context, session server.ClientSession) {
+			log := logger.Get()
+			log.Info("MCP session",
+				zap.String("component", "mcp-factcheck"),
+				zap.String("event", "session_start"),
+				zap.String("session_id", session.SessionID()),
+			)
+		})
+		
+		hooks.AddOnUnregisterSession(func(ctx context.Context, session server.ClientSession) {
+			log := logger.Get()
+			log.Info("MCP session",
+				zap.String("component", "mcp-factcheck"),
+				zap.String("event", "session_end"),
+				zap.String("session_id", session.SessionID()),
+			)
+		})
+	}
+
+	// Create the actual MCP server with hooks
 	mcpServer := server.NewMCPServer(
 		"mcp-factcheck-server",
 		"0.1.0",
+		server.WithHooks(hooks),
 	)
 
 	factCheckServer := &FactCheckServer{
@@ -82,18 +204,7 @@ func (s *FactCheckServer) registerTools() {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 		
-		// Create structured logger with request ID
-		log := logger.WithRequestID(ctx)
-		log.Info("Starting validate_content request", 
-			zap.String("tool", "validate_content"),
-			zap.Any("request", req))
-		
 		result, err := validator.HandleValidateContent(ctx, s.vectorDB, s.generator, req)
-		if err != nil {
-			log.Error("validate_content request failed", zap.Error(err))
-		} else {
-			log.Info("validate_content request completed successfully")
-		}
 		
 		return result, err
 	})
@@ -102,18 +213,7 @@ func (s *FactCheckServer) registerTools() {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 		
-		// Create structured logger with request ID
-		log := logger.WithRequestID(ctx)
-		log.Info("Starting validate_code request", 
-			zap.String("tool", "validate_code"),
-			zap.Any("request", req))
-		
 		result, err := validator.HandleValidateCode(ctx, s.vectorDB, s.generator, req)
-		if err != nil {
-			log.Error("validate_code request failed", zap.Error(err))
-		} else {
-			log.Info("validate_code request completed successfully")
-		}
 		
 		return result, err
 	})
@@ -122,18 +222,7 @@ func (s *FactCheckServer) registerTools() {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 		
-		// Create structured logger with request ID
-		log := logger.WithRequestID(ctx)
-		log.Info("Starting search_spec request", 
-			zap.String("tool", "search_spec"),
-			zap.Any("request", req))
-		
 		result, err := spec.HandleSearchSpec(s.vectorDB, s.generator, req)
-		if err != nil {
-			log.Error("search_spec request failed", zap.Error(err))
-		} else {
-			log.Info("search_spec request completed successfully")
-		}
 		
 		return result, err
 	})
@@ -142,18 +231,7 @@ func (s *FactCheckServer) registerTools() {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 		
-		// Create structured logger with request ID
-		log := logger.WithRequestID(ctx)
-		log.Info("Starting list_spec_versions request", 
-			zap.String("tool", "list_spec_versions"),
-			zap.Any("request", req))
-		
 		result, err := spec.HandleListSpecVersions(s.vectorDB, req)
-		if err != nil {
-			log.Error("list_spec_versions request failed", zap.Error(err))
-		} else {
-			log.Info("list_spec_versions request completed successfully")
-		}
 		
 		return result, err
 	})
@@ -270,7 +348,9 @@ func (s *FactCheckServer) createPromptHandler(promptName string) func(context.Co
 
 // Run starts the MCP server using stdio transport
 func (s *FactCheckServer) Run() error {
-	return server.ServeStdio(s.mcpServer)
+	// Create a logger that discards all output to prevent legacy format logs
+	discardLogger := log.New(io.Discard, "", 0)
+	return server.ServeStdio(s.mcpServer, server.WithErrorLogger(discardLogger))
 }
 
 // GetVectorDB returns the vector database instance

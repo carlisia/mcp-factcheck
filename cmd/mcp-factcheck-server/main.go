@@ -14,14 +14,19 @@ import (
 	"github.com/carlisia/mcp-factcheck/pkg"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/internal/integrations/arizephoenix"
+	"go.uber.org/zap"
 )
 
 func main() {
 	// Initialize structured logging with Zap
 	if err := logger.Initialize(logger.IsDevMode()); err != nil {
+		// Can't use structured logging yet since it failed to initialize
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logger.Sync()
+	
+	// Get structured logger for use in main
+	log := logger.Get()
 
 	// Parse command line flags
 	dataDir := flag.String("data-dir", "/Users/carlisiacampos/code/src/github.com/carlisia/mcp-factcheck/data/embeddings", "Directory containing vector database")
@@ -32,7 +37,7 @@ func main() {
 	// Convert to absolute path if relative
 	absDataDir, err := filepath.Abs(*dataDir)
 	if err != nil {
-		log.Fatalf("Failed to resolve data directory path: %v", err)
+		log.Fatal("Failed to resolve data directory path", zap.Error(err))
 	}
 
 	// Initialize telemetry if enabled
@@ -44,22 +49,22 @@ func main() {
 		
 		// Check if endpoint looks like Phoenix and use specialized integration
 		if strings.Contains(*otlpEndpoint, "6006") || strings.Contains(*otlpEndpoint, "phoenix") {
-			log.Println("Detected Phoenix endpoint, using clean Phoenix integration")
+			log.Info("Detected Phoenix endpoint, using clean Phoenix integration")
 			config := arizephoenix.DefaultConfig()
 			config.Endpoint = strings.TrimPrefix(*otlpEndpoint, "http://")
 			
 			phoenixProvider, phoenixMiddleware, err := arizephoenix.Initialize(ctx, config)
 			if err != nil {
-				log.Printf("Failed to initialize Phoenix telemetry: %v. Using no-op provider.", err)
+				log.Warn("Failed to initialize Phoenix telemetry. Using no-op provider.", zap.Error(err))
 				provider = nil
 				middleware = nil
 			} else {
 				provider = phoenixProvider
 				middleware = phoenixMiddleware
-				log.Println("Phoenix telemetry provider initialized successfully")
+				log.Info("Phoenix telemetry provider initialized successfully")
 			}
 		} else {
-			log.Println("Non-Phoenix endpoint detected, using no-op provider")
+			log.Info("Non-Phoenix endpoint detected, using no-op provider")
 			provider = nil
 			middleware = nil
 		}
@@ -70,26 +75,28 @@ func main() {
 				sigChan := make(chan os.Signal, 1)
 				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 				<-sigChan
-				log.Println("Shutting down telemetry...")
+				log.Info("Shutting down telemetry...")
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				if p, ok := provider.(interface{ Shutdown(context.Context) error }); ok {
-					p.Shutdown(ctx)
+					if err := p.Shutdown(ctx); err != nil {
+						log.Error("Error shutting down telemetry", zap.Error(err))
+					}
 				}
 			}()
 		}
 		
-		log.Println("Clean telemetry architecture enabled")
+		log.Info("Clean telemetry architecture enabled")
 	}
 
 	// Create MCP fact-check server with clean telemetry
 	server, err := pkg.NewFactCheckServer(absDataDir, provider, middleware)
 	if err != nil {
-		log.Fatalf("Failed to create MCP fact-check server: %v", err)
+		log.Fatal("Failed to create MCP fact-check server", zap.Error(err))
 	}
 
 	// Run MCP server (blocks until shutdown)
 	if err := server.Run(); err != nil {
-		log.Fatalf("Server error: %v", err)
+		log.Fatal("Server error", zap.Error(err))
 	}
 }

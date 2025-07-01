@@ -3,8 +3,8 @@ package arizephoenix
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -12,6 +12,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 )
 
 // Provider implements the telemetry.Provider interface for Arize Phoenix
@@ -53,7 +54,7 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
-	log.Printf("Phoenix OTLP exporter created for endpoint: %s", config.Endpoint)
+	logger.Get().Info("Phoenix OTLP exporter created", zap.String("endpoint", config.Endpoint))
 
 	// Configure trace provider based on config
 	var processor sdktrace.SpanProcessor

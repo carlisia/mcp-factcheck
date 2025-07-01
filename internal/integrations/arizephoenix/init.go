@@ -2,9 +2,10 @@ package arizephoenix
 
 import (
 	"context"
-	"log"
 
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
+	"go.uber.org/zap"
 )
 
 // Initialize creates and configures the complete Phoenix telemetry stack
@@ -18,7 +19,7 @@ func Initialize(ctx context.Context, config Config) (telemetry.Provider, telemet
 	// Create the middleware
 	middleware := NewMiddleware(provider, config)
 
-	log.Printf("Arize Phoenix telemetry initialized with endpoint: %s", config.Endpoint)
+	logger.Get().Info("Arize Phoenix telemetry initialized", zap.String("endpoint", config.Endpoint))
 	
 	return provider, middleware, nil
 }
@@ -27,7 +28,7 @@ func Initialize(ctx context.Context, config Config) (telemetry.Provider, telemet
 func MustInitialize(ctx context.Context, config Config) (telemetry.Provider, telemetry.Middleware) {
 	provider, middleware, err := Initialize(ctx, config)
 	if err != nil {
-		log.Fatalf("Failed to initialize Phoenix telemetry: %v", err)
+		logger.Get().Fatal("Failed to initialize Phoenix telemetry", zap.Error(err))
 	}
 	return provider, middleware
 }
