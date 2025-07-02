@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	specs "github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/utils/metadata"
 	utilspecs "github.com/carlisia/mcp-factcheck/utils/specs"
 	"github.com/spf13/cobra"
 )
@@ -63,6 +64,34 @@ func runSpec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save to file: %w", err)
 	}
 	log.Printf("Saved spec chunks to: %s", specOutputPath)
+
+	// Update metadata
+	log.Printf("Updating metadata...")
+	meta, err := metadata.LoadMetadata()
+	if err != nil {
+		log.Printf("Warning: Failed to load metadata: %v", err)
+	} else {
+		// Get commit hash and branch/tag info
+		ref, refType, err := metadata.GetBranchOrTag(utilspecs.MCPRepoOwner, utilspecs.MCPRepoName, specVersion)
+		if err != nil {
+			log.Printf("Warning: Failed to determine ref type: %v", err)
+			ref = utilspecs.MCPRepoBranch
+		}
+
+		commitHash, err := metadata.GetLatestCommitHash(utilspecs.MCPRepoOwner, utilspecs.MCPRepoName, ref)
+		if err != nil {
+			log.Printf("Warning: Failed to get commit hash: %v", err)
+			commitHash = "unknown"
+		}
+
+		// Update metadata
+		repo := fmt.Sprintf("%s/%s", utilspecs.MCPRepoOwner, utilspecs.MCPRepoName)
+		if err := meta.UpdateSpecExtraction(specVersion, commitHash, repo, ref, len(chunks)); err != nil {
+			log.Printf("Warning: Failed to update metadata: %v", err)
+		} else {
+			log.Printf("Updated metadata with commit %s", commitHash)
+		}
+	}
 
 	log.Printf("Extraction complete for version %s", specVersion)
 	return nil

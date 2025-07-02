@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/carlisia/mcp-factcheck/utils/embedding"
+	"github.com/carlisia/mcp-factcheck/utils/metadata"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +36,16 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 	log.Printf("Generating embeddings for MCP specification version: %s", embedVersion)
 
 	// Load chunks from local JSON file
-	specFile := fmt.Sprintf("./data/specs/%s-spec.json", embedVersion)
+	// Check if this is a fine-grained version
+	var specFile string
+	if strings.HasSuffix(embedVersion, "-fine") {
+		// For fine-grained versions, use the fine-chunked file
+		baseVersion := strings.TrimSuffix(embedVersion, "-fine")
+		specFile = fmt.Sprintf("./data/specs/%s-spec-fine.json", baseVersion)
+	} else {
+		// Regular spec file
+		specFile = fmt.Sprintf("./data/specs/%s-spec.json", embedVersion)
+	}
 	chunks, err := loadChunksFromJSON(specFile)
 	if err != nil {
 		return fmt.Errorf("failed to load chunks from %s: %w", specFile, err)
@@ -65,6 +76,28 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to store embeddings: %w", err)
 	}
 	log.Printf("Stored embeddings in database: %s", embedDataDir)
+
+	// Update metadata
+	log.Printf("Updating metadata...")
+	meta, err := metadata.LoadMetadata()
+	if err != nil {
+		log.Printf("Warning: Failed to load metadata: %v", err)
+	} else {
+		// Determine strategy from version name
+		strategy := "regular"
+		baseVersion := embedVersion
+		if strings.HasSuffix(embedVersion, "-fine") {
+			strategy = "fine"
+			baseVersion = strings.TrimSuffix(embedVersion, "-fine")
+		}
+
+		// Update metadata with actual chunk count
+		if err := meta.UpdateEmbeddingGeneration(baseVersion, strategy, specEmbedding.Count); err != nil {
+			log.Printf("Warning: Failed to update metadata: %v", err)
+		} else {
+			log.Printf("Updated metadata for %s strategy with %d chunks", strategy, specEmbedding.Count)
+		}
+	}
 
 	log.Printf("Embedding generation complete for version %s", embedVersion)
 	return nil
