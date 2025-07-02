@@ -4,6 +4,8 @@ An MCP Server for validating code or content against the official **Model Contex
 
 📋 **[View Project Roadmap](ROADMAP.md)** - See planned features and development progress
 
+🏗️ **[Design Documentation](DESIGN.md)** - Technical design and implementation details
+
 ## Overview
 
 The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or writing about MCP by comparing content against official specifications. It uses:
@@ -16,24 +18,32 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
 
 ### MCP Tools Exposed
 
-1. **`validate_content`** - Validates text content against MCP specification
+1. **`check_mcp_claim`** - Comprehensive validation of MCP-related content
 
-   - Provides corrected versions when content is inaccurate
-   - Shows relevant specification references
-   - Returns confidence scores
+   - Validates multi-claim content (documentation, tutorials, bullet points)
+   - Provides step-by-step validation workflow
+   - Identifies missing best practices and modal verb issues
+   - Returns corrected content with confidence scores
 
-2. **`validate_code`** - Validates code implementations against MCP patterns
+2. **`check_mcp_quick_fact`** - Quick fact-checking for single MCP claims
+
+   - Validates single sentences or quick questions
+   - Returns concise ✓/✗ verdict with explanation
+   - Uses aggressive search strategies for accuracy
+   - Perfect for "Does MCP support X?" questions
+
+3. **`validate_code`** - Validates code implementations against MCP patterns (⚠️ WIP)
 
    - Detects MCP protocol usage patterns
-   - Validates against specification requirements
+   - Validates against specification requirements (not yet implemented)
    - Supports multiple programming languages
 
-3. **`search_spec`** - Searches MCP specifications using semantic similarity
+4. **`search_spec`** - Searches MCP specifications using semantic similarity
 
    - Returns most relevant specification sections
    - Supports all specification versions
 
-4. **`list_spec_versions`** - Lists available MCP specification versions
+5. **`list_spec_versions`** - Lists available MCP specification versions
    - Shows version dates and descriptions
    - Indicates which version is current
 
@@ -158,13 +168,19 @@ go test ./...
 
 ### Updating Specifications
 
-The project includes pre-extracted MCP specifications and embeddings for all versions up to 2025-06-18, plus the draft specification as of 2025-06-26.
+The project includes pre-extracted MCP specifications and embeddings for all versions. To check when the draft specification was last updated, see `data/SPEC_METADATA.json`:
+
+```bash
+# View draft update information
+cat data/SPEC_METADATA.json | jq '.specs.draft'
+```
 
 **To update the draft specification:**
 
 ```bash
 ./bin/specloader spec --version draft
 ./bin/specloader embed --version draft
+./bin/specloader embed --version draft-fine
 ```
 
 **To add a new specification version:**
@@ -172,7 +188,10 @@ The project includes pre-extracted MCP specifications and embeddings for all ver
 ```bash
 ./bin/specloader spec --version 2025-12-15
 ./bin/specloader embed --version 2025-12-15
+./bin/specloader embed --version 2025-12-15-fine
 ```
+
+All specification extraction dates and source commits are automatically tracked in `data/SPEC_METADATA.json`.
 
 ### Testing Tools
 
@@ -202,40 +221,7 @@ go build -o bin/factcheck-curl ./cmd/factcheck-curl
 
 ## Architecture
 
-```text
-cmd/
-├── mcp-factcheck-server/   # Main MCP server
-└── factcheck-curl/         # Test client
-
-data/
-├── specs/                 # Extracted MCP specifications
-└── embeddings/            # Pre-generated embeddings
-
-internal/
-└── integrations/
-    └── arizephoenix/      # Phoenix telemetry implementation
-        ├── config.go      # Phoenix configuration
-        ├── provider.go    # Phoenix provider
-        ├── middleware.go  # Phoenix middleware
-        └── init.go        # Initialization helpers
-
-pkg/
-├── spec/                  # MCP specification tools
-│   ├── list.go            # list_spec_versions implementation
-│   └── search.go          # search_spec implementation
-├── validator/             # Content/code validation
-│   ├── content.go         # validate_content implementation
-│   └── code.go            # validate_code implementation
-├── prompts/               # MCP prompt templates
-│   ├── templates/         # Prompt template files
-│   └── service.go         # Prompt service implementation
-└── telemetry/             # Clean telemetry abstractions
-    ├── interfaces.go      # Provider, Middleware interfaces
-    └── builder.go         # Fluent span builder
-
-utils/
-└── cmd/                    # Specification extraction tool
-```
+See [DESIGN.md](DESIGN.md#architecture-overview) for the complete architecture documentation.
 
 ## Environment Variables
 
