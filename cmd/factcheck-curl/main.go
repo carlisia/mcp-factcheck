@@ -117,7 +117,7 @@ type MCPClient struct {
 
 func NewMCPClient(serverCmd, dataDir string, timeout time.Duration) (*MCPClient, error) {
 	cmd := exec.Command(serverCmd, "--data-dir", dataDir)
-	
+
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)

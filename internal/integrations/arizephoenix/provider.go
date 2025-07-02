@@ -38,17 +38,17 @@ func NewProvider(ctx context.Context, config Config) (*Provider, error) {
 
 	// Create OTLP trace exporter for Phoenix
 	// Note: WithEndpoint expects just host:port, not full URL
-	
+
 	var opts []otlptracehttp.Option
 	opts = append(opts, otlptracehttp.WithEndpoint(config.Endpoint))
 	opts = append(opts, otlptracehttp.WithHeaders(map[string]string{
 		"Content-Type": "application/x-protobuf",
 	}))
-	
+
 	if config.Insecure {
 		opts = append(opts, otlptracehttp.WithInsecure())
 	}
-	
+
 	traceExporter, err := otlptracehttp.New(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)

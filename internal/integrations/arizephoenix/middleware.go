@@ -30,7 +30,7 @@ func (m *Middleware) WrapToolHandler(toolName string, handler telemetry.ToolHand
 		// Convert request to JSON for better visibility
 		reqJSON, _ := json.Marshal(req)
 		requestContent := string(reqJSON)
-		
+
 		// Truncate request if too long for Phoenix
 		if len(requestContent) > m.config.MaxContentLength {
 			requestContent = requestContent[:m.config.MaxContentLength] + "..."
@@ -57,7 +57,7 @@ func (m *Middleware) WrapToolHandler(toolName string, handler telemetry.ToolHand
 		// Convert result to JSON for output tracking
 		resultJSON, _ := json.Marshal(result)
 		resultContent := string(resultJSON)
-		
+
 		// Truncate result if too long for Phoenix
 		if len(resultContent) > m.config.MaxContentLength {
 			resultContent = resultContent[:m.config.MaxContentLength] + "..."

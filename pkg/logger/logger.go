@@ -34,40 +34,40 @@ func (e *orderedJSONEncoder) Clone() zapcore.Encoder {
 func (e *orderedJSONEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	// Get a buffer from the pool
 	buf := e.pool.Get()
-	
+
 	// Start JSON object
 	buf.AppendByte('{')
-	
+
 	// Write timestamp first
 	buf.AppendString(`"timestamp":"`)
 	buf.AppendString(entry.Time.Format("2006-01-02T15:04:05.000-0700"))
 	buf.AppendString(`"`)
-	
+
 	// Write level second
 	buf.AppendString(`,"level":"`)
 	buf.AppendString(entry.Level.String())
 	buf.AppendString(`"`)
-	
+
 	// Write caller if present
 	if entry.Caller.Defined {
 		buf.AppendString(`,"caller":"`)
 		buf.AppendString(entry.Caller.TrimmedPath())
 		buf.AppendString(`"`)
 	}
-	
+
 	// Write message
 	buf.AppendString(`,"msg":"`)
 	// Escape the message for JSON
 	escaped, _ := json.Marshal(entry.Message)
 	buf.AppendBytes(escaped[1 : len(escaped)-1]) // Remove quotes
 	buf.AppendString(`"`)
-	
+
 	// Add custom fields
 	enc := zapcore.NewMapObjectEncoder()
 	for _, field := range fields {
 		field.AddTo(enc)
 	}
-	
+
 	// Write remaining fields
 	for k, v := range enc.Fields {
 		data, _ := json.Marshal(v)
@@ -76,25 +76,25 @@ func (e *orderedJSONEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.F
 		buf.AppendString(`":`)
 		buf.AppendBytes(data)
 	}
-	
+
 	// Add stack trace if present
 	if entry.Stack != "" {
 		buf.AppendString(`,"stacktrace":`)
 		data, _ := json.Marshal(entry.Stack)
 		buf.AppendBytes(data)
 	}
-	
+
 	// Close JSON object
 	buf.AppendByte('}')
 	buf.AppendByte('\n')
-	
+
 	return buf, nil
 }
 
 // Initialize sets up the global logger with appropriate configuration
 func Initialize(isDevelopment bool) error {
 	var config zap.Config
-	
+
 	if isDevelopment {
 		config = zap.NewDevelopmentConfig()
 		config.Development = true
@@ -102,42 +102,42 @@ func Initialize(isDevelopment bool) error {
 		config = zap.NewProductionConfig()
 		config.Development = false
 	}
-	
+
 	// Always log to stderr to avoid interfering with MCP stdio communication
 	config.OutputPaths = []string{"stderr"}
 	config.ErrorOutputPaths = []string{"stderr"}
-	
+
 	// Configure encoder settings
 	config.EncoderConfig.TimeKey = "timestamp"
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	config.EncoderConfig.MessageKey = "msg"
 	config.EncoderConfig.LevelKey = "level"
 	config.EncoderConfig.CallerKey = "caller"
-	
+
 	// Create buffer pool
 	pool := buffer.NewPool()
-	
+
 	// Build encoder
 	encoder := zapcore.NewJSONEncoder(config.EncoderConfig)
-	
+
 	// Wrap with our ordered encoder
 	orderedEncoder := &orderedJSONEncoder{
 		Encoder: encoder,
 		pool:    pool,
 	}
-	
+
 	// Build the logger with custom encoder
 	core := zapcore.NewCore(
 		orderedEncoder,
 		zapcore.AddSync(os.Stderr),
 		config.Level,
 	)
-	
+
 	logger := zap.New(core, zap.AddCaller())
-	
+
 	globalLogger = logger
 	sugar = logger.Sugar()
-	
+
 	return nil
 }
 
@@ -162,11 +162,11 @@ func Sugar() *zap.SugaredLogger {
 // WithRequestID returns a logger with the request ID from context
 func WithRequestID(ctx context.Context) *zap.Logger {
 	logger := Get()
-	
+
 	if requestID := telemetry.GetRequestID(ctx); requestID != "" {
 		return logger.With(zap.String("request_id", requestID))
 	}
-	
+
 	return logger
 }
 
@@ -184,7 +184,7 @@ func Sync() {
 
 // IsDevMode checks if we're in development mode based on environment
 func IsDevMode() bool {
-	return os.Getenv("ENVIRONMENT") == "development" || 
-		   os.Getenv("ENV") == "dev" ||
-		   os.Getenv("DEBUG") == "true"
+	return os.Getenv("ENVIRONMENT") == "development" ||
+		os.Getenv("ENV") == "dev" ||
+		os.Getenv("DEBUG") == "true"
 }

@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/carlisia/mcp-factcheck/internal/integrations/arizephoenix"
 	"github.com/carlisia/mcp-factcheck/pkg"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
-	"github.com/carlisia/mcp-factcheck/internal/integrations/arizephoenix"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +24,7 @@ func main() {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logger.Sync()
-	
+
 	// Get structured logger for use in main
 	log := logger.Get()
 
@@ -43,16 +43,16 @@ func main() {
 	// Initialize telemetry if enabled
 	var provider any
 	var middleware any
-	
+
 	if *telemetry {
 		ctx := context.Background()
-		
+
 		// Check if endpoint looks like Phoenix and use specialized integration
 		if strings.Contains(*otlpEndpoint, "6006") || strings.Contains(*otlpEndpoint, "phoenix") {
 			log.Info("Detected Phoenix endpoint, using clean Phoenix integration")
 			config := arizephoenix.DefaultConfig()
 			config.Endpoint = strings.TrimPrefix(*otlpEndpoint, "http://")
-			
+
 			phoenixProvider, phoenixMiddleware, err := arizephoenix.Initialize(ctx, config)
 			if err != nil {
 				log.Warn("Failed to initialize Phoenix telemetry. Using no-op provider.", zap.Error(err))
@@ -68,7 +68,7 @@ func main() {
 			provider = nil
 			middleware = nil
 		}
-		
+
 		// Setup graceful shutdown for telemetry
 		if provider != nil {
 			go func() {
@@ -85,7 +85,7 @@ func main() {
 				}
 			}()
 		}
-		
+
 		log.Info("Clean telemetry architecture enabled")
 	}
 

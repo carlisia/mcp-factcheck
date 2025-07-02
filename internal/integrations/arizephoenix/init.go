@@ -20,7 +20,7 @@ func Initialize(ctx context.Context, config Config) (telemetry.Provider, telemet
 	middleware := NewMiddleware(provider, config)
 
 	logger.Get().Info("Arize Phoenix telemetry initialized", zap.String("endpoint", config.Endpoint))
-	
+
 	return provider, middleware, nil
 }
 
