@@ -7,14 +7,14 @@ import (
 
 // ValidationError represents a detailed validation error with context
 type ValidationError struct {
-	Type        string   `json:"type"`        // "inaccuracy", "missing", "imprecise", "unsupported"
-	Severity    string   `json:"severity"`    // "critical", "warning", "suggestion"
-	Message     string   `json:"message"`     // Human readable description
-	Found       string   `json:"found"`       // What was found in the content
-	Expected    string   `json:"expected"`    // What should be there instead
-	SpecSection string   `json:"spec_section"` // Which part of spec this relates to
+	Type        string   `json:"type"`                  // "inaccuracy", "missing", "imprecise", "unsupported"
+	Severity    string   `json:"severity"`              // "critical", "warning", "suggestion"
+	Message     string   `json:"message"`               // Human readable description
+	Found       string   `json:"found"`                 // What was found in the content
+	Expected    string   `json:"expected"`              // What should be there instead
+	SpecSection string   `json:"spec_section"`          // Which part of spec this relates to
 	LineNumber  int      `json:"line_number,omitempty"` // Line number if available
-	Suggestions []string `json:"suggestions"` // Actionable suggestions
+	Suggestions []string `json:"suggestions"`           // Actionable suggestions
 }
 
 // IssueType constants
@@ -28,7 +28,7 @@ const (
 // Severity constants
 const (
 	SeverityCritical   = "critical"
-	SeverityWarning    = "warning" 
+	SeverityWarning    = "warning"
 	SeveritySuggestion = "suggestion"
 )
 
@@ -75,7 +75,7 @@ func (e *ValidationError) AddSuggestion(suggestion string) *ValidationError {
 // FormatErrorMessage creates a comprehensive error message
 func (e *ValidationError) FormatErrorMessage() string {
 	var parts []string
-	
+
 	// Add severity prefix
 	switch e.Severity {
 	case SeverityCritical:
@@ -85,28 +85,28 @@ func (e *ValidationError) FormatErrorMessage() string {
 	case SeveritySuggestion:
 		parts = append(parts, "💡 SUGGESTION:")
 	}
-	
+
 	// Add main message
 	parts = append(parts, e.Message)
-	
+
 	// Add line number if available
 	if e.LineNumber > 0 {
 		parts = append(parts, fmt.Sprintf("(Line %d)", e.LineNumber))
 	}
-	
+
 	var details []string
-	
+
 	// Add what was found vs expected
 	if e.Found != "" && e.Expected != "" {
 		details = append(details, fmt.Sprintf("Found: %s", e.Found))
 		details = append(details, fmt.Sprintf("Expected: %s", e.Expected))
 	}
-	
+
 	// Add spec section reference
 	if e.SpecSection != "" {
 		details = append(details, fmt.Sprintf("Spec Reference: %s", e.SpecSection))
 	}
-	
+
 	// Add suggestions
 	if len(e.Suggestions) > 0 {
 		details = append(details, "Suggestions:")
@@ -114,11 +114,11 @@ func (e *ValidationError) FormatErrorMessage() string {
 			details = append(details, fmt.Sprintf("  • %s", suggestion))
 		}
 	}
-	
+
 	if len(details) > 0 {
 		return fmt.Sprintf("%s\n%s", strings.Join(parts, " "), strings.Join(details, "\n"))
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 

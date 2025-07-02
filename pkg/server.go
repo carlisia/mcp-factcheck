@@ -200,11 +200,11 @@ func (s *FactCheckServer) wrapToolHandler(toolName string, handler telemetry.Too
 // registerTools registers all fact-check tools with the MCP server
 func (s *FactCheckServer) registerTools() {
 	// Create base tool handlers with request ID tracking and logging
-	validateContentHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
+	checkMCPClaimHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 
-		result, err := validator.HandleValidateContent(ctx, s.vectorDB, s.generator, req)
+		result, err := validator.HandleCheckMCPClaim(ctx, s.vectorDB, s.generator, req)
 
 		return result, err
 	})
@@ -236,22 +236,32 @@ func (s *FactCheckServer) registerTools() {
 		return result, err
 	})
 
+	checkMCPQuickFactHandler := telemetry.ToolHandler(func(ctx context.Context, req any) (any, error) {
+		// Add request ID to context
+		ctx = telemetry.WithRequestID(ctx)
+
+		result, err := validator.HandleCheckMCPQuickFact(ctx, s.vectorDB, s.generator, req)
+
+		return result, err
+	})
+
 	// Wrap handlers with telemetry middleware
-	validateContentHandler = s.wrapToolHandler("validate_content", validateContentHandler)
+	checkMCPClaimHandler = s.wrapToolHandler("check_mcp_claim", checkMCPClaimHandler)
 	validateCodeHandler = s.wrapToolHandler("validate_code", validateCodeHandler)
 	searchSpecHandler = s.wrapToolHandler("search_spec", searchSpecHandler)
 	listVersionsHandler = s.wrapToolHandler("list_spec_versions", listVersionsHandler)
+	checkMCPQuickFactHandler = s.wrapToolHandler("check_mcp_quick_fact", checkMCPQuickFactHandler)
 
 	// Convert to MCP-compatible handlers
-	mcpValidateContentHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		result, err := validateContentHandler(ctx, req.Params.Arguments)
+	mcpCheckMCPClaimHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := checkMCPClaimHandler(ctx, req.Params.Arguments)
 		if err != nil {
 			return nil, err
 		}
 		if content, ok := result.([]mcp.Content); ok {
 			return &mcp.CallToolResult{Content: content}, nil
 		}
-		return nil, fmt.Errorf("unexpected result type from validate_content")
+		return nil, fmt.Errorf("unexpected result type from check_mcp_claim")
 	}
 
 	mcpValidateCodeHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -287,9 +297,21 @@ func (s *FactCheckServer) registerTools() {
 		return nil, fmt.Errorf("unexpected result type from list_spec_versions")
 	}
 
+	mcpCheckMCPQuickFactHandler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := checkMCPQuickFactHandler(ctx, req.Params.Arguments)
+		if err != nil {
+			return nil, err
+		}
+		if content, ok := result.([]mcp.Content); ok {
+			return &mcp.CallToolResult{Content: content}, nil
+		}
+		return nil, fmt.Errorf("unexpected result type from check_mcp_quick_fact")
+	}
+
 	// Register tools with the MCP server
-	s.mcpServer.AddTool(validator.GetValidateContentTool(), mcpValidateContentHandler)
+	s.mcpServer.AddTool(validator.GetCheckMCPClaimTool(), mcpCheckMCPClaimHandler)
 	s.mcpServer.AddTool(validator.GetValidateCodeTool(), mcpValidateCodeHandler)
+	s.mcpServer.AddTool(validator.GetCheckMCPQuickFactTool(), mcpCheckMCPQuickFactHandler)
 	s.mcpServer.AddTool(spec.GetSearchSpecTool(), mcpSearchSpecHandler)
 	s.mcpServer.AddTool(spec.GetListSpecVersionsTool(), mcpListVersionsHandler)
 

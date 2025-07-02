@@ -1,23 +1,30 @@
 package validator
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/carlisia/mcp-factcheck/embedding"
+)
 
 // ValidationResult represents a structured validation response
 type ValidationResult struct {
-	IsValid          bool     `json:"is_valid"`
-	Confidence       float64  `json:"confidence"`
-	ParsedClaims     []string `json:"parsed_claims,omitempty"`     // All claims found in content
-	Issues           []string `json:"issues,omitempty"`
-	Suggestions      []string `json:"suggestions,omitempty"`
-	CorrectedVersion string   `json:"corrected_version,omitempty"`
-	SpecVersion      string   `json:"spec_version"`
+	IsValid          bool                       `json:"is_valid"`
+	Confidence       float64                    `json:"confidence"`
+	ParsedClaims     []string                   `json:"parsed_claims,omitempty"`
+	Issues           []string                   `json:"issues,omitempty"`
+	Suggestions      []string                   `json:"suggestions,omitempty"`
+	CorrectedVersion string                     `json:"corrected_version,omitempty"`
+	SpecVersion      string                     `json:"spec_version"`
+	FactCheckResult  *embedding.FactCheckResult `json:"-"` // omit from JSON
 }
 
 // ValidationMatch represents a summarized spec match
 type ValidationMatch struct {
-	Topic      string  `json:"topic"`
-	Relevance  float64 `json:"relevance"`
-	Summary    string  `json:"summary"`
+	Topic     string  `json:"topic"`
+	Relevance float64 `json:"relevance"`
+	Summary   string  `json:"summary"`
 }
 
 // SummarizeMatches creates concise summaries from search results
@@ -25,7 +32,7 @@ func SummarizeMatches(results []interface{}, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}
-	
+
 	var matches []ValidationMatch
 	for i := 0; i < maxMatches; i++ {
 		// This will be implemented based on the actual search result type
@@ -39,13 +46,142 @@ func SummarizeMatches(results []interface{}, maxMatches int) []ValidationMatch {
 	return matches
 }
 
-// FormatValidationResult creates a concise response for the LLM
+// ClaimDetail represents detailed information about a claim
+type ClaimDetail struct {
+	Claim       string `json:"claim"`
+	IsAccurate  bool   `json:"is_accurate"`
+	Correction  string `json:"correction,omitempty"`
+	Explanation string `json:"explanation,omitempty"`
+	Issue       string `json:"issue,omitempty"`
+}
+
+// ValidationResponse represents the complete validation response structure
+type ValidationResponse struct {
+	ValidationResult       ValidationSummary `json:"validation_result"`
+	Claims                 []ClaimDetail     `json:"claims"`
+	ParsedClaims           []string          `json:"parsed_claims"`
+	Issues                 []string          `json:"issues"`
+	Suggestions            []string          `json:"suggestions"`
+	CorrectedVersion       string            `json:"corrected_version,omitempty"`
+	MissingBestPractices   []string          `json:"missing_best_practices"`
+	AdvisoryLanguageIssues []string          `json:"advisory_language_issues"`
+	SpecReferences         []ValidationMatch `json:"spec_references"`
+}
+
+// ValidationSummary provides a high-level summary of validation results
+type ValidationSummary struct {
+	IsValid     bool    `json:"is_valid"`
+	Confidence  float64 `json:"confidence"`
+	SpecVersion string  `json:"spec_version"`
+	Summary     string  `json:"summary"`
+}
+
+// FormatValidationResult creates a structured response with all validation details
 func FormatValidationResult(result ValidationResult, matches []ValidationMatch) string {
-	response := map[string]interface{}{
-		"validation": result,
-		"references": matches,
+	response := buildValidationResponse(result, matches)
+
+	jsonBytes, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		// Log error and return a basic response
+		return fmt.Sprintf("Error formatting validation result: %v", err)
 	}
-	
-	jsonBytes, _ := json.MarshalIndent(response, "", "  ")
-	return string(jsonBytes)
+
+	return formatDirective() + string(jsonBytes)
+}
+
+// buildValidationResponse constructs the complete validation response
+func buildValidationResponse(result ValidationResult, matches []ValidationMatch) ValidationResponse {
+	response := ValidationResponse{
+		ValidationResult: ValidationSummary{
+			IsValid:     result.IsValid,
+			Confidence:  result.Confidence,
+			SpecVersion: result.SpecVersion,
+			Summary:     formatSummary(result.IsValid, result.Confidence),
+		},
+		Claims:                 buildClaimDetails(result),
+		ParsedClaims:           result.ParsedClaims,
+		Issues:                 result.Issues,
+		Suggestions:            result.Suggestions,
+		CorrectedVersion:       result.CorrectedVersion,
+		MissingBestPractices:   []string{},
+		AdvisoryLanguageIssues: []string{},
+		SpecReferences:         matches,
+	}
+
+	// Add fact check details if available
+	if result.FactCheckResult != nil {
+		response.MissingBestPractices = result.FactCheckResult.MissingBestPractices
+		response.AdvisoryLanguageIssues = result.FactCheckResult.AdvisoryLanguageIssues
+	}
+
+	return response
+}
+
+// buildClaimDetails constructs detailed claim information
+func buildClaimDetails(result ValidationResult) []ClaimDetail {
+	var claims []ClaimDetail
+
+	// Use fact check claims if available
+	if result.FactCheckResult != nil && len(result.FactCheckResult.Claims) > 0 {
+		for _, claim := range result.FactCheckResult.Claims {
+			claims = append(claims, ClaimDetail{
+				Claim:       claim.Claim,
+				IsAccurate:  claim.IsAccurate,
+				Correction:  claim.Correction,
+				Explanation: claim.Explanation,
+			})
+		}
+		return claims
+	}
+
+	// Build from parsed claims and issues
+	for _, claim := range result.ParsedClaims {
+		detail := ClaimDetail{
+			Claim:      claim,
+			IsAccurate: true,
+		}
+
+		// Check if this claim has issues
+		for j, issue := range result.Issues {
+			if issue == claim || strings.Contains(issue, claim) {
+				detail.IsAccurate = false
+				detail.Issue = issue
+				if j < len(result.Suggestions) {
+					detail.Correction = result.Suggestions[j]
+				}
+				break
+			}
+		}
+
+		claims = append(claims, detail)
+	}
+
+	return claims
+}
+
+// formatSummary creates a human-readable summary
+func formatSummary(isValid bool, confidence float64) string {
+	validity := "invalid"
+	if isValid {
+		validity = "valid"
+	}
+	return fmt.Sprintf("Content is %s with %.0f%% confidence", validity, confidence*100)
+}
+
+// formatDirective returns the directive header for LLM processing
+func formatDirective() string {
+	return `[VALIDATION COMPLETE - DO NOT INTERPRET THIS JSON]
+
+You MUST now:
+1. Call the format-validation-results prompt
+2. Pass the JSON below as the validation_data parameter
+3. Display the formatted output to the user without modification
+
+DO NOT:
+- Summarize the JSON
+- Create your own formatting
+- Interpret the results yourself
+
+REQUIRED ACTION: Use format-validation-results prompt with this JSON:
+`
 }

@@ -19,16 +19,16 @@ type ContentChunk struct {
 	ID       string `json:"id"`
 	Text     string `json:"text"`
 	Position int    `json:"position"`
-	Type     string `json:"type"` // "paragraph", "heading", "code_block", "list_item"
+	Type     string `json:"type"`            // "paragraph", "heading", "code_block", "list_item"
 	Level    int    `json:"level,omitempty"` // For headings (1-6)
 }
 
 // ChunkingResult contains the chunked content and metadata
 type ChunkingResult struct {
 	Chunks      []ContentChunk `json:"chunks"`
-	TotalChunks int           `json:"total_chunks"`
-	TotalChars  int           `json:"total_chars"`
-	EstTokens   int           `json:"estimated_tokens"`
+	TotalChunks int            `json:"total_chunks"`
+	TotalChars  int            `json:"total_chars"`
+	EstTokens   int            `json:"estimated_tokens"`
 }
 
 // ChunkContent splits content into logical chunks for validation using langchaingo
@@ -44,10 +44,10 @@ func ChunkContent(content string) *ChunkingResult {
 
 	// Choose splitter based on content type
 	var splitter textsplitter.TextSplitter
-	
+
 	// Use markdown splitter if content contains markdown-like patterns
-	if strings.Contains(content, "#") || strings.Contains(content, "```") || 
-	   strings.Contains(content, "- ") || strings.Contains(content, "* ") {
+	if strings.Contains(content, "#") || strings.Contains(content, "```") ||
+		strings.Contains(content, "- ") || strings.Contains(content, "* ") {
 		splitter = textsplitter.NewMarkdownTextSplitter(
 			textsplitter.WithChunkSize(800),    // Smaller chunks for better granularity
 			textsplitter.WithChunkOverlap(100), // Overlap for context preservation
@@ -59,7 +59,7 @@ func ChunkContent(content string) *ChunkingResult {
 			textsplitter.WithChunkOverlap(100), // Overlap for context preservation
 		)
 	}
-	
+
 	// Split the content
 	docs, err := splitter.SplitText(content)
 	if err != nil {
@@ -90,16 +90,15 @@ func ChunkContent(content string) *ChunkingResult {
 	}
 }
 
-
 func generateChunkID(prefix string, position int) string {
 	return fmt.Sprintf("%s-%d", prefix, position)
 }
 
 // ChunkValidationResult represents validation results for a single chunk
 type ChunkValidationResult struct {
-	Chunk      ContentChunk       `json:"chunk"`
-	Validation ValidationResult   `json:"validation,omitempty"`
-	Matches    []ValidationMatch  `json:"matches,omitempty"`
+	Chunk      ContentChunk      `json:"chunk"`
+	Validation ValidationResult  `json:"validation,omitempty"`
+	Matches    []ValidationMatch `json:"matches,omitempty"`
 	Error      string            `json:"error,omitempty"`
 }
 
@@ -107,8 +106,8 @@ type ChunkValidationResult struct {
 type AggregatedValidationResult struct {
 	ChunkResults []ChunkValidationResult `json:"chunk_results"`
 	Overall      ValidationResult        `json:"overall_validation"`
-	Summary      string                 `json:"summary"`
-	SpecVersion  string                 `json:"spec_version"`
+	Summary      string                  `json:"summary"`
+	SpecVersion  string                  `json:"spec_version"`
 }
 
 // HandleChunkedValidation processes long content by chunking it and validating each piece
@@ -124,10 +123,10 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		).
 		Start(ctx, "content.chunking")
 	defer chunkingSpan.End()
-	
+
 	// Chunk the content
 	chunkingResult := ChunkContent(content)
-	
+
 	// Add chunking results to span using OpenInference conventions
 	chunkingSpan.SetAttributes(
 		attribute.Int("chunks.total", chunkingResult.TotalChunks),
@@ -135,16 +134,16 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		attribute.Int("chunks.estimated_tokens", chunkingResult.EstTokens),
 		attribute.String("output.mime_type", "application/json"),
 	)
-	
+
 	if len(chunkingResult.Chunks) == 0 {
 		return nil, fmt.Errorf("no valid chunks found in content")
 	}
-	
+
 	// Validate each chunk
 	var chunkResults []ChunkValidationResult
 	var totalSimilarity float64
 	var totalChunks int
-	
+
 	for _, chunk := range chunkingResult.Chunks {
 		// Start span for individual chunk validation using telemetry builder
 		chunkCtx, chunkSpan := telemetry.NewSpanBuilder().
@@ -156,33 +155,33 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 				attribute.Int("chunk.length", len(chunk.Text)),
 			).
 			Start(ctx, "chunk.validation")
-		
+
 		// Generate embedding for this chunk using telemetry builder
 		embeddingCtx, embeddingSpan := telemetry.StartEmbeddingSpan(chunkCtx, chunk.Text)
-		
+
 		chunkEmbedding, err := generator.GenerateEmbedding(chunk.Text)
 		embeddingSpan.End()
-		
+
 		if err != nil {
 			embeddingSpan.SetAttributes(attribute.String("embedding.error", err.Error()))
 			embeddingSpan.RecordError(err)
 			chunkSpan.SetAttributes(attribute.String("chunk.error", err.Error()))
 			chunkSpan.RecordError(err)
 			chunkSpan.End()
-			
+
 			chunkResults = append(chunkResults, ChunkValidationResult{
 				Chunk: chunk,
 				Error: fmt.Sprintf("failed to generate embedding: %v", err),
 			})
 			continue
 		}
-		
+
 		// Search for relevant spec sections using telemetry builder
 		searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, chunkSearchTopK)
 		searchSpan.SetAttributes(attribute.String("chunk_id", chunk.ID))
-		
+
 		results, err := vectorDB.Search(specVersion, chunkEmbedding, chunkSearchTopK)
-		
+
 		if err != nil {
 			searchSpan.SetAttributes(attribute.String("search.error", err.Error()))
 			searchSpan.RecordError(err)
@@ -190,14 +189,14 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 			chunkSpan.SetAttributes(attribute.String("chunk.error", err.Error()))
 			chunkSpan.RecordError(err)
 			chunkSpan.End()
-			
+
 			chunkResults = append(chunkResults, ChunkValidationResult{
 				Chunk: chunk,
 				Error: fmt.Sprintf("failed to search specifications: %v", err),
 			})
 			continue
 		}
-		
+
 		// Calculate search results metrics
 		var avgSimilarity float64
 		if len(results) > 0 {
@@ -207,18 +206,18 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 			}
 			avgSimilarity = totalSim / float64(len(results))
 		}
-		
+
 		searchSpan.SetAttributes(
 			attribute.Int("document_count", len(results)),
 			attribute.Float64("avg_similarity", avgSimilarity),
 			attribute.Bool("has_results", len(results) > 0),
 		)
 		searchSpan.End()
-		
+
 		// Analyze validation for this chunk
 		validation := analyzeChunkValidation(searchCtx, generator, chunk.Text, results, specVersion)
 		matches := summarizeChunkMatches(results, chunkMatchesShown)
-		
+
 		// Add chunk validation results to span
 		chunkSpan.SetAttributes(
 			attribute.Float64("chunk.confidence", validation.Confidence),
@@ -227,29 +226,29 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 			attribute.String("output.mime_type", "application/json"),
 		)
 		chunkSpan.End()
-		
+
 		chunkResults = append(chunkResults, ChunkValidationResult{
 			Chunk:      chunk,
 			Validation: validation,
 			Matches:    matches,
 		})
-		
+
 		// Track overall metrics
 		totalSimilarity += validation.Confidence
 		totalChunks++
-		
+
 		// Use searchCtx to keep context chain
 		_ = searchCtx
 	}
-	
+
 	// Create overall validation summary based on chunk results
 	avgConfidence := totalSimilarity / float64(totalChunks)
-	
+
 	// Count how many chunks are valid (fact-check passed)
 	validChunks := 0
 	var allIssues []string
 	var allSuggestions []string
-	
+
 	for _, chunkResult := range chunkResults {
 		if chunkResult.Error == "" && chunkResult.Validation.IsValid {
 			validChunks++
@@ -262,16 +261,16 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 			allSuggestions = append(allSuggestions, chunkResult.Validation.Suggestions...)
 		}
 	}
-	
+
 	// Overall is valid only if ALL chunks pass fact-checking
 	overallIsValid := validChunks == totalChunks
-	
+
 	overallValidation := ValidationResult{
 		IsValid:     overallIsValid,
 		Confidence:  avgConfidence,
 		SpecVersion: specVersion,
 	}
-	
+
 	// Set overall issues and suggestions
 	if !overallValidation.IsValid {
 		overallValidation.Issues = []string{
@@ -294,7 +293,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 				overallValidation.Issues = append(overallValidation.Issues, fmt.Sprintf("... and %d more issues", len(allIssues)-3))
 			}
 		}
-		
+
 		// Add suggestions
 		overallValidation.Suggestions = []string{
 			"Fix factual errors in the flagged chunks",
@@ -312,7 +311,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 			}
 		}
 	}
-	
+
 	// Create aggregated result
 	aggregated := AggregatedValidationResult{
 		ChunkResults: chunkResults,
@@ -320,7 +319,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		Summary:      fmt.Sprintf("Analyzed %d content chunks", len(chunkResults)),
 		SpecVersion:  specVersion,
 	}
-	
+
 	// Format response
 	response := FormatChunkedValidationResult(aggregated)
 	return []mcp.Content{mcp.NewTextContent(response)}, nil
@@ -336,7 +335,7 @@ func analyzeChunkValidation(ctx context.Context, generator *embedding.Generator,
 			SpecVersion: specVersion,
 		}
 	}
-	
+
 	// For chunks, we use the same fact-checking logic as single validation
 	// This ensures consistent validation across both modes
 	return analyzeContentValidation(ctx, generator, content, results, specVersion)
@@ -347,11 +346,11 @@ func summarizeChunkMatches(results []embedding.SearchResult, maxMatches int) []V
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}
-	
+
 	var matches []ValidationMatch
 	for i := 0; i < maxMatches; i++ {
 		result := results[i]
-		
+
 		// Extract topic from content (first meaningful line)
 		lines := strings.Split(result.Chunk.Content, "\n")
 		topic := "MCP Specification"
@@ -366,13 +365,13 @@ func summarizeChunkMatches(results []embedding.SearchResult, maxMatches int) []V
 				break
 			}
 		}
-		
+
 		// Create brief summary
 		summary := result.Chunk.Content
 		if len(summary) > 150 {
 			summary = summary[:150] + "..."
 		}
-		
+
 		matches = append(matches, ValidationMatch{
 			Topic:     topic,
 			Relevance: result.Similarity,
@@ -392,7 +391,7 @@ func FormatChunkedValidationResult(result AggregatedValidationResult) string {
 		"spec_version":    result.SpecVersion,
 		"chunk_details":   result.ChunkResults,
 	}
-	
+
 	jsonBytes, _ := json.MarshalIndent(response, "", "  ")
 	return string(jsonBytes)
 }

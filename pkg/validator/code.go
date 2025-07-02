@@ -27,7 +27,7 @@ func getCodePreview(code string, maxLen int) string {
 	// Replace newlines with spaces for cleaner log output
 	preview := strings.ReplaceAll(code, "\n", " ")
 	preview = strings.ReplaceAll(preview, "\t", " ")
-	
+
 	if len(preview) <= maxLen {
 		return preview
 	}
@@ -63,18 +63,18 @@ func GetValidateCodeTool() mcp.Tool {
 func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
 	// Get structured logger with request ID
 	log := logger.WithRequestID(ctx)
-	
+
 	params, ok := args.(map[string]any)
 	if !ok {
-		log.Error("Invalid arguments type for validate_code", 
+		log.Error("Invalid arguments type for validate_code",
 			zap.String("expected", "map[string]any"),
 			zap.String("actual", fmt.Sprintf("%T", args)))
 		return nil, fmt.Errorf("arguments must be a map")
 	}
-	
+
 	code, ok := params["code"].(string)
 	if !ok {
-		log.Error("Invalid code parameter", 
+		log.Error("Invalid code parameter",
 			zap.String("expected", "string"),
 			zap.String("actual", fmt.Sprintf("%T", params["code"])),
 			zap.Any("value", params["code"]))
@@ -94,13 +94,13 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 	}
 
 	if !specs.IsValidSpecVersion(specVersion) {
-		log.Error("Invalid spec version for code validation", 
+		log.Error("Invalid spec version for code validation",
 			zap.String("version", specVersion),
 			zap.Strings("valid_versions", specs.ValidSpecVersions))
 		return nil, fmt.Errorf("invalid spec version: %s", specVersion)
 	}
 
-	log.Info("Starting code validation", 
+	log.Info("Starting code validation",
 		zap.Int("code_length", len(code)),
 		zap.String("spec_version", specVersion),
 		zap.String("language", language),
@@ -109,7 +109,7 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 	// Analyze code to extract MCP-relevant patterns and concepts
 	log.Debug("Analyzing code for MCP patterns", zap.String("language", language))
 	codeAnalysis := analyzeCodeForMCPPatterns(code, language)
-	
+
 	// Generate embedding for the code analysis
 	log.Debug("Generating embedding for code analysis")
 	codeEmbedding, err := generator.GenerateEmbedding(codeAnalysis)
@@ -119,7 +119,7 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 	}
 
 	// Search for relevant spec sections
-	log.Debug("Searching for relevant spec sections", 
+	log.Debug("Searching for relevant spec sections",
 		zap.String("spec_version", specVersion),
 		zap.Int("max_results", 8))
 	results, err := vectorDB.Search(specVersion, codeEmbedding, 8)
@@ -128,20 +128,20 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 		return nil, fmt.Errorf("failed to search specifications: %w", err)
 	}
 
-	log.Debug("Found spec matches", 
+	log.Debug("Found spec matches",
 		zap.Int("result_count", len(results)),
 		zap.Float64("max_similarity", getMaxSimilarity(results)))
 
 	// Analyze code validation results
 	validationResult := analyzeCodeValidation(code, codeAnalysis, results, specVersion)
 	matches := summarizeCodeMatches(results, 3)
-	
+
 	// Create optimized response
 	response := FormatValidationResult(validationResult, matches)
-	
-	log.Info("Code validation completed successfully", 
+
+	log.Info("Code validation completed successfully",
 		zap.Int("response_length", len(response)))
-	
+
 	return []mcp.Content{mcp.NewTextContent(response)}, nil
 }
 
@@ -218,7 +218,7 @@ func summarizeCodeMatches(results []embedding.SearchResult, maxMatches int) []Va
 	var matches []ValidationMatch
 	for i := 0; i < maxMatches; i++ {
 		result := results[i]
-		
+
 		// Extract topic from content
 		lines := strings.Split(result.Chunk.Content, "\n")
 		topic := "MCP Implementation"
@@ -252,16 +252,16 @@ func summarizeCodeMatches(results []embedding.SearchResult, maxMatches int) []Va
 // analyzeCodeForMCPPatterns extracts MCP-relevant information from code
 func analyzeCodeForMCPPatterns(code, language string) string {
 	var analysis []string
-	
+
 	// Convert to lowercase for pattern matching
 	lowerCode := strings.ToLower(code)
-	
+
 	// Check for common MCP patterns
 	patterns := map[string]string{
 		"json-rpc":     "JSON-RPC protocol implementation",
 		"mcp":          "Model Context Protocol usage",
 		"tools":        "MCP tools implementation",
-		"resources":    "MCP resources implementation", 
+		"resources":    "MCP resources implementation",
 		"server":       "MCP server implementation",
 		"client":       "MCP client implementation",
 		"stdio":        "Standard I/O transport",
@@ -274,16 +274,16 @@ func analyzeCodeForMCPPatterns(code, language string) string {
 		"params":       "Parameter handling",
 		"result":       "Result processing",
 	}
-	
+
 	analysis = append(analysis, fmt.Sprintf("Language: %s", language))
-	
+
 	var foundPatterns []string
 	for pattern, desc := range patterns {
 		if strings.Contains(lowerCode, pattern) {
 			foundPatterns = append(foundPatterns, desc)
 		}
 	}
-	
+
 	if len(foundPatterns) > 0 {
 		analysis = append(analysis, "Detected MCP patterns:")
 		for _, pattern := range foundPatterns {
@@ -292,10 +292,10 @@ func analyzeCodeForMCPPatterns(code, language string) string {
 	} else {
 		analysis = append(analysis, "No obvious MCP patterns detected in the code")
 	}
-	
+
 	// Add code structure info
 	lines := strings.Split(code, "\n")
 	analysis = append(analysis, fmt.Sprintf("Code contains %d lines", len(lines)))
-	
+
 	return strings.Join(analysis, "\n")
 }

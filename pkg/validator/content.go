@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	validateContentToolName = "validate_content"
+	checkMCPClaimToolName = "check_mcp_claim"
 	
 	// Search configuration
 	defaultSearchTopK = 10  // Number of spec sections to retrieve
@@ -32,8 +32,8 @@ const (
 	similarityLowThreshold   = 0.5  // Below this is considered low similarity
 	
 	// Content processing
-	autoChunkThreshold = 500  // Content length above which to auto-enable chunking
-	contentPreviewLen  = 100  // Length of content preview in logs
+	autoChunkThreshold = 2000  // Content length above which to auto-enable chunking
+	contentPreviewLen  = 100   // Length of content preview in logs
 	
 	// Confidence scores
 	highConfidence      = 0.9  // Confidence when fact-check passes
@@ -98,7 +98,7 @@ type ValidateContentArgs struct {
 	UseChunking bool   `json:"use_chunking,omitempty"` // Enable chunk-level validation
 }
 
-func GetValidateContentTool() mcp.Tool {
+func GetCheckMCPClaimTool() mcp.Tool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -128,22 +128,33 @@ func GetValidateContentTool() mcp.Tool {
 	}
 	schemaBytes, _ := json.Marshal(schema)
 
-	description := `Strictly validate MCP content against the embedded official MCP specification. 
+	description := `Validate any MCP-related content against the official specification to check accuracy and completeness.
 
-USE THIS WHEN YOU SEE:
-- Any text explaining MCP concepts or architecture
-- Documentation describing MCP features or behavior
-- Claims about what MCP "does", "requires", or "supports"
-- MCP protocol descriptions, explanations, tutorials, blog posts, etc.
+USE THIS TOOL WHEN:
+- User provides ANY text about MCP (even if they don't explicitly ask for validation)
+- Text contains multiple statements about MCP capabilities, design, or behavior
+- Content describes what MCP does, doesn't do, or how it works
+- Documentation, tutorials, or explanations about MCP
+- Bullet points or lists describing MCP features
 
-Returns specific spec violations with section references and correct language from the official specification.
+EXAMPLES OF CONTENT TO VALIDATE:
+- "MCP server exposes Resources and Tools..."
+- "Never forwards raw model traffic; enforces ACLs..."
+- Any technical description of MCP functionality
 
-Be explicit about limitations: If validation tools show high confidence but you haven't verified specific claims, state that clearly rather than giving blanket approval.`
+RETURNS:
+A complete validation workflow with:
+- All claims extracted and individually validated
+- Corrections for any inaccuracies
+- Missing best practices identified
+- Overall accuracy assessment
 
-	return mcp.NewToolWithRawSchema(validateContentToolName, description, schemaBytes)
+For single-sentence questions like "Does MCP support X?", use check_mcp_quick_fact instead.`
+
+	return mcp.NewToolWithRawSchema(checkMCPClaimToolName, description, schemaBytes)
 }
 
-func HandleValidateContent(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
 	// Get structured logger with request ID
 	log := logger.WithRequestID(ctx)
 	
@@ -291,6 +302,7 @@ func analyzeContentValidation(ctx context.Context, generator *embedding.Generato
 		Suggestions:      factCheckResult.Corrections,
 		CorrectedVersion: correctedVersion,
 		SpecVersion:      specVersion,
+		FactCheckResult:  factCheckResult,
 	}
 }
 
@@ -397,7 +409,6 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 
 	// Analyze validation results
 	validationResult := analyzeContentValidation(searchCtx, generator, content, results, specVersion)
-	matches := summarizeContentMatches(results, defaultMatchesShown)
 
 	analysisSpan.SetAttributes(
 		attribute.Bool("validation.is_valid", validationResult.IsValid),
@@ -406,8 +417,14 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	)
 	analysisSpan.End()
 
-	// Create optimized response
-	response := FormatValidationResult(validationResult, matches)
-
-	return []mcp.Content{mcp.NewTextContent(response)}, nil
+	// Create response using template formatting
+	matches := summarizeContentMatches(results, defaultMatchesShown)
+	formatted, err := FormatWithTemplate(validationResult, matches)
+	if err != nil {
+		// Fallback to direct formatting if template fails
+		workflow := FormatValidationWorkflow(validationResult, content)
+		return []mcp.Content{mcp.NewTextContent(workflow)}, nil
+	}
+	
+	return []mcp.Content{mcp.NewTextContent(formatted)}, nil
 }
