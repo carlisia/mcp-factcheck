@@ -17,6 +17,7 @@ func init() {
 	rootCmd.AddCommand(specCmd)
 	rootCmd.AddCommand(embedCmd)
 	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(rechunkCmd)
 }
 
 func main() {

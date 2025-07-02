@@ -82,16 +82,8 @@ func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
 
 // parseMarkdownSections splits markdown content into logical sections
 func parseMarkdownSections(content string) []string {
-	var chunks []string
-
-	// Split by double newlines to get paragraphs/sections
-	sections := strings.Split(content, "\n\n")
-	for _, section := range sections {
-		trimmed := strings.TrimSpace(section)
-		if len(trimmed) > 0 {
-			chunks = append(chunks, trimmed)
-		}
-	}
-
-	return chunks
+	// Use fine-grained chunking strategy for better search accuracy
+	strategy := DefaultStrategies["fine"]
+	chunkResults := ParseMarkdownSectionsV2(content, strategy)
+	return ConvertToStrings(chunkResults)
 }
