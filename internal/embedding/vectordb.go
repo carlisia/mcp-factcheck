@@ -19,6 +19,15 @@ func NewVectorDB(dataDir string) *VectorDB {
 
 // Search performs similarity search against a spec version (MCP tool functionality)
 func (db *VectorDB) Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+	// Try fine-grained version first if available
+	fineVersion := version + "-fine"
+	results, err := db.store.Search(fineVersion, queryEmbedding, topK)
+	if err == nil {
+		// Successfully found fine-grained embeddings
+		return results, nil
+	}
+	
+	// Fall back to regular version
 	return db.store.Search(version, queryEmbedding, topK)
 }
 

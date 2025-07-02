@@ -13,8 +13,8 @@ import (
 const (
 	// LLM configuration for fact-checking
 	factCheckModel       = openai.GPT4oMini
-	factCheckTemperature = 0.0   // Zero temperature for deterministic fact-checking
-	factCheckMaxTokens   = 1000  // Max tokens for fact-check response
+	factCheckTemperature = 0.0  // Zero temperature for deterministic fact-checking
+	factCheckMaxTokens   = 1000 // Max tokens for fact-check response
 )
 
 // Generator handles embedding generation and LLM operations using OpenAI
@@ -75,18 +75,31 @@ type ClaimResult struct {
 
 // FactCheckResponse represents the new format from the fact-checking prompt
 type FactCheckResponse struct {
-	Claims            []ClaimResult `json:"claims"`
-	OverallIsAccurate bool          `json:"overall_is_accurate"`
-	Summary           string        `json:"summary"`
+	Claims                 []ClaimResult `json:"claims"`
+	OverallIsAccurate      bool          `json:"overall_is_accurate"`
+	Summary                string        `json:"summary"`
+	MissingBestPractices   []string      `json:"missing_best_practices,omitempty"`
+	AdvisoryLanguageIssues []string      `json:"advisory_language_issues,omitempty"`
 }
 
 // FactCheckResult represents the result of fact-checking content against spec
 type FactCheckResult struct {
-	IsAccurate   bool     `json:"is_accurate"`
-	Inaccuracies []string `json:"inaccuracies"`
-	Corrections  []string `json:"corrections"`
-	Explanation  string   `json:"explanation"`
-	ParsedClaims []string `json:"parsed_claims"` // All claims extracted from content
+	IsAccurate             bool     `json:"is_accurate"`
+	Inaccuracies           []string `json:"inaccuracies"`
+	Corrections            []string `json:"corrections"`
+	Explanation            string   `json:"explanation"`
+	ParsedClaims           []string `json:"parsed_claims"`            // All claims extracted from content
+	MissingBestPractices   []string `json:"missing_best_practices"`   // SHOULD requirements not mentioned
+	AdvisoryLanguageIssues []string `json:"advisory_language_issues"` // MAY/CAN confusion
+	Claims                 []Claim  `json:"claims"`                   // Detailed claim analysis
+}
+
+// Claim represents a single claim with its validation details
+type Claim struct {
+	Claim       string `json:"claim"`
+	IsAccurate  bool   `json:"is_accurate"`
+	Correction  string `json:"correction,omitempty"`
+	Explanation string `json:"explanation,omitempty"`
 }
 
 // FactCheckAgainstSpec validates content claims against MCP specification sections
@@ -122,6 +135,9 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) 
 			},
 			Temperature: factCheckTemperature,
 			MaxTokens:   factCheckMaxTokens,
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
+				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+			},
 		},
 	)
 	if err != nil {
@@ -135,7 +151,7 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) 
 	// Parse the JSON response in the new format
 	var response FactCheckResponse
 	content = resp.Choices[0].Message.Content
-	
+
 	if err := json.Unmarshal([]byte(content), &response); err != nil {
 		// Try parsing the old format as fallback
 		var result FactCheckResult
@@ -150,18 +166,30 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) 
 		}, nil
 	}
 
-	// Convert new format to old format for compatibility
+	// Convert new format to FactCheckResult
 	result := &FactCheckResult{
-		IsAccurate:   response.OverallIsAccurate,
-		Inaccuracies: []string{},
-		Corrections:  []string{},
-		Explanation:  response.Summary,
-		ParsedClaims: []string{},  // Add all parsed claims
+		IsAccurate:             response.OverallIsAccurate,
+		Inaccuracies:           []string{},
+		Corrections:            []string{},
+		Explanation:            response.Summary,
+		ParsedClaims:           []string{},
+		MissingBestPractices:   response.MissingBestPractices,
+		AdvisoryLanguageIssues: response.AdvisoryLanguageIssues,
+		Claims:                 []Claim{},
 	}
 
 	// Extract all claims and track inaccuracies
 	for _, claim := range response.Claims {
 		result.ParsedClaims = append(result.ParsedClaims, claim.Claim)
+
+		// Add to detailed claims
+		result.Claims = append(result.Claims, Claim{
+			Claim:       claim.Claim,
+			IsAccurate:  claim.IsAccurate,
+			Correction:  claim.Correction,
+			Explanation: claim.Explanation,
+		})
+
 		if !claim.IsAccurate {
 			result.Inaccuracies = append(result.Inaccuracies, claim.Claim)
 			result.Corrections = append(result.Corrections, claim.Correction)
