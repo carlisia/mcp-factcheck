@@ -5,7 +5,7 @@ package prompts
 // ClaimExtractionRules defines how to extract claims from content
 const ClaimExtractionRules = `- Your output will be considered incorrect if you miss, combine, or summarize any claim or list item, or if you output a claim for only the first & last item in a list but not every item.
 - Identify every claim about MCP, even if phrased as a fragment, list item, or implicit subject.
-- When encountering a clause with a subject & verb followed by a list (e.g., "enforces ACLs, rate limits, & provenance"), create a separate claim for every item in the list by combining the subject & verb with each item.
+- When encountering a clause with a subject & verb followed by a list (e.g., "enforces voice recognition, database integration, and blockchain validation"), create a separate claim for every item in the list by combining the subject & verb with each item.
     - For example:  
       - Input: "Implements blockchain validation; supports distributed file storage, voice recognition, & NoSQL database integration."
       - Output claims:
@@ -38,7 +38,11 @@ const AccuracyCheckingRules = `- A claim is inaccurate if:
     - It misrepresents MCP's purpose/capabilities.
 - Be strict: If the spec doesn't explicitly support a claim, mark it as inaccurate.
 - Use only the supplied spec sections—no prior knowledge or assumptions.
-- Important distinction: If the specification says "Implementations SHOULD validate message content," but does not say "MCP validates message content," then the claim "MCP validates message content" is inaccurate. The only accurate claim is one that matches the language & subject of the specification exactly.`
+- Important distinction: If the specification says "Implementations SHOULD validate message content," but does not say "MCP validates message content," then the claim "MCP validates message content" is inaccurate. The only accurate claim is one that matches the language & subject of the specification exactly.
+- Additionally, check for:
+    - Missing best practices (SHOULD requirements not mentioned)
+    - Ignored advisory language (MAY options not acknowledged)
+    - Incomplete requirements (partial MUST/MUST NOT coverage)`
 
 // StylePreservationGuidelines defines how to maintain content style
 const StylePreservationGuidelines = `- Preserve the original tone, voice, and style of the content when making corrections or suggestions
@@ -59,3 +63,76 @@ const AccuracyCheckingRulesShort = `Check each claim against the MCP specificati
 - Distinguish between "MCP provides" vs "implementations SHOULD"
 - Mark unsupported claims as inaccurate
 - Be strict—no assumptions beyond the provided spec`
+
+// CorrectionStrategyGuidance provides guidance for creating correction strategies
+const CorrectionStrategyGuidance = `When planning corrections:
+- Priority 1: Fix factual errors and incorrect claims
+- Priority 2: Correct modal verb usage (MUST vs SHOULD vs MAY)
+- Priority 3: Add missing mandatory requirements (MUST/MUST NOT)
+- Priority 4: Include relevant best practices (SHOULD)
+- Priority 5: Clarify optional features (MAY)
+
+Preserve the original:
+- Document structure and organization
+- Writing style and tone
+- Examples and illustrations (update if needed)
+- Overall narrative flow`
+
+// ValidationCriteria defines what to check during validation
+const ValidationCriteria = `- Technical accuracy against the specification
+- Correct use of terminology and concepts
+- Proper modal verb usage (MUST/SHOULD/MAY)
+- Completeness of requirements coverage
+- Example and code correctness`
+
+// StepByStepProcessNote provides guidance for step-by-step workflows
+const StepByStepProcessNote = `Process Guidelines:
+- At each step, present results and wait for user confirmation before proceeding
+- If clarification is needed on intent or context, ask the user directly
+- Maintain focus on accuracy while preserving the content's original purpose
+- Work only with the content provided by the user`
+
+// SpecificationGuidanceNote explains the modal verb distinctions in MCP specifications
+const SpecificationGuidanceNote = `Specification Guidance Note:
+MCP specifications may use different levels of requirement language:
+- "MUST", "REQUIRED" = hard requirements
+- "SHOULD", "RECOMMENDED" = best practices, strong recommendations
+- "MUST NOT", "SHOULD NOT" = explicit prohibitions or discouraged practices
+- "MAY" = optional features
+- Sections labeled "Best Practice" = important guidance
+
+You must treat all these as relevant guidance when comparing content to the specification, even if not marked as a requirement.
+
+Example: If the spec says "Clients SHOULD implement request timeouts" but the content doesn't mention timeouts, flag this as a missing best practice.
+
+Key distinctions:
+1. "MCP enforces/provides" → The protocol itself implements this
+2. "Implementations MUST" → Required for any compliant implementation
+3. "Implementations SHOULD" → Best practice but not mandatory
+4. "Implementations MAY" → Optional feature
+
+Important patterns to recognize:
+- Sections titled "Best Practices" contain important guidance that should be followed
+- Headers containing modal verbs (e.g., "Servers SHOULD implement", "Implementations MUST support") apply that directive to all items listed under them
+- Items in a list under such headers inherit the modal verb from the header, even if not explicitly repeated
+
+When validating content:
+- Check if mandatory requirements (MUST) are properly conveyed
+- Identify missing best practices (SHOULD recommendations)
+- Look for "Best Practices" sections that haven't been addressed
+- Check for list items under headers with modal verbs (SHOULD, MUST, MAY, etc.)
+- Note optional features (MAY) presented as requirements
+- Flag any modal verb confusion that changes the meaning
+
+Interpretation Guidance for Language Strength Mismatches:
+When comparing content claims to the spec, recognize strength mismatches:
+- If content claims "MCP enforces X" but spec only says "Implementations SHOULD X", this is an overstatement
+- If content claims "MCP guarantees Y" but spec says "Servers MAY Y", this misrepresents optionality as requirement
+- If content uses definitive language ("always", "never", "enforces", "guarantees") but spec uses recommendation language ("SHOULD", "MAY", "RECOMMENDED"), flag this as a language-strength mismatch
+
+For each strength mismatch:
+1. Explain the difference between the claim and the spec
+2. Suggest accurate rewording that matches the spec's language strength
+3. Example correction: "MCP validates all message schemas" → "MCP recommends validating message schemas" (when spec says "SHOULD")
+
+This ensures content accurately represents the protocol's actual requirements vs recommendations vs options.`

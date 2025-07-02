@@ -45,6 +45,7 @@ func NewMigrateContentPrompt() (Prompt, error) {
 		map[string]any{
 			"AccuracyCheckingRulesShort":  func() string { return AccuracyCheckingRulesShort },
 			"StylePreservationGuidelines": func() string { return StylePreservationGuidelines },
+			"SpecificationGuidanceNote":   func() string { return SpecificationGuidanceNote },
 		},
 	)
 }

@@ -11,6 +11,32 @@ Fact-Checking Rules
 After extracting all claims, check each one against the provided MCP specification sections:
 {{.AccuracyCheckingRules}}
 
+Important: When a claim is inaccurate, ALWAYS explain:
+1. What the spec DOESN'T say (why the claim is wrong)
+2. What the spec DOES say about this topic (if anything) - QUOTE the actual spec text
+3. The correct interpretation based on the spec
+
+Example: If content claims "MCP enforces X" but spec says "Implementations SHOULD X":
+- State: "The spec doesn't say MCP enforces X"
+- Add: "However, the spec DOES say 'Implementations SHOULD X' - this is a recommendation for implementations"
+- Clarify: "This means X should be implemented as a best practice, but is not enforced by the protocol"
+
+CRITICAL: You MUST search for and quote what the spec actually says about each topic, not just state what it doesn't say.
+
+Key distinction: When content claims "MCP enforces X" or "MCP does X", check if the spec says:
+- "Implementations SHOULD X" → This means it's a recommendation for implementations, NOT something MCP enforces
+- "Servers MUST X" or "Clients MUST X" → These are requirements for implementations, NOT features of the protocol itself
+- Only if the spec says "MCP does X" or "The protocol enforces X" can you say MCP itself does something
+
+{{.SpecificationGuidanceNote}}
+
+Critical Pattern Recognition:
+When analyzing the specification sections, pay special attention to:
+1. Headers with modal verbs like "Implementations MUST:", "Servers SHOULD:", "Clients MAY:", "Implementations MUST NOT:", etc.
+2. ALL bullet points under such headers inherit that modal verb
+3. Example: Under "Implementations SHOULD:", a bullet "- Monitor for sensitive content" means "Implementations SHOULD monitor for sensitive content"
+4. Check if the content addresses each bullet point under modal verb headers
+
 USER CONTENT TO CHECK:
 {{.Content}}
 
@@ -30,12 +56,18 @@ Return a JSON object with these fields. If any list item from the input is missi
     {
       "claim": "full expanded claim text",
       "is_accurate": true/false,
-      "correction": "explanation if inaccurate",
+      "correction": "suggested rewording that matches the spec's language strength",
       "explanation": "why this is accurate or inaccurate based on spec - quote exact spec text that justifies the decision and explain modal differences (e.g., SHOULD vs MUST vs enforces)"
     }
   ],
+  "missing_best_practices": [
+    "List of SHOULD requirements from the spec that the content doesn't mention"
+  ],
+  "advisory_language_issues": [
+    "List of MAY/CAN options presented incorrectly or modal verb confusion, including strength mismatches like 'enforces' vs 'SHOULD'"
+  ],
   "overall_is_accurate": true/false,
-  "summary": "Brief summary of findings"
+  "summary": "Brief summary of findings including accuracy, completeness, modal verb usage, and language strength issues"
 }
 
 Example:
@@ -54,12 +86,20 @@ Example:
       "explanation": "No reference to distributed file storage in the supplied spec sections."
     },
     {
-      "claim": "MCP enforces rate limits",
+      "claim": "MCP enforces data validation",
       "is_accurate": false,
-      "correction": "The MCP spec only recommends that clients implement rate limiting; it does not state that MCP enforces rate limits.",
-      "explanation": "Spec text: 'Clients SHOULD implement rate limiting.' Since the spec does not state that MCP enforces rate limits, this claim is inaccurate."
+      "correction": "Implementations should validate all data fields",
+      "explanation": "The spec doesn't state that MCP enforces data validation. Instead, the spec says 'Implementations SHOULD: Validate all data fields' - this is a recommended best practice for implementations, not something enforced by the protocol itself. Data validation should be implemented as a security best practice."
     }
   ],
+  "missing_best_practices": [
+    "Clients SHOULD implement request timeouts",
+    "Servers SHOULD validate incoming message schemas"
+  ],
+  "advisory_language_issues": [
+    "Content states 'MCP requires' but spec says 'implementations MAY'",
+    "Claim 'MCP guarantees message ordering' overstates MAY feature as guarantee"
+  ],
   "overall_is_accurate": false,
-  "summary": "3 out of 3 claims are inaccurate. The content attributes features to MCP that are not mentioned in the specification."
+  "summary": "3 out of 3 claims are inaccurate. The content attributes features to MCP that are not mentioned in the specification. Additionally, important best practices are missing and some optional features are presented as requirements."
 }

@@ -25,6 +25,8 @@ Output:
   - inaccuracies
   - missing_info
   - incorrect_examples
+  - missing_best_practices
+  - advisory_language_issues
   - overall_quality
 
 ---
@@ -33,8 +35,11 @@ Step 2: Analyze Changes from {{.current_version}} to {{.target_version}}
 1. Use the search_spec tool to compare specifications:
    - List terminology or concept changes
    - Note new or removed features, APIs, protocols
-   - Highlight example or code snippet changes
-   - Capture updated best practices
+   - Highlight changes in requirements, recommendations, best practices, and prohibitions (any "MUST", "SHOULD", "MUST NOT", etc.)
+   - Capture example or code snippet changes
+   - Include updated best practices or "should"/"should not" advice
+
+{{.SpecificationGuidanceNote}}
 
 Output:
 - Table or bullet list of specification changes **that are directly relevant to the content provided**
@@ -42,9 +47,11 @@ Output:
 ---
 
 Step 3: Identify Content Update Requirements
-- Based on Steps 1 & 2, specify:
+- Based on Steps 1 & 2, identify all relevant changes including requirements, recommendations, best practices, and prohibitions as they pertain to the provided content:
   - Pre-existing issues in the provided content
-  - Required migration updates for the provided content
+  - Required migration updates for the provided content (MUST requirements)
+  - Recommended updates (SHOULD requirements and best practices)
+  - Prohibitions to observe (MUST NOT/SHOULD NOT)
   - New content to add only if it is necessary to align existing sections or examples with {{.target_version}}
   - Deprecated content (remove or mark as outdated) **only if present in the original content**
   - Opportunities for enhanced explanation within the scope of the original content

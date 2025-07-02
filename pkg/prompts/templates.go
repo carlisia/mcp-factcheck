@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"text/template"
 
@@ -10,11 +11,11 @@ import (
 
 // PromptTemplate defines a reusable validation prompt
 type PromptTemplate struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Arguments   []PromptArgument       `json:"arguments,omitempty"`
-	Template    string                 `json:"template"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Arguments   []PromptArgument `json:"arguments,omitempty"`
+	Template    string           `json:"template"`
+	Metadata    map[string]any   `json:"metadata,omitempty"`
 }
 
 // PromptArgument defines an argument for a prompt template
@@ -165,7 +166,7 @@ func GetPromptByName(name string) (*PromptTemplate, error) {
 func GetPromptsListResponse() (*mcp.ListPromptsResult, error) {
 	templates := GetAvailablePrompts()
 	prompts := make([]mcp.Prompt, len(templates))
-	
+
 	for i, template := range templates {
 		// Convert our arguments to MCP prompt arguments
 		var mcpArgs []mcp.PromptArgument
@@ -176,14 +177,14 @@ func GetPromptsListResponse() (*mcp.ListPromptsResult, error) {
 				Required:    arg.Required,
 			})
 		}
-		
+
 		prompts[i] = mcp.Prompt{
 			Name:        template.Name,
 			Description: template.Description,
 			Arguments:   mcpArgs,
 		}
 	}
-	
+
 	return &mcp.ListPromptsResult{
 		Prompts: prompts,
 	}, nil
@@ -195,7 +196,7 @@ func RenderPrompt(templateName string, args map[string]any) (*mcp.GetPromptResul
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create a copy of args with defaults filled in
 	renderArgs := make(map[string]any)
 	for _, arg := range promptTemplate.Arguments {
@@ -207,28 +208,28 @@ func RenderPrompt(templateName string, args map[string]any) (*mcp.GetPromptResul
 			return nil, fmt.Errorf("required argument missing: %s", arg.Name)
 		}
 	}
-	
+
 	// Parse and execute the template
 	tmpl, err := template.New(templateName).Parse(promptTemplate.Template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
-	
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, renderArgs); err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
-	
+
 	// Create the prompt result
 	result := &mcp.GetPromptResult{
 		Description: promptTemplate.Description,
 		Messages: []mcp.PromptMessage{
 			{
-				Role: "user",
+				Role:    "user",
 				Content: mcp.NewTextContent(buf.String()),
 			},
 		},
 	}
-	
+
 	return result, nil
 }
