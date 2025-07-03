@@ -17,7 +17,34 @@ type ValidationResult struct {
 	Suggestions      []string                   `json:"suggestions,omitempty"`
 	CorrectedVersion string                     `json:"corrected_version,omitempty"`
 	SpecVersion      string                     `json:"spec_version"`
-	FactCheckResult  *embedding.FactCheckResult `json:"-"` // omit from JSON
+	FactCheckResult  *embedding.FactCheckResult `json:"-"`                    // omit from JSON
+	DebugInfo        *ValidationDebugInfo       `json:"debug_info,omitempty"` // Detailed debugging information
+}
+
+// ValidationDebugInfo contains detailed information for debugging validation issues
+type ValidationDebugInfo struct {
+	Timestamp           string           `json:"timestamp"`
+	SearchQueries       []string         `json:"search_queries"`
+	TopSpecMatches      []SpecMatchDebug `json:"top_spec_matches"`
+	ClaimAnalysis       []ClaimDebugInfo `json:"claim_analysis"`
+	LLMReasoning        string           `json:"llm_reasoning,omitempty"`
+	ValidationIteration int              `json:"validation_iteration"`
+}
+
+// SpecMatchDebug contains debug info about spec matches
+type SpecMatchDebug struct {
+	Content    string  `json:"content"`
+	Similarity float64 `json:"similarity"`
+	ChunkID    string  `json:"chunk_id"`
+}
+
+// ClaimDebugInfo contains debug info for individual claim validation
+type ClaimDebugInfo struct {
+	OriginalClaim    string   `json:"original_claim"`
+	ValidationStatus string   `json:"validation_status"`
+	Issues           []string `json:"issues"`
+	SpecEvidence     []string `json:"spec_evidence"`
+	Confidence       float64  `json:"confidence"`
 }
 
 // ValidationMatch represents a summarized spec match

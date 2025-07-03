@@ -18,6 +18,7 @@ type FactCheckData struct {
 	ClaimExtractionRules      string
 	AccuracyCheckingRules     string
 	SpecificationGuidanceNote string
+	CompoundEvidence          map[string]string // Maps compound claims to their decomposed evidence
 }
 
 // FactCheckPrompt handles rendering of the fact-checking prompt

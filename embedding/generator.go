@@ -7,14 +7,16 @@ import (
 	"os"
 
 	"github.com/carlisia/mcp-factcheck/internal/prompts"
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/sashabaranov/go-openai"
+	"go.uber.org/zap"
 )
 
 const (
 	// LLM configuration for fact-checking
 	factCheckModel       = openai.GPT4oMini
 	factCheckTemperature = 0.0  // Zero temperature for deterministic fact-checking
-	factCheckMaxTokens   = 1000 // Max tokens for fact-check response
+	factCheckMaxTokens   = 2500 // Increased to handle longer validation responses with many claims
 )
 
 // Generator handles embedding generation and LLM operations using OpenAI
@@ -40,6 +42,14 @@ func NewGeneratorWithKey(apiKey string) (*Generator, error) {
 
 	client := openai.NewClient(apiKey)
 	return &Generator{client: client}, nil
+}
+
+// max returns the larger of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // GenerateEmbedding creates an embedding for a single text chunk
@@ -92,6 +102,7 @@ type FactCheckResult struct {
 	MissingBestPractices   []string `json:"missing_best_practices"`   // SHOULD requirements not mentioned
 	AdvisoryLanguageIssues []string `json:"advisory_language_issues"` // MAY/CAN confusion
 	Claims                 []Claim  `json:"claims"`                   // Detailed claim analysis
+	RawResponse            string   `json:"-"`                        // Raw LLM response for debugging
 }
 
 // Claim represents a single claim with its validation details
@@ -103,7 +114,7 @@ type Claim struct {
 }
 
 // FactCheckAgainstSpec validates content claims against MCP specification sections
-func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) (*FactCheckResult, error) {
+func (g *Generator) FactCheckAgainstSpec(content string, specSections []string, compoundEvidence map[string]string) (*FactCheckResult, error) {
 	// Create the fact-check prompt renderer
 	promptRenderer, err := prompts.NewFactCheckPrompt()
 	if err != nil {
@@ -111,10 +122,17 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) 
 	}
 
 	// Render the prompt with the data
-	prompt, err := promptRenderer.Render(prompts.FactCheckData{
+	data := prompts.FactCheckData{
 		Content:      content,
 		SpecSections: specSections,
-	})
+	}
+
+	// Add compound evidence if provided
+	if len(compoundEvidence) > 0 {
+		data.CompoundEvidence = compoundEvidence
+	}
+
+	prompt, err := promptRenderer.Render(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render prompt: %w", err)
 	}
@@ -152,17 +170,61 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) 
 	var response FactCheckResponse
 	content = resp.Choices[0].Message.Content
 
+	// Store raw response for debugging
+	rawResponse := content
+
+	// Add debug logging to help diagnose parsing issues
+	log := logger.Get()
+	if log != nil {
+		log.Debug("Raw LLM response for fact-checking",
+			zap.String("response", content),
+			zap.Int("length", len(content)))
+	}
+
 	if err := json.Unmarshal([]byte(content), &response); err != nil {
+		// Check if this might be a truncation issue
+		isTruncated := false
+		if jsonErr, ok := err.(*json.SyntaxError); ok {
+			// Check if error is at the end of the content (likely truncation)
+			if jsonErr.Offset == int64(len(content)) || jsonErr.Offset == int64(len(content)-1) {
+				isTruncated = true
+			}
+		} else if err.Error() == "unexpected end of JSON input" {
+			isTruncated = true
+		}
+
+		// Log the parsing error details
+		if log != nil {
+			if isTruncated {
+				log.Warn("LLM response appears to be truncated",
+					zap.Error(err),
+					zap.Int("response_length", len(content)),
+					zap.String("last_100_chars", content[max(0, len(content)-100):]))
+			} else {
+				log.Error("Failed to parse fact-checking response",
+					zap.Error(err),
+					zap.String("raw_content", content))
+			}
+		}
+
 		// Try parsing the old format as fallback
 		var result FactCheckResult
 		if err2 := json.Unmarshal([]byte(content), &result); err2 == nil {
+			result.RawResponse = rawResponse
 			return &result, nil
 		}
-		// If both parsing attempts fail, return a generic error result
+
+		// Return appropriate error message
+		errorMsg := "Failed to parse fact-checking response"
+		if isTruncated {
+			errorMsg = "Response was truncated - content too long for analysis. Consider using chunked validation for large documents."
+		}
+
 		return &FactCheckResult{
 			IsAccurate:   false,
-			Inaccuracies: []string{"Failed to parse fact-checking response"},
-			Explanation:  fmt.Sprintf("Raw response: %s", content),
+			Inaccuracies: []string{errorMsg},
+			Explanation:  fmt.Sprintf("The validation could not be completed. %s", errorMsg),
+			RawResponse:  rawResponse,
 		}, nil
 	}
 
@@ -183,18 +245,16 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string) 
 		result.ParsedClaims = append(result.ParsedClaims, claim.Claim)
 
 		// Add to detailed claims
-		result.Claims = append(result.Claims, Claim{
-			Claim:       claim.Claim,
-			IsAccurate:  claim.IsAccurate,
-			Correction:  claim.Correction,
-			Explanation: claim.Explanation,
-		})
+		result.Claims = append(result.Claims, Claim(claim))
 
 		if !claim.IsAccurate {
 			result.Inaccuracies = append(result.Inaccuracies, claim.Claim)
 			result.Corrections = append(result.Corrections, claim.Correction)
 		}
 	}
+
+	// Add raw response for debugging
+	result.RawResponse = rawResponse
 
 	return result, nil
 }

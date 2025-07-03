@@ -6,10 +6,46 @@ Extraction Rules
 
 {{.ClaimExtractionRules}}
 
+IMPORTANT: When extracting claims that contain "and" or multiple concepts:
+- If a claim says "X and Y", evaluate BOTH X and Y separately
+- A claim is accurate if ALL parts are accurate
+- Example: "request validation and timeouts" requires finding evidence for BOTH validation AND timeouts
+- Don't mark as inaccurate just because the spec mentions them in different places
+
+{{if .CompoundEvidence}}
+COMPOUND CLAIM PRE-ANALYSIS:
+The following compound claims have been decomposed and analyzed separately:
+{{range $claim, $evidence := .CompoundEvidence}}
+Claim: "{{$claim}}"
+{{$evidence}}
+{{end}}
+
+Use this pre-analysis to inform your evaluation. If evidence was found for all subclaims, the compound claim should be marked as accurate.
+{{end}}
+
 Fact-Checking Rules
 
 After extracting all claims, check each one against the provided MCP specification sections:
 {{.AccuracyCheckingRules}}
+
+PROTOCOL vs IMPLEMENTATION:
+- "MCP provides a way to..." → Check if the protocol specification shows this capability
+- "MCP allows servers to..." → Check if servers CAN do this according to the spec
+- "MCP enables clients to..." → Check if clients CAN do this according to the spec
+- These are DIFFERENT from "MCP enforces" or "MCP requires" which imply mandatory behavior
+
+CRITICAL: Implementation recommendations ARE part of the spec:
+- If spec says "Implementations SHOULD X", then "implementations should X" is ACCURATE
+- If spec says "Servers SHOULD Y", then "servers should Y" is ACCURATE  
+- If spec says "Clients SHOULD Z", then "clients should Z" is ACCURATE
+- The word "should" in content accurately reflects SHOULD in the spec
+
+Example validations:
+- "Servers expose tools via MCP" → ACCURATE if spec shows servers can expose tools
+- "Clients invoke tools through tools/call" → ACCURATE if spec shows tools/call messages exist
+- "During initialization, capabilities are exchanged" → ACCURATE if spec shows this in initialization flow
+- "Servers should implement request validation" → ACCURATE if spec says "Servers SHOULD validate"
+- "Implementations should establish timeouts" → ACCURATE if spec says "Implementations SHOULD establish timeouts"
 
 Important: When a claim is inaccurate, ALWAYS explain:
 1. What the spec DOESN'T say (why the claim is wrong)
@@ -27,6 +63,90 @@ Key distinction: When content claims "MCP enforces X" or "MCP does X", check if 
 - "Implementations SHOULD X" → This means it's a recommendation for implementations, NOT something MCP enforces
 - "Servers MUST X" or "Clients MUST X" → These are requirements for implementations, NOT features of the protocol itself
 - Only if the spec says "MCP does X" or "The protocol enforces X" can you say MCP itself does something
+
+IMPORTANT: Case sensitivity matters for RFC 2119 keywords:
+- "Implementations SHOULD" (uppercase) is the formal requirement level
+- "Implementations should" (lowercase) is acceptable in user content as it conveys the same meaning
+- Do NOT flag lowercase "should" as incorrect if the requirement level is accurate
+
+PARAPHRASING IS ACCEPTABLE:
+- If content says "output sanitization" and spec says "sanitize tool outputs", these mean the same thing
+- If content says "access controls" and spec says "access control", these are equivalent
+- Natural language variations that preserve meaning should be considered ACCURATE
+- Only flag as inaccurate if the meaning is substantively different
+
+IMPORTANT CONTEXT UNDERSTANDING:
+- When content says "MCP enables servers to expose X" - this IS accurate if the spec shows servers can expose X
+- When content says "During initialization, X happens" - this IS accurate if the spec shows X happens in initialization
+- When content says "Clients can invoke tools through tools/call" - this IS accurate if the spec shows tools/call messages
+- When content says "Tools with JSON Schema definitions" - this IS accurate if spec mentions "inputSchema: JSON Schema"
+- Look for the CONCEPT being described, not just exact wording
+- Consider protocol flow diagrams, examples, and message formats as valid evidence
+
+CRITICAL: When evaluating "MCP exposes Resources and Tools":
+- If spec says "servers expose resources and tools" via MCP, the claim is ACCURATE
+- If spec mentions tools have "inputSchema" with JSON Schema, then "with JSON Schema definitions" is ACCURATE
+- The protocol enables/allows servers to expose these - that means MCP exposes them
+
+CONCEPTUAL EQUIVALENCE RULES:
+- Different words can express the same concept - focus on MEANING not exact wording
+- Singular/plural variations are equivalent (e.g., "control" vs "controls")
+- Verb/noun forms are equivalent when describing the same action (e.g., "validate" vs "validation")
+- Process descriptions are equivalent to their outcomes (e.g., "exchange X" = "send and receive X")
+- Active/passive voice variations are equivalent (e.g., "server exposes" = "exposed by server")
+
+Examples of conceptual equivalence:
+- Content: "performs authentication" ↔ Spec: "authenticate users" ✓ SAME CONCEPT
+- Content: "data synchronization" ↔ Spec: "synchronize data between systems" ✓ SAME CONCEPT
+- Content: "error handling mechanisms" ↔ Spec: "handle errors appropriately" ✓ SAME CONCEPT
+- Content: "secure communication" ↔ Spec: "communications must be secured" ✓ SAME CONCEPT
+
+SEMANTIC UNDERSTANDING:
+- When content describes a process or flow, check if the spec describes that same process even with different words
+- When content mentions a concept, check if the spec addresses that concept in ANY form
+- Compound statements should be evaluated by checking if EACH component exists somewhere in the spec
+- The components don't need to be in the same sentence or paragraph in the spec
+- Look for the CONCEPT being described, not just exact wording
+
+Example semantic matches:
+- Content: "bi-directional communication" ↔ Spec shows: messages going both directions ✓ ACCURATE
+- Content: "structured data format" ↔ Spec shows: JSON schema definitions ✓ ACCURATE  
+- Content: "asynchronous processing" ↔ Spec shows: non-blocking operations ✓ ACCURATE
+- Content: "extensible architecture" ↔ Spec shows: plugin/extension mechanisms ✓ ACCURATE
+
+COMPOUND CLAIM EVALUATION:
+- For claims with "and" or multiple concepts, evaluate each part separately
+- Example: "A and B" is accurate if:
+  - The spec mentions concept A anywhere (even with different words)
+  - The spec mentions concept B anywhere (even with different words)
+- Don't require both concepts to appear together in the spec
+- Each concept just needs to be supported somewhere in the provided spec sections
+
+Example compound evaluations:
+- Content: "authentication and authorization"
+  - Check: Does spec mention authentication? ✓
+  - Check: Does spec mention authorization? ✓
+  - Result: ACCURATE (both concepts found)
+  
+- Content: "monitoring and logging capabilities"
+  - Check: Does spec mention monitoring? ✓
+  - Check: Does spec mention logging? ✓
+  - Result: ACCURATE (even if mentioned in different sections)
+
+INITIALIZATION FLOW UNDERSTANDING:
+- Any description of what happens "during initialization" should be checked against:
+  - The initialization section of the spec
+  - Any protocol flow diagrams showing initialization
+  - Request/response structures for initialization
+- If the spec shows something happens as part of the initialization process, then saying it happens "during initialization" is ACCURATE
+
+Example initialization checks:
+- Content: "During startup, the system establishes connections"
+  - If spec shows connection establishment in init sequence → ACCURATE
+- Content: "Initial handshake includes version negotiation"  
+  - If spec shows version info in initial messages → ACCURATE
+- Content: "Configuration is loaded at initialization"
+  - If spec shows config loading in startup flow → ACCURATE
 
 {{.SpecificationGuidanceNote}}
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
@@ -18,27 +20,27 @@ import (
 
 const (
 	checkMCPClaimToolName = "check_mcp_claim"
-	
+
 	// Search configuration
-	defaultSearchTopK = 10  // Number of spec sections to retrieve
-	chunkSearchTopK   = 5   // Number of spec sections per chunk
-	
+	defaultSearchTopK = 20 // Number of spec sections to retrieve (increased for better coverage)
+	chunkSearchTopK   = 10 // Number of spec sections per chunk (increased)
+
 	// Display configuration
-	defaultMatchesShown = 5  // Number of matches to show in results
-	chunkMatchesShown   = 2  // Number of matches per chunk
-	
+	defaultMatchesShown = 5 // Number of matches to show in results
+	chunkMatchesShown   = 2 // Number of matches per chunk
+
 	// Validation thresholds
-	similarityValidThreshold = 0.7  // Similarity score above which content is considered valid
-	similarityLowThreshold   = 0.5  // Below this is considered low similarity
-	
+	similarityValidThreshold = 0.7 // Similarity score above which content is considered valid
+	similarityLowThreshold   = 0.5 // Below this is considered low similarity
+
 	// Content processing
-	autoChunkThreshold = 2000  // Content length above which to auto-enable chunking
-	contentPreviewLen  = 100   // Length of content preview in logs
-	
+	autoChunkThreshold = 2000 // Content length above which to auto-enable chunking
+	contentPreviewLen  = 100  // Length of content preview in logs
+
 	// Confidence scores
-	highConfidence      = 0.9  // Confidence when fact-check passes
-	lowConfidence       = 0.3  // Confidence when fact-check fails
-	minimumConfidence   = 0.1  // Minimum confidence when no results
+	highConfidence    = 0.9 // Confidence when fact-check passes
+	lowConfidence     = 0.3 // Confidence when fact-check fails
+	minimumConfidence = 0.1 // Minimum confidence when no results
 )
 
 // Helper function for debugging
@@ -97,6 +99,12 @@ type ValidateContentArgs struct {
 	SpecVersion string `json:"spec_version,omitempty"`
 	UseChunking bool   `json:"use_chunking,omitempty"` // Enable chunk-level validation
 }
+
+// Package-level stability checker (shared across validations in a session)
+var stabilityChecker = NewContentStabilityChecker()
+
+// Package-level validation counter for debugging
+var validationCounter int
 
 func GetCheckMCPClaimTool() mcp.Tool {
 	schema := map[string]any{
@@ -157,21 +165,21 @@ For single-sentence questions like "Does MCP support X?", use check_mcp_quick_fa
 func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
 	// Get structured logger with request ID
 	log := logger.WithRequestID(ctx)
-	
+
 	params, ok := args.(map[string]any)
 	if !ok {
-		log.Error("Invalid arguments type", 
+		log.Error("Invalid arguments type",
 			zap.String("expected", "map[string]any"),
 			zap.String("actual", fmt.Sprintf("%T", args)))
 		return nil, fmt.Errorf("arguments must be a map")
 	}
 
-	log.Debug("Processing validate_content request", 
+	log.Debug("Processing validate_content request",
 		zap.Strings("param_keys", getKeys(params)))
 
 	content, ok := params["content"].(string)
 	if !ok {
-		log.Error("Invalid content parameter", 
+		log.Error("Invalid content parameter",
 			zap.String("expected", "string"),
 			zap.String("actual", fmt.Sprintf("%T", params["content"])),
 			zap.Any("value", params["content"]))
@@ -190,7 +198,7 @@ func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, g
 	}
 
 	if !specs.IsValidSpecVersion(specVersion) {
-		log.Error("Invalid spec version", 
+		log.Error("Invalid spec version",
 			zap.String("version", specVersion),
 			zap.Strings("valid_versions", specs.ValidSpecVersions))
 		return nil, fmt.Errorf("invalid spec version: %s", specVersion)
@@ -201,7 +209,7 @@ func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, g
 	defer requestSpan.End()
 
 	// Add structured logging for request details
-	log.Info("Starting content validation", 
+	log.Info("Starting content validation",
 		zap.Int("content_length", len(content)),
 		zap.String("spec_version", specVersion),
 		zap.Bool("use_chunking", useChunking),
@@ -238,42 +246,139 @@ func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, g
 }
 
 // analyzeContentValidation determines if content is valid and provides insights
-func analyzeContentValidation(ctx context.Context, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+	// Increment validation counter for debugging
+	validationCounter++
+
+	// Initialize debug info
+	debugInfo := &ValidationDebugInfo{
+		Timestamp:           time.Now().Format(time.RFC3339),
+		ValidationIteration: validationCounter,
+		SearchQueries:       []string{content}, // The content itself was the search query
+		TopSpecMatches:      []SpecMatchDebug{},
+		ClaimAnalysis:       []ClaimDebugInfo{},
+	}
+
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
 			Confidence:  minimumConfidence,
 			Issues:      []string{"No relevant MCP specification content found"},
 			SpecVersion: specVersion,
+			DebugInfo:   debugInfo,
 		}
 	}
 
-	// Extract spec sections for fact-checking
+	// Extract spec sections for fact-checking and populate debug info
 	var specSections []string
-	for _, result := range results {
+	for i, result := range results {
 		specSections = append(specSections, result.Chunk.Content)
+
+		// Add top 3 matches to debug info
+		if i < 3 {
+			debugInfo.TopSpecMatches = append(debugInfo.TopSpecMatches, SpecMatchDebug{
+				Content:    result.Chunk.Content,
+				Similarity: result.Similarity,
+				ChunkID:    result.Chunk.ID,
+			})
+		}
+	}
+
+	// Pre-analyze compound claims
+	compoundEvidence := make(map[string]string)
+	log := logger.WithRequestID(ctx)
+
+	// Simple heuristic: look for "and" in the content
+	if strings.Contains(strings.ToLower(content), " and ") {
+		log.Debug("Detected potential compound claims in content")
+
+		// Extract potential compound claims
+		// First try to split by sentences, but if no periods, use the whole content
+		var claimsToCheck []string
+		if strings.Contains(content, ". ") {
+			claimsToCheck = strings.Split(content, ". ")
+		} else {
+			claimsToCheck = []string{content}
+		}
+
+		for _, claim := range claimsToCheck {
+			claim = strings.TrimSpace(claim)
+			if strings.Contains(strings.ToLower(claim), " and ") {
+				compound := DecomposeCompoundClaim(claim)
+				if compound.IsCompound {
+					log.Debug("Processing compound claim",
+						zap.String("claim", compound.OriginalClaim),
+						zap.Int("subclaim_count", len(compound.SubClaims)))
+
+					// Search for evidence for each subclaim
+					err := SearchEvidenceForSubClaims(&compound, vectorDB, generator, specVersion, 10)
+					if err == nil {
+						evidence := FormatCompoundClaimEvidence(compound)
+						compoundEvidence[compound.OriginalClaim] = evidence
+
+						log.Debug("Generated compound evidence",
+							zap.String("claim", compound.OriginalClaim),
+							zap.String("evidence_summary", evidence[:min(200, len(evidence))]))
+					} else {
+						log.Warn("Failed to search evidence for compound claim",
+							zap.String("claim", compound.OriginalClaim),
+							zap.Error(err))
+					}
+				}
+			}
+		}
+
+		log.Debug("Compound claim analysis complete",
+			zap.Int("compound_count", len(compoundEvidence)))
 	}
 
 	// Use LLM to fact-check the content against spec sections
-	factCheckResult, err := generator.FactCheckAgainstSpec(content, specSections)
+	factCheckResult, err := generator.FactCheckAgainstSpec(content, specSections, compoundEvidence)
 	if err != nil {
 		// Fallback to similarity-based validation if fact-checking fails
-		log := logger.WithRequestID(ctx)
 		log.Error("Fact-checking failed, falling back to similarity validation", zap.Error(err))
-		
+
 		// Calculate average similarity
 		var totalSimilarity float64
 		for _, result := range results {
 			totalSimilarity += result.Similarity
 		}
 		avgSimilarity := totalSimilarity / float64(len(results))
-		
+
 		return ValidationResult{
 			IsValid:     avgSimilarity > similarityValidThreshold,
 			Confidence:  avgSimilarity,
 			Issues:      []string{"Fact-checking unavailable, using similarity-based validation"},
 			SpecVersion: specVersion,
+			DebugInfo:   debugInfo,
 		}
+	}
+
+	// Populate debug info with LLM reasoning if available
+	if factCheckResult.RawResponse != "" {
+		debugInfo.LLMReasoning = factCheckResult.RawResponse
+	}
+
+	// Populate claim analysis debug info
+	for _, claim := range factCheckResult.Claims {
+		claimDebug := ClaimDebugInfo{
+			OriginalClaim:    claim.Claim,
+			ValidationStatus: "valid",
+			Confidence:       highConfidence,
+		}
+
+		if !claim.IsAccurate {
+			claimDebug.ValidationStatus = "invalid"
+			claimDebug.Confidence = lowConfidence
+			if claim.Explanation != "" {
+				claimDebug.Issues = []string{claim.Explanation}
+			}
+		}
+
+		// Add spec evidence (would need to enhance FactCheckResult to include this)
+		claimDebug.SpecEvidence = []string{claim.Explanation}
+
+		debugInfo.ClaimAnalysis = append(debugInfo.ClaimAnalysis, claimDebug)
 	}
 
 	// Build validation result from fact-check
@@ -294,6 +399,16 @@ func analyzeContentValidation(ctx context.Context, generator *embedding.Generato
 		confidence = lowConfidence
 	}
 
+	// Log detailed debug info for circular validation issues
+	log.Debug("Validation analysis complete",
+		zap.Int("iteration", validationCounter),
+		zap.Bool("is_accurate", factCheckResult.IsAccurate),
+		zap.Float64("confidence", confidence),
+		zap.Int("claims_count", len(factCheckResult.Claims)),
+		zap.Int("issues_count", len(factCheckResult.Inaccuracies)),
+		zap.String("content_preview", getContentPreview(content, 100)),
+	)
+
 	return ValidationResult{
 		IsValid:          factCheckResult.IsAccurate,
 		Confidence:       confidence,
@@ -303,6 +418,7 @@ func analyzeContentValidation(ctx context.Context, generator *embedding.Generato
 		CorrectedVersion: correctedVersion,
 		SpecVersion:      specVersion,
 		FactCheckResult:  factCheckResult,
+		DebugInfo:        debugInfo,
 	}
 }
 
@@ -346,6 +462,138 @@ func summarizeContentMatches(results []embedding.SearchResult, maxMatches int) [
 	return matches
 }
 
+// performTargetedSearches searches for specific concepts mentioned in the content
+func performTargetedSearches(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content, specVersion string) []embedding.SearchResult {
+	var allResults []embedding.SearchResult
+	log := logger.WithRequestID(ctx)
+
+	// Extract key concepts from content
+	concepts := extractKeyConcepts(content)
+
+	log.Debug("Performing targeted searches for concepts",
+		zap.Strings("concepts", concepts),
+		zap.Int("concept_count", len(concepts)))
+
+	for _, concept := range concepts {
+		// Get expanded queries for this concept
+		queries := expandClaimForSearch(concept)
+
+		for _, query := range queries {
+			// Generate embedding for the query
+			queryEmbedding, err := generator.GenerateEmbedding(query)
+			if err != nil {
+				log.Warn("Failed to generate embedding for query",
+					zap.String("query", query),
+					zap.Error(err))
+				continue
+			}
+
+			// Search with this specific query
+			results, err := vectorDB.Search(specVersion, queryEmbedding, 5)
+			if err != nil {
+				log.Warn("Failed to search for query",
+					zap.String("query", query),
+					zap.Error(err))
+				continue
+			}
+
+			allResults = append(allResults, results...)
+		}
+	}
+
+	return allResults
+}
+
+// extractKeyConcepts extracts important concepts from content for targeted searches
+func extractKeyConcepts(content string) []string {
+	concepts := []string{}
+	normalized := strings.ToLower(content)
+
+	// Look for key protocol concepts
+	if strings.Contains(normalized, "initialization") {
+		concepts = append(concepts, "initialization phase client server")
+	}
+	if strings.Contains(normalized, "capability") || strings.Contains(normalized, "capabilities") {
+		concepts = append(concepts, "exchange capabilities")
+	}
+	if strings.Contains(normalized, "tools/call") {
+		concepts = append(concepts, "tools/call request")
+	}
+	if strings.Contains(normalized, "protocol version") {
+		concepts = append(concepts, "protocol version compatibility")
+	}
+	if strings.Contains(normalized, "security") {
+		concepts = append(concepts, "security best practices")
+	}
+
+	return concepts
+}
+
+// mergeSearchResults merges and deduplicates search results
+func mergeSearchResults(primary, additional []embedding.SearchResult, maxResults int) []embedding.SearchResult {
+	// Use a map to track unique chunks by ID
+	seen := make(map[string]bool)
+	merged := []embedding.SearchResult{}
+
+	// Add primary results first
+	for _, result := range primary {
+		if !seen[result.Chunk.ID] {
+			seen[result.Chunk.ID] = true
+			merged = append(merged, result)
+		}
+	}
+
+	// Add additional results
+	for _, result := range additional {
+		if !seen[result.Chunk.ID] && len(merged) < maxResults {
+			seen[result.Chunk.ID] = true
+			merged = append(merged, result)
+		}
+	}
+
+	return merged
+}
+
+// formatDebugInfo formats debug information for display
+func formatDebugInfo(debug *ValidationDebugInfo) string {
+	var sections []string
+
+	sections = append(sections, "## 🔍 DEBUG INFORMATION")
+	sections = append(sections, fmt.Sprintf("**Timestamp:** %s", debug.Timestamp))
+	sections = append(sections, fmt.Sprintf("**Validation Iteration:** %d", debug.ValidationIteration))
+
+	if len(debug.TopSpecMatches) > 0 {
+		sections = append(sections, "\n### Top Spec Matches:")
+		for i, match := range debug.TopSpecMatches {
+			sections = append(sections, fmt.Sprintf("\n**Match %d (similarity: %.3f)**", i+1, match.Similarity))
+			sections = append(sections, fmt.Sprintf("```\n%s\n```", match.Content))
+		}
+	}
+
+	if len(debug.ClaimAnalysis) > 0 {
+		sections = append(sections, "\n### Claim-by-Claim Analysis:")
+		for _, claim := range debug.ClaimAnalysis {
+			sections = append(sections, fmt.Sprintf("\n**Claim:** \"%s\"", claim.OriginalClaim))
+			sections = append(sections, fmt.Sprintf("- Status: %s (confidence: %.2f)", claim.ValidationStatus, claim.Confidence))
+			if len(claim.Issues) > 0 {
+				sections = append(sections, fmt.Sprintf("- Issues: %s", strings.Join(claim.Issues, "; ")))
+			}
+			if len(claim.SpecEvidence) > 0 {
+				sections = append(sections, fmt.Sprintf("- Evidence: %s", strings.Join(claim.SpecEvidence, "; ")))
+			}
+		}
+	}
+
+	if debug.LLMReasoning != "" {
+		sections = append(sections, "\n### LLM Raw Response:")
+		sections = append(sections, "```json")
+		sections = append(sections, debug.LLMReasoning)
+		sections = append(sections, "```")
+	}
+
+	return strings.Join(sections, "\n")
+}
+
 func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content, specVersion string) ([]mcp.Content, error) {
 	// Start embedding generation span using telemetry builder
 	embeddingCtx, embeddingSpan := telemetry.StartEmbeddingSpan(ctx, content)
@@ -362,7 +610,7 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	// Start vector search span using telemetry builder
 	searchCtx, searchSpan := telemetry.StartRetrievalSpan(embeddingCtx, specVersion, defaultSearchTopK)
 
-	// Search for relevant spec sections
+	// Search for relevant spec sections using the original content
 	results, err := vectorDB.Search(specVersion, contentEmbedding, defaultSearchTopK)
 	if err != nil {
 		searchSpan.SetAttributes(attribute.String("search.error", err.Error()))
@@ -370,6 +618,13 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 		searchSpan.End()
 		return nil, fmt.Errorf("failed to search specifications: %w", err)
 	}
+
+	// Additionally, perform targeted searches for key concepts mentioned in the content
+	// This helps find specific protocol details that might not match the overall content embedding
+	additionalResults := performTargetedSearches(ctx, vectorDB, generator, content, specVersion)
+
+	// Merge and deduplicate results
+	results = mergeSearchResults(results, additionalResults, defaultSearchTopK*2)
 
 	// Convert search results for telemetry
 	var retrievalDocs []telemetry.RetrievalDocument
@@ -408,7 +663,7 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	_, analysisSpan := telemetry.StartAnalysisSpan(searchCtx, len(results), avgSimilarity)
 
 	// Analyze validation results
-	validationResult := analyzeContentValidation(searchCtx, generator, content, results, specVersion)
+	validationResult := analyzeContentValidation(searchCtx, vectorDB, generator, content, results, specVersion)
 
 	analysisSpan.SetAttributes(
 		attribute.Bool("validation.is_valid", validationResult.IsValid),
@@ -416,6 +671,24 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 		attribute.String("validation.spec_version", validationResult.SpecVersion),
 	)
 	analysisSpan.End()
+
+	// Check content stability before formatting
+	var stabilityMessage string
+	if validationResult.CorrectedVersion != "" {
+		stability := stabilityChecker.CheckStability(content, validationResult.CorrectedVersion)
+		stabilityMessage = stability.GetStabilityMessage()
+
+		// Log stability analysis for debugging
+		if stability.IsStable || stability.IsInLoop {
+			logger.WithRequestID(ctx).Warn("Content stability issue detected",
+				zap.Bool("is_stable", stability.IsStable),
+				zap.Bool("is_in_loop", stability.IsInLoop),
+				zap.Int("loop_length", stability.LoopLength),
+				zap.String("original_normalized", stability.NormalizedOriginal),
+				zap.String("validated_normalized", stability.NormalizedValidated),
+			)
+		}
+	}
 
 	// Create response using template formatting
 	matches := summarizeContentMatches(results, defaultMatchesShown)
@@ -425,6 +698,17 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 		workflow := FormatValidationWorkflow(validationResult, content)
 		return []mcp.Content{mcp.NewTextContent(workflow)}, nil
 	}
-	
+
+	// Prepend stability message if present
+	if stabilityMessage != "" {
+		formatted = stabilityMessage + "\n\n" + formatted
+	}
+
+	// Append debug info if available (controlled by environment variable)
+	if validationResult.DebugInfo != nil && os.Getenv("MCP_DEBUG") == "true" {
+		debugSection := formatDebugInfo(validationResult.DebugInfo)
+		formatted = formatted + "\n\n" + debugSection
+	}
+
 	return []mcp.Content{mcp.NewTextContent(formatted)}, nil
 }
