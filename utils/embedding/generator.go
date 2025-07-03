@@ -1,6 +1,7 @@
 package embedding
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -27,7 +28,7 @@ func NewGenerator() (*embedding.Generator, error) {
 }
 
 // GenerateSpecEmbeddings creates embeddings for all chunks in a spec
-func (g *BatchGenerator) GenerateSpecEmbeddings(version string, chunks []string) (*embedding.SpecEmbedding, error) {
+func (g *BatchGenerator) GenerateSpecEmbeddings(ctx context.Context, version string, chunks []string) (*embedding.SpecEmbedding, error) {
 	var embeddedChunks []embedding.EmbeddedChunk
 
 	for i, chunk := range chunks {
@@ -36,7 +37,7 @@ func (g *BatchGenerator) GenerateSpecEmbeddings(version string, chunks []string)
 		}
 
 		// Generate embedding
-		embeddingData, err := g.generator.GenerateEmbedding(chunk)
+		embeddingData, err := g.generator.GenerateEmbedding(ctx, chunk)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate embedding for chunk %d: %w", i, err)
 		}

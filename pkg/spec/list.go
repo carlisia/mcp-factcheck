@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/internal/utils"
@@ -23,7 +24,7 @@ func GetListSpecVersionsTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(ListSpecVersionsToolName, "List available MCP specification versions. Use this when users ask about MCP specs, what MCP versions exist, what specifications are available, or want to know which MCP versions they can validate against.", schemaBytes)
 }
 
-func HandleListSpecVersions(versionLister VersionLister, args any) ([]mcp.Content, error) {
+func HandleListSpecVersions(ctx context.Context, versionLister VersionLister, args any) ([]mcp.Content, error) {
 	versions, err := versionLister.ListVersions()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list spec versions: %w", err)

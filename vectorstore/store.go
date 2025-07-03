@@ -34,7 +34,13 @@ func (s *Store) Store(specEmbedding *embedding.SpecEmbedding) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Log error but don't fail since we're in cleanup
+			// Using fmt.Printf since we might not have a logger available in this package
+			fmt.Printf("Warning: Failed to close file %s: %v\n", filename, err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
@@ -53,7 +59,13 @@ func (s *Store) Load(version string) (*embedding.SpecEmbedding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Log error but don't fail since we're in cleanup
+			// Using fmt.Printf since we might not have a logger available in this package
+			fmt.Printf("Warning: Failed to close file %s: %v\n", filename, err)
+		}
+	}()
 
 	var specEmbedding embedding.SpecEmbedding
 	decoder := json.NewDecoder(file)

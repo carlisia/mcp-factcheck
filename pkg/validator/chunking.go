@@ -14,6 +14,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+// MIME types used in chunking
+const (
+	mimeTextPlain       = "text/plain"
+	mimeApplicationJSON = "application/json"
+)
+
 // ContentChunk represents a logical piece of content for validation
 type ContentChunk struct {
 	ID       string `json:"id"`
@@ -115,7 +121,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 	// Start content chunking span using telemetry builder
 	ctx, chunkingSpan := telemetry.NewSpanBuilder().
 		WithKind("CHAIN").
-		WithInput(content, "text/plain").
+		WithInput(content, mimeTextPlain).
 		WithCustom(
 			attribute.String("session.id", "chunked-validation"),
 			attribute.Int("content.length", len(content)),
@@ -132,7 +138,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		attribute.Int("chunks.total", chunkingResult.TotalChunks),
 		attribute.Int("chunks.total_chars", chunkingResult.TotalChars),
 		attribute.Int("chunks.estimated_tokens", chunkingResult.EstTokens),
-		attribute.String("output.mime_type", "application/json"),
+		attribute.String("output.mime_type", mimeApplicationJSON),
 	)
 
 	if len(chunkingResult.Chunks) == 0 {
@@ -148,7 +154,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		// Start span for individual chunk validation using telemetry builder
 		chunkCtx, chunkSpan := telemetry.NewSpanBuilder().
 			WithKind("CHAIN").
-			WithInput(chunk.Text, "text/plain").
+			WithInput(chunk.Text, mimeTextPlain).
 			WithCustom(
 				attribute.String("chunk.id", chunk.ID),
 				attribute.String("chunk.type", chunk.Type),
@@ -159,7 +165,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		// Generate embedding for this chunk using telemetry builder
 		embeddingCtx, embeddingSpan := telemetry.StartEmbeddingSpan(chunkCtx, chunk.Text)
 
-		chunkEmbedding, err := generator.GenerateEmbedding(chunk.Text)
+		chunkEmbedding, err := generator.GenerateEmbedding(embeddingCtx, chunk.Text)
 		embeddingSpan.End()
 
 		if err != nil {
@@ -223,7 +229,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 			attribute.Float64("chunk.confidence", validation.Confidence),
 			attribute.Bool("chunk.is_valid", validation.IsValid),
 			attribute.Int("chunk.matches_count", len(matches)),
-			attribute.String("output.mime_type", "application/json"),
+			attribute.String("output.mime_type", mimeApplicationJSON),
 		)
 		chunkSpan.End()
 
@@ -236,9 +242,6 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		// Track overall metrics
 		totalSimilarity += validation.Confidence
 		totalChunks++
-
-		// Use searchCtx to keep context chain
-		_ = searchCtx
 	}
 
 	// Create overall validation summary based on chunk results

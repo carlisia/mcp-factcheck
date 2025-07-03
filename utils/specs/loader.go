@@ -9,13 +9,19 @@ import (
 	"github.com/google/go-github/v57/github"
 )
 
+// File extensions for spec files
+const (
+	markdownExt = ".md"
+	mdxExt      = ".mdx"
+)
+
 // LoadSpec loads MCP specification from local directory or GitHub repo
-func LoadSpec(source SpecSource) ([]string, error) {
+func LoadSpec(ctx context.Context, source SpecSource) ([]string, error) {
 	switch source.Type {
 	case "local_dir":
 		return loadSpecFromLocal(source.Path)
 	case "github_repo":
-		return loadSpecFromMCPRepo(source.Path)
+		return loadSpecFromMCPRepo(ctx, source.Path)
 	default:
 		return nil, fmt.Errorf("unsupported spec source type: %s", source.Type)
 	}
@@ -28,7 +34,7 @@ func loadSpecFromLocal(specDir string) ([]string, error) {
 }
 
 // loadSpecFromMCPRepo loads markdown files from the MCP repository using GitHub API
-func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
+func loadSpecFromMCPRepo(ctx context.Context, repoPath string) ([]string, error) {
 	// Create GitHub client
 	var client *github.Client
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
@@ -38,7 +44,7 @@ func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
 	}
 
 	// Get directory tree recursively
-	tree, _, err := client.Git.GetTree(context.Background(), MCPRepoOwner, MCPRepoName, MCPRepoBranch, true)
+	tree, _, err := client.Git.GetTree(ctx, MCPRepoOwner, MCPRepoName, MCPRepoBranch, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GitHub tree: %w", err)
 	}
@@ -52,9 +58,9 @@ func loadSpecFromMCPRepo(repoPath string) ([]string, error) {
 		}
 
 		// Check if file is in the target directory and is a markdown file
-		if strings.HasPrefix(*entry.Path, repoPath) && (strings.HasSuffix(*entry.Path, ".md") || strings.HasSuffix(*entry.Path, ".mdx")) {
+		if strings.HasPrefix(*entry.Path, repoPath) && (strings.HasSuffix(*entry.Path, markdownExt) || strings.HasSuffix(*entry.Path, mdxExt)) {
 			// Get file content
-			fileContent, _, _, err := client.Repositories.GetContents(context.Background(), MCPRepoOwner, MCPRepoName, *entry.Path, &github.RepositoryContentGetOptions{
+			fileContent, _, _, err := client.Repositories.GetContents(ctx, MCPRepoOwner, MCPRepoName, *entry.Path, &github.RepositoryContentGetOptions{
 				Ref: MCPRepoBranch,
 			})
 			if err != nil {

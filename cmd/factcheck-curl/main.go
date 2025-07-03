@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -72,7 +73,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create MCP client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Printf("Warning: cleanup failed: %v", err)
+		}
+	}()
 
 	switch command {
 	case "initialize":
@@ -144,21 +149,44 @@ func NewMCPClient(serverCmd, dataDir string, timeout time.Duration) (*MCPClient,
 
 	// Initialize the connection
 	if err := client.Initialize(); err != nil {
-		client.Close()
+		// Try to clean up, but don't mask the original error
+		if closeErr := client.Close(); closeErr != nil {
+			return nil, fmt.Errorf("failed to initialize: %w (also failed to close: %v)", err, closeErr)
+		}
 		return nil, fmt.Errorf("failed to initialize: %w", err)
 	}
 
 	return client, nil
 }
 
-func (c *MCPClient) Close() {
+func (c *MCPClient) Close() error {
+	var errs []error
+	
 	if c.stdin != nil {
-		c.stdin.Close()
+		if err := c.stdin.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close stdin: %w", err))
+		}
 	}
+	
 	if c.cmd != nil && c.cmd.Process != nil {
-		c.cmd.Process.Kill()
-		c.cmd.Wait()
+		if err := c.cmd.Process.Kill(); err != nil {
+			// Process might have already exited, which is OK
+			if !strings.Contains(err.Error(), "process already finished") {
+				errs = append(errs, fmt.Errorf("failed to kill process: %w", err))
+			}
+		}
+		if err := c.cmd.Wait(); err != nil {
+			// Expect an error from Kill, but log other errors
+			if !strings.Contains(err.Error(), "signal: killed") {
+				errs = append(errs, fmt.Errorf("failed to wait for process: %w", err))
+			}
+		}
 	}
+	
+	if len(errs) > 0 {
+		return fmt.Errorf("cleanup errors: %v", errs)
+	}
+	return nil
 }
 
 func (c *MCPClient) sendRequest(method string, params any) (*Response, error) {
@@ -234,8 +262,13 @@ func (c *MCPClient) Initialize() error {
 		Jsonrpc: "2.0",
 		Method:  "initialized",
 	}
-	initData, _ := json.Marshal(initReq)
-	c.stdin.Write(append(initData, '\n'))
+	initData, err := json.Marshal(initReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal init request: %w", err)
+	}
+	if _, err := c.stdin.Write(append(initData, '\n')); err != nil {
+		return fmt.Errorf("failed to write init request: %w", err)
+	}
 
 	return nil
 }

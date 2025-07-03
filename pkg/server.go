@@ -222,7 +222,7 @@ func (s *FactCheckServer) registerTools() {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 
-		result, err := spec.HandleSearchSpec(s.vectorDB, s.generator, req)
+		result, err := spec.HandleSearchSpec(ctx, s.vectorDB, s.generator, req)
 
 		return result, err
 	})
@@ -231,7 +231,7 @@ func (s *FactCheckServer) registerTools() {
 		// Add request ID to context
 		ctx = telemetry.WithRequestID(ctx)
 
-		result, err := spec.HandleListSpecVersions(s.vectorDB, req)
+		result, err := spec.HandleListSpecVersions(ctx, s.vectorDB, req)
 
 		return result, err
 	})

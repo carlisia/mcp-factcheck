@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -29,7 +30,10 @@ func init() {
 	specCmd.Flags().StringVar(&specVersion, "version", "", "MCP spec version to extract (required)")
 	specCmd.Flags().StringVar(&specOutputPath, "output", "", "Output path for spec JSON file (default: ./data/specs/{version}-spec.json)")
 
-	specCmd.MarkFlagRequired("version")
+	if err := specCmd.MarkFlagRequired("version"); err != nil {
+		// This is a programming error, panic is appropriate
+		panic(fmt.Sprintf("Failed to mark 'version' flag as required: %v", err))
+	}
 }
 
 func runSpec(cmd *cobra.Command, args []string) error {
@@ -47,7 +51,7 @@ func runSpec(cmd *cobra.Command, args []string) error {
 		Path: specPath,
 	}
 
-	chunks, err := utilspecs.LoadSpec(specSource)
+	chunks, err := utilspecs.LoadSpec(context.Background(), specSource)
 	if err != nil {
 		return fmt.Errorf("failed to load spec: %w", err)
 	}
@@ -56,7 +60,7 @@ func runSpec(cmd *cobra.Command, args []string) error {
 
 	// Set default output path if not specified
 	if specOutputPath == "" {
-		specOutputPath = fmt.Sprintf("./data/specs/%s-spec.json", specVersion)
+		specOutputPath = fmt.Sprintf("%s%s%s", dataSpecsDir, specVersion, specFileSuffix)
 	}
 
 	// Save raw chunks to JSON file
@@ -72,7 +76,7 @@ func runSpec(cmd *cobra.Command, args []string) error {
 		log.Printf("Warning: Failed to load metadata: %v", err)
 	} else {
 		// Get commit hash and branch/tag info
-		ref, _, err := metadata.GetBranchOrTag(utilspecs.MCPRepoOwner, utilspecs.MCPRepoName, specVersion)
+		ref, _, err := metadata.GetBranchOrTag(context.Background(), utilspecs.MCPRepoOwner, utilspecs.MCPRepoName, specVersion)
 		if err != nil {
 			log.Printf("Warning: Failed to determine ref type: %v", err)
 			ref = utilspecs.MCPRepoBranch
@@ -116,7 +120,11 @@ func saveSpecToFile(chunks []string, path string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Warning: Failed to close file %s: %v", path, err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")

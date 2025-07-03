@@ -19,30 +19,38 @@ type ChunkingStrategy struct {
 	KeepHeaders     bool // Whether to keep headers with their content
 }
 
+// Strategy name constants
+const (
+	strategyParagraph = "paragraph"
+	strategySentence  = "sentence"
+	strategyBullet    = "bullet"
+	strategyFine      = "fine"
+)
+
 // DefaultStrategies provides common chunking strategies for different use cases.
 // The "fine" strategy is optimized for matching short queries, while "paragraph"
 // preserves more context for comprehensive understanding.
 var DefaultStrategies = map[string]ChunkingStrategy{
-	"paragraph": {
-		Name:         "paragraph",
+	strategyParagraph: {
+		Name:         strategyParagraph,
 		ChunkSize:    1000,
 		ChunkOverlap: 100,
 	},
-	"sentence": {
-		Name:            "sentence",
+	strategySentence: {
+		Name:            strategySentence,
 		ChunkSize:       300,
 		ChunkOverlap:    50,
 		SplitBySentence: true,
 	},
-	"bullet": {
-		Name:          "bullet",
+	strategyBullet: {
+		Name:          strategyBullet,
 		ChunkSize:     200,
 		ChunkOverlap:  0,
 		SplitByBullet: true,
 		KeepHeaders:   true,
 	},
-	"fine": {
-		Name:            "fine",
+	strategyFine: {
+		Name:            strategyFine,
 		ChunkSize:       150,
 		ChunkOverlap:    30,
 		SplitBySentence: true,

@@ -37,7 +37,7 @@ func GetLatestCommitHash(owner, repo, ref string) (string, error) {
 }
 
 // GetBranchOrTag determines if a ref is a branch or tag and returns the appropriate value
-func GetBranchOrTag(owner, repo, version string) (string, string, error) {
+func GetBranchOrTag(ctx context.Context, owner, repo, version string) (string, string, error) {
 	if version == "draft" {
 		// Draft always uses main branch
 		return "main", "branch", nil
@@ -53,13 +53,13 @@ func GetBranchOrTag(owner, repo, version string) (string, string, error) {
 
 	// Try to get it as a tag first
 	tagRef := "v" + version // Assuming tags are prefixed with 'v'
-	_, _, err := client.Git.GetRef(context.Background(), owner, repo, "refs/tags/"+tagRef)
+	_, _, err := client.Git.GetRef(ctx, owner, repo, "refs/tags/"+tagRef)
 	if err == nil {
 		return tagRef, "tag", nil
 	}
 
 	// If not a tag, might be a branch
-	_, _, err = client.Git.GetRef(context.Background(), owner, repo, "refs/heads/"+version)
+	_, _, err = client.Git.GetRef(ctx, owner, repo, "refs/heads/"+version)
 	if err == nil {
 		return version, "branch", nil
 	}

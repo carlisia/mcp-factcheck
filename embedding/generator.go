@@ -53,8 +53,8 @@ func max(a, b int) int {
 }
 
 // GenerateEmbedding creates an embedding for a single text chunk
-func (g *Generator) GenerateEmbedding(content string) ([]float64, error) {
-	resp, err := g.client.CreateEmbeddings(context.Background(), openai.EmbeddingRequest{
+func (g *Generator) GenerateEmbedding(ctx context.Context, content string) ([]float64, error) {
+	resp, err := g.client.CreateEmbeddings(ctx, openai.EmbeddingRequest{
 		Input: []string{content},
 		Model: openai.AdaEmbeddingV2,
 	})
@@ -114,7 +114,7 @@ type Claim struct {
 }
 
 // FactCheckAgainstSpec validates content claims against MCP specification sections
-func (g *Generator) FactCheckAgainstSpec(content string, specSections []string, compoundEvidence map[string]string) (*FactCheckResult, error) {
+func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, specSections []string, compoundEvidence map[string]string) (*FactCheckResult, error) {
 	// Create the fact-check prompt renderer
 	promptRenderer, err := prompts.NewFactCheckPrompt()
 	if err != nil {
@@ -138,7 +138,7 @@ func (g *Generator) FactCheckAgainstSpec(content string, specSections []string, 
 	}
 
 	resp, err := g.client.CreateChatCompletion(
-		context.Background(),
+		ctx,
 		openai.ChatCompletionRequest{
 			Model: factCheckModel,
 			Messages: []openai.ChatCompletionMessage{

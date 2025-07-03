@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,7 +29,10 @@ func init() {
 	embedCmd.Flags().StringVar(&embedVersion, "version", "", "MCP spec version to generate embeddings for (required)")
 	embedCmd.Flags().StringVar(&embedDataDir, "data-dir", "./data/embeddings", "Directory to store vector database")
 
-	embedCmd.MarkFlagRequired("version")
+	if err := embedCmd.MarkFlagRequired("version"); err != nil {
+		// This is a programming error, panic is appropriate
+		panic(fmt.Sprintf("Failed to mark 'version' flag as required: %v", err))
+	}
 }
 
 func runEmbed(cmd *cobra.Command, args []string) error {
@@ -41,10 +45,10 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 	if strings.HasSuffix(embedVersion, "-fine") {
 		// For fine-grained versions, use the fine-chunked file
 		baseVersion := strings.TrimSuffix(embedVersion, "-fine")
-		specFile = fmt.Sprintf("./data/specs/%s-spec-fine.json", baseVersion)
+		specFile = fmt.Sprintf("%s%s-spec-fine%s", dataSpecsDir, baseVersion, jsonExt)
 	} else {
 		// Regular spec file
-		specFile = fmt.Sprintf("./data/specs/%s-spec.json", embedVersion)
+		specFile = fmt.Sprintf("%s%s%s", dataSpecsDir, embedVersion, specFileSuffix)
 	}
 	chunks, err := loadChunksFromJSON(specFile)
 	if err != nil {
@@ -63,7 +67,7 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 	}
 
 	// Generate embeddings for all chunks
-	specEmbedding, err := generator.GenerateSpecEmbeddings(embedVersion, chunks)
+	specEmbedding, err := generator.GenerateSpecEmbeddings(context.Background(), embedVersion, chunks)
 	if err != nil {
 		return fmt.Errorf("failed to generate embeddings: %w", err)
 	}
@@ -108,7 +112,11 @@ func loadChunksFromJSON(filePath string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Warning: Failed to close file %s: %v", filePath, err)
+		}
+	}()
 
 	var data struct {
 		Chunks []string `json:"chunks"`

@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
@@ -46,7 +47,7 @@ func GetSearchSpecTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(SearchSpecToolName, "Search MCP specification using semantic similarity", schemaBytes)
 }
 
-func HandleSearchSpec(vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleSearchSpec(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
 	params, ok := args.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("arguments must be a map")
@@ -71,9 +72,9 @@ func HandleSearchSpec(vectorDB *mcpembedding.VectorDB, generator *embedding.Gene
 	}
 
 	// Generate embedding for query
-	queryEmbedding, err := generator.GenerateEmbedding(query)
+	queryEmbedding, err := generator.GenerateEmbedding(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
+		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
 
 	// Search specifications

@@ -173,7 +173,7 @@ func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, g
 		log.Error("Invalid arguments type",
 			zap.String("expected", "map[string]any"),
 			zap.String("actual", fmt.Sprintf("%T", args)))
-		return nil, fmt.Errorf("arguments must be a map")
+		return nil, errArgumentsNotMap
 	}
 
 	log.Debug("Processing validate_content request",
@@ -313,7 +313,7 @@ func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.Vector
 						zap.Int("subclaim_count", len(compound.SubClaims)))
 
 					// Search for evidence for each subclaim
-					err := SearchEvidenceForSubClaims(&compound, vectorDB, generator, specVersion, 10)
+					err := SearchEvidenceForSubClaims(ctx, &compound, vectorDB, generator, specVersion, 10)
 					if err == nil {
 						evidence := FormatCompoundClaimEvidence(compound)
 						compoundEvidence[compound.OriginalClaim] = evidence
@@ -335,7 +335,7 @@ func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.Vector
 	}
 
 	// Use LLM to fact-check the content against spec sections
-	factCheckResult, err := generator.FactCheckAgainstSpec(content, specSections, compoundEvidence)
+	factCheckResult, err := generator.FactCheckAgainstSpec(ctx, content, specSections, compoundEvidence)
 	if err != nil {
 		// Fallback to similarity-based validation if fact-checking fails
 		log.Error("Fact-checking failed, falling back to similarity validation", zap.Error(err))
@@ -482,7 +482,7 @@ func performTargetedSearches(ctx context.Context, vectorDB *mcpembedding.VectorD
 
 		for _, query := range queries {
 			// Generate embedding for the query
-			queryEmbedding, err := generator.GenerateEmbedding(query)
+			queryEmbedding, err := generator.GenerateEmbedding(ctx, query)
 			if err != nil {
 				log.Warn("Failed to generate embedding for query",
 					zap.String("query", query),
@@ -601,7 +601,7 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	embeddingCtx, embeddingSpan := telemetry.StartEmbeddingSpan(ctx, content)
 
 	// Generate embedding for content
-	contentEmbedding, err := generator.GenerateEmbedding(content)
+	contentEmbedding, err := generator.GenerateEmbedding(embeddingCtx, content)
 	embeddingSpan.End()
 	if err != nil {
 		embeddingSpan.SetAttributes(attribute.String("embedding.error", err.Error()))

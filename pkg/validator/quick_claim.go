@@ -74,7 +74,7 @@ func HandleCheckMCPQuickFact(ctx context.Context, vectorDB *mcpembedding.VectorD
 
 	params, ok := args.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("arguments must be a map")
+		return nil, errArgumentsNotMap
 	}
 
 	claim, ok := params["claim"].(string)
@@ -108,7 +108,7 @@ func HandleCheckMCPQuickFact(ctx context.Context, vectorDB *mcpembedding.VectorD
 	}
 
 	// Quick fact-check (no compound evidence for single claims)
-	factCheckResult, err := generator.FactCheckAgainstSpec(claim, specSections, nil)
+	factCheckResult, err := generator.FactCheckAgainstSpec(ctx, claim, specSections, nil)
 	if err != nil {
 		log.Error("Failed to fact-check claim", zap.Error(err))
 		// Fallback response
@@ -187,7 +187,7 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 			zap.String("original_claim", claim),
 			zap.String("search_query", query))
 
-		queryEmbedding, err := generator.GenerateEmbedding(query)
+		queryEmbedding, err := generator.GenerateEmbedding(ctx, query)
 		if err != nil {
 			log.Warn("Failed to generate embedding for query",
 				zap.String("query", query),

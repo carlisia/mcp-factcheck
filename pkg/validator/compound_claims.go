@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -137,6 +138,7 @@ func looksLikeSubjectVerb(text string) bool {
 
 // SearchEvidenceForSubClaims performs independent searches for each subclaim
 func SearchEvidenceForSubClaims(
+	ctx context.Context,
 	compound *CompoundClaim,
 	vectorDB *mcpembedding.VectorDB,
 	generator *embedding.Generator,
@@ -158,7 +160,7 @@ func SearchEvidenceForSubClaims(
 
 		for _, query := range subClaim.SearchQueries {
 			// Generate embedding for the query
-			queryEmbedding, err := generator.GenerateEmbedding(query)
+			queryEmbedding, err := generator.GenerateEmbedding(ctx, query)
 			if err != nil {
 				log.Warn("Failed to generate embedding for query",
 					zap.String("query", query),

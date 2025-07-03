@@ -69,7 +69,7 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 		log.Error("Invalid arguments type for validate_code",
 			zap.String("expected", "map[string]any"),
 			zap.String("actual", fmt.Sprintf("%T", args)))
-		return nil, fmt.Errorf("arguments must be a map")
+		return nil, errArgumentsNotMap
 	}
 
 	code, ok := params["code"].(string)
@@ -112,10 +112,10 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 
 	// Generate embedding for the code analysis
 	log.Debug("Generating embedding for code analysis")
-	codeEmbedding, err := generator.GenerateEmbedding(codeAnalysis)
+	codeEmbedding, err := generator.GenerateEmbedding(ctx, codeAnalysis)
 	if err != nil {
 		log.Error("Failed to generate code embedding", zap.Error(err))
-		return nil, fmt.Errorf("failed to generate code embedding: %w", err)
+		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
 
 	// Search for relevant spec sections
