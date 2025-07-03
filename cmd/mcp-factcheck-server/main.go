@@ -23,7 +23,12 @@ func main() {
 		// Can't use structured logging yet since it failed to initialize
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			// Use standard error output since logger might not be available
+			log.Printf("Failed to sync logger: %v\n", err)
+		}
+	}()
 
 	// Get structured logger for use in main
 	log := logger.Get()
