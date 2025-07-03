@@ -79,8 +79,13 @@ func (b *spanBuilder) WithRetrieval(query string, topK int, documents []Retrieva
 		}
 
 		for _, doc := range documents {
-			docJSON, _ := json.Marshal(doc)
-			docStrings = append(docStrings, string(docJSON))
+			docJSON, err := json.Marshal(doc)
+			if err != nil {
+				// If marshaling fails, create a simplified representation
+				docStrings = append(docStrings, fmt.Sprintf(`{"id":"%s","score":%f,"error":"%s"}`, doc.ID, doc.Score, err.Error()))
+			} else {
+				docStrings = append(docStrings, string(docJSON))
+			}
 
 			totalSimilarity += doc.Score
 			if doc.Score > maxSimilarity {
@@ -106,13 +111,18 @@ func (b *spanBuilder) WithRetrieval(query string, topK int, documents []Retrieva
 }
 
 func (b *spanBuilder) WithTool(name, description string, parameters any) SpanBuilder {
-	paramJSON, _ := json.Marshal(parameters)
-
+	paramJSON, err := json.Marshal(parameters)
+	
 	b.attributes = append(b.attributes,
 		attribute.String("tool.name", name),
 		attribute.String("tool.description", description),
-		attribute.String("tool.parameters", string(paramJSON)),
 	)
+	
+	if err != nil {
+		b.attributes = append(b.attributes, attribute.String("tool.parameters.error", err.Error()))
+	} else {
+		b.attributes = append(b.attributes, attribute.String("tool.parameters", string(paramJSON)))
+	}
 	return b
 }
 
@@ -132,13 +142,6 @@ func truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // Convenience functions for common span types
