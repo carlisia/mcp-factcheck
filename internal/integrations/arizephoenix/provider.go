@@ -91,21 +91,22 @@ func (p *Provider) StartSpan(ctx context.Context, name string, attrs ...attribut
 	// Apply content length limits for Phoenix compatibility
 	filteredAttrs := make([]attribute.KeyValue, 0, len(attrs))
 	for _, attr := range attrs {
-		if attr.Key == "input.value" || attr.Key == "output.value" {
+		switch attr.Key {
+		case "input.value", "output.value":
 			if len(attr.Value.AsString()) > p.config.MaxContentLength {
 				truncated := attr.Value.AsString()[:p.config.MaxContentLength] + "..."
 				filteredAttrs = append(filteredAttrs, attribute.String(string(attr.Key), truncated))
 			} else {
 				filteredAttrs = append(filteredAttrs, attr)
 			}
-		} else if attr.Key == "retrieval.query" {
+		case "retrieval.query":
 			if len(attr.Value.AsString()) > p.config.MaxAttributeLength {
 				truncated := attr.Value.AsString()[:p.config.MaxAttributeLength] + "..."
 				filteredAttrs = append(filteredAttrs, attribute.String(string(attr.Key), truncated))
 			} else {
 				filteredAttrs = append(filteredAttrs, attr)
 			}
-		} else {
+		default:
 			filteredAttrs = append(filteredAttrs, attr)
 		}
 	}

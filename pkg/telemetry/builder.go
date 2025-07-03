@@ -10,6 +10,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// MIME types for telemetry
+const (
+	mimeTextPlain       = "text/plain"
+	mimeApplicationJSON = "application/json"
+)
+
 // spanBuilder implements SpanBuilder interface
 type spanBuilder struct {
 	attributes []attribute.KeyValue
@@ -153,7 +159,7 @@ func StartValidationSpan(ctx context.Context, content, specVersion string, useCh
 	// Add request ID to span attributes if available
 	builder := NewSpanBuilder().
 		WithKind("CHAIN").
-		WithInput(content, "text/plain").
+		WithInput(content, mimeTextPlain).
 		WithCustom(
 			attribute.String("validation.spec_version", specVersion),
 			attribute.Bool("validation.use_chunking", useChunking),

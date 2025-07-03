@@ -7,6 +7,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// File path constants shared across commands
+const (
+	dataSpecsDir   = "./data/specs/"
+	specFileSuffix = "-spec.json"
+	jsonExt        = ".json"
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "specloader",
 	Short: "Utility tool for managing MCP fact-check specifications",
@@ -16,7 +23,6 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(specCmd)
 	rootCmd.AddCommand(embedCmd)
-	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(rechunkCmd)
 }
 

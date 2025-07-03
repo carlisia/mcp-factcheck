@@ -2,10 +2,16 @@ package validator
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
+)
+
+// Common errors used across validator package
+var (
+	errArgumentsNotMap = errors.New("arguments must be a map")
 )
 
 // ValidationResult represents a structured validation response

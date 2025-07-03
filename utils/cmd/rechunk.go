@@ -31,7 +31,10 @@ func init() {
 	rechunkCmd.Flags().StringVar(&rechunkInput, "input", "", "Input spec file (default: ./data/specs/{version}-spec.json)")
 	rechunkCmd.Flags().StringVar(&rechunkOutput, "output", "", "Output spec file (default: ./data/specs/{version}-spec-{strategy}.json)")
 
-	rechunkCmd.MarkFlagRequired("version")
+	if err := rechunkCmd.MarkFlagRequired("version"); err != nil {
+		// This is a programming error, panic is appropriate
+		panic(fmt.Sprintf("Failed to mark 'version' flag as required: %v", err))
+	}
 }
 
 func runRechunk(cmd *cobra.Command, args []string) error {
@@ -56,7 +59,11 @@ func runRechunk(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open input file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Warning: Failed to close file %s: %v", rechunkInput, err)
+		}
+	}()
 
 	var data struct {
 		Version string   `json:"version"`
@@ -122,7 +129,11 @@ func runRechunk(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		if err := outFile.Close(); err != nil {
+			log.Printf("Warning: Failed to close file %s: %v", rechunkOutput, err)
+		}
+	}()
 
 	encoder := json.NewEncoder(outFile)
 	encoder.SetIndent("", "  ")
