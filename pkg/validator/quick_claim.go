@@ -107,8 +107,8 @@ func HandleCheckMCPQuickFact(ctx context.Context, vectorDB *mcpembedding.VectorD
 		specSections = append(specSections, result.Chunk.Content)
 	}
 
-	// Quick fact-check
-	factCheckResult, err := generator.FactCheckAgainstSpec(claim, specSections)
+	// Quick fact-check (no compound evidence for single claims)
+	factCheckResult, err := generator.FactCheckAgainstSpec(claim, specSections, nil)
 	if err != nil {
 		log.Error("Failed to fact-check claim", zap.Error(err))
 		// Fallback response
@@ -125,20 +125,20 @@ func HandleCheckMCPQuickFact(ctx context.Context, vectorDB *mcpembedding.VectorD
 
 func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, claim string, specVersion string) ([]embedding.SearchResult, error) {
 	log := logger.WithRequestID(ctx)
-	
+
 	var allQueries []string
-	
+
 	// Always search with the original claim
 	allQueries = append(allQueries, claim)
-	
+
 	// Extract key terms from the claim
 	lowerClaim := strings.ToLower(claim)
-	
+
 	// If claim is about enforcement/requirements, search for implementation guidance
-	if strings.Contains(lowerClaim, "enforce") || 
-	   strings.Contains(lowerClaim, "require") ||
-	   strings.Contains(lowerClaim, "must") ||
-	   strings.Contains(lowerClaim, "guarantee") {
+	if strings.Contains(lowerClaim, "enforce") ||
+		strings.Contains(lowerClaim, "require") ||
+		strings.Contains(lowerClaim, "must") ||
+		strings.Contains(lowerClaim, "guarantee") {
 		// Extract what's being enforced/required
 		topic := extractTopicFromClaim(claim)
 		if topic != "" {
@@ -150,12 +150,12 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 			)
 		}
 	}
-	
+
 	// If claim is negative (never, doesn't, can't)
 	if strings.Contains(lowerClaim, "never") ||
-	   strings.Contains(lowerClaim, "doesn't") ||
-	   strings.Contains(lowerClaim, "does not") ||
-	   strings.Contains(lowerClaim, "cannot") {
+		strings.Contains(lowerClaim, "doesn't") ||
+		strings.Contains(lowerClaim, "does not") ||
+		strings.Contains(lowerClaim, "cannot") {
 		topic := extractTopicFromClaim(claim)
 		if topic != "" {
 			allQueries = append(allQueries,
@@ -165,12 +165,12 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 			)
 		}
 	}
-	
+
 	// If claim is about capabilities (supports, provides, handles)
 	if strings.Contains(lowerClaim, "support") ||
-	   strings.Contains(lowerClaim, "provide") ||
-	   strings.Contains(lowerClaim, "handle") ||
-	   strings.Contains(lowerClaim, "implement") {
+		strings.Contains(lowerClaim, "provide") ||
+		strings.Contains(lowerClaim, "handle") ||
+		strings.Contains(lowerClaim, "implement") {
 		// Try both protocol-level and implementation-level searches
 		allQueries = append(allQueries,
 			strings.Replace(claim, "MCP ", "protocol ", 1),
@@ -178,15 +178,15 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 			strings.Replace(claim, "MCP ", "specification ", 1),
 		)
 	}
-	
+
 	// Collect all results
 	resultMap := make(map[string]embedding.SearchResult)
-	
+
 	for _, query := range allQueries {
 		log.Debug("Aggressive claim search",
 			zap.String("original_claim", claim),
 			zap.String("search_query", query))
-			
+
 		queryEmbedding, err := generator.GenerateEmbedding(query)
 		if err != nil {
 			log.Warn("Failed to generate embedding for query",
@@ -194,7 +194,7 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 				zap.Error(err))
 			continue
 		}
-		
+
 		results, err := vectorDB.Search(specVersion, queryEmbedding, 10)
 		if err != nil {
 			log.Warn("Failed to search for query",
@@ -202,7 +202,7 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 				zap.Error(err))
 			continue
 		}
-		
+
 		for _, result := range results {
 			key := result.Chunk.Content
 			if existing, exists := resultMap[key]; !exists || result.Similarity > existing.Similarity {
@@ -210,26 +210,26 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 			}
 		}
 	}
-	
+
 	// Convert to slice and sort
 	var finalResults []embedding.SearchResult
 	for _, result := range resultMap {
 		finalResults = append(finalResults, result)
 	}
-	
+
 	// Sort by similarity
 	sort.Slice(finalResults, func(i, j int) bool {
 		return finalResults[i].Similarity > finalResults[j].Similarity
 	})
-	
+
 	// Limit results
 	if len(finalResults) > quickSearchTopK {
 		finalResults = finalResults[:quickSearchTopK]
 	}
-	
+
 	log.Debug("Aggressive search completed",
 		zap.Int("unique_results", len(finalResults)))
-	
+
 	return finalResults, nil
 }
 
@@ -237,40 +237,40 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.Ve
 func extractTopicFromClaim(claim string) string {
 	// Remove common prefixes
 	topic := strings.TrimPrefix(strings.ToLower(claim), "mcp ")
-	
+
 	// Common verb patterns to remove
-	verbs := []string{"enforces ", "never ", "doesn't ", "does not ", "provides ", 
-	                  "supports ", "handles ", "validates ", "implements "}
-	
+	verbs := []string{"enforces ", "never ", "doesn't ", "does not ", "provides ",
+		"supports ", "handles ", "validates ", "implements "}
+
 	for _, verb := range verbs {
 		if strings.HasPrefix(topic, verb) {
 			topic = strings.TrimPrefix(topic, verb)
 			break
 		}
 	}
-	
+
 	// Clean up the topic
 	topic = strings.TrimSpace(topic)
 	topic = strings.TrimSuffix(topic, ".")
-	
+
 	return topic
 }
 
 func formatQuickClaimResponse(claim string, factCheck *embedding.FactCheckResult, specVersion string) string {
 	var response strings.Builder
-	
+
 	// Status icon and claim
 	if factCheck.IsAccurate {
 		response.WriteString("✓ **Accurate**\n\n")
 	} else {
 		response.WriteString("✗ **Inaccurate**\n\n")
 	}
-	
+
 	response.WriteString(fmt.Sprintf("**Claim:** %s\n\n", claim))
-	
+
 	// What the spec actually says
 	response.WriteString("**What the spec says:**\n")
-	
+
 	if !factCheck.IsAccurate && len(factCheck.Corrections) > 0 {
 		// Show corrections
 		for _, correction := range factCheck.Corrections {
@@ -281,12 +281,12 @@ func formatQuickClaimResponse(claim string, factCheck *embedding.FactCheckResult
 	} else {
 		response.WriteString("- The specification does not support this claim.\n")
 	}
-	
+
 	// Add explanation if available
 	if len(factCheck.Claims) > 0 && factCheck.Claims[0].Explanation != "" {
 		response.WriteString(fmt.Sprintf("\n**Explanation:** %s\n", factCheck.Claims[0].Explanation))
 	}
-	
+
 	// Modal verb clarification if needed
 	if len(factCheck.AdvisoryLanguageIssues) > 0 {
 		response.WriteString("\n**Important distinction:**\n")
@@ -294,8 +294,8 @@ func formatQuickClaimResponse(claim string, factCheck *embedding.FactCheckResult
 			response.WriteString(fmt.Sprintf("- %s\n", issue))
 		}
 	}
-	
+
 	response.WriteString(fmt.Sprintf("\n*Checked against MCP spec %s*", specVersion))
-	
+
 	return response.String()
 }

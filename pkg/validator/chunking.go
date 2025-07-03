@@ -215,7 +215,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 		searchSpan.End()
 
 		// Analyze validation for this chunk
-		validation := analyzeChunkValidation(searchCtx, generator, chunk.Text, results, specVersion)
+		validation := analyzeChunkValidation(searchCtx, vectorDB, generator, chunk.Text, results, specVersion)
 		matches := summarizeChunkMatches(results, chunkMatchesShown)
 
 		// Add chunk validation results to span
@@ -326,7 +326,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 }
 
 // analyzeChunkValidation determines if a chunk is valid and provides insights
-func analyzeChunkValidation(ctx context.Context, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeChunkValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
@@ -338,7 +338,7 @@ func analyzeChunkValidation(ctx context.Context, generator *embedding.Generator,
 
 	// For chunks, we use the same fact-checking logic as single validation
 	// This ensures consistent validation across both modes
-	return analyzeContentValidation(ctx, generator, content, results, specVersion)
+	return analyzeContentValidation(ctx, vectorDB, generator, content, results, specVersion)
 }
 
 // summarizeChunkMatches creates concise summaries from search results for a chunk
