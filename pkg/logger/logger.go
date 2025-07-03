@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"go.uber.org/zap"
@@ -58,8 +59,13 @@ func (e *orderedJSONEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.F
 	// Write message
 	buf.AppendString(`,"msg":"`)
 	// Escape the message for JSON
-	escaped, _ := json.Marshal(entry.Message)
-	buf.AppendBytes(escaped[1 : len(escaped)-1]) // Remove quotes
+	escaped, err := json.Marshal(entry.Message)
+	if err != nil {
+		// Fallback to raw message with basic escaping
+		buf.AppendString(strings.ReplaceAll(entry.Message, `"`, `\"`))
+	} else if len(escaped) >= 2 {
+		buf.AppendBytes(escaped[1 : len(escaped)-1]) // Remove quotes
+	}
 	buf.AppendString(`"`)
 
 	// Add custom fields
@@ -70,18 +76,34 @@ func (e *orderedJSONEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.F
 
 	// Write remaining fields
 	for k, v := range enc.Fields {
-		data, _ := json.Marshal(v)
-		buf.AppendString(`,"`)
-		buf.AppendString(k)
-		buf.AppendString(`":`)
-		buf.AppendBytes(data)
+		data, err := json.Marshal(v)
+		if err != nil {
+			// If marshaling fails, write error as string
+			buf.AppendString(`,"`)
+			buf.AppendString(k)
+			buf.AppendString(`":"[marshal error: `)
+			buf.AppendString(err.Error())
+			buf.AppendString(`]"`)
+		} else {
+			buf.AppendString(`,"`)
+			buf.AppendString(k)
+			buf.AppendString(`":`)
+			buf.AppendBytes(data)
+		}
 	}
 
 	// Add stack trace if present
 	if entry.Stack != "" {
 		buf.AppendString(`,"stacktrace":`)
-		data, _ := json.Marshal(entry.Stack)
-		buf.AppendBytes(data)
+		data, err := json.Marshal(entry.Stack)
+		if err != nil {
+			// Fallback to escaped string
+			buf.AppendString(`"`)
+			buf.AppendString(strings.ReplaceAll(entry.Stack, `"`, `\"`))
+			buf.AppendString(`"`)
+		} else {
+			buf.AppendBytes(data)
+		}
 	}
 
 	// Close JSON object
@@ -175,11 +197,12 @@ func WithRequestIDSugar(ctx context.Context) *zap.SugaredLogger {
 	return WithRequestID(ctx).Sugar()
 }
 
-// Sync flushes any buffered log entries
-func Sync() {
+// Sync flushes any buffered log entries. Returns error if sync fails.
+func Sync() error {
 	if globalLogger != nil {
-		globalLogger.Sync()
+		return globalLogger.Sync()
 	}
+	return nil
 }
 
 // IsDevMode checks if we're in development mode based on environment
