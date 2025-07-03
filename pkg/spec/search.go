@@ -1,12 +1,12 @@
 package spec
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/internal/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -42,7 +42,7 @@ func GetSearchSpecTool() mcp.Tool {
 		},
 		"required": []string{"query"},
 	}
-	schemaBytes, _ := json.Marshal(schema)
+	schemaBytes := utils.MustMarshalSchema(schema, SearchSpecToolName)
 	return mcp.NewToolWithRawSchema(SearchSpecToolName, "Search MCP specification using semantic similarity", schemaBytes)
 }
 

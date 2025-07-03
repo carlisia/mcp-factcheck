@@ -11,6 +11,7 @@ import (
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/internal/utils"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -61,13 +62,6 @@ func getContentPreview(content string, maxLen int) string {
 }
 
 // Helper functions for OpenInference
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func getMaxSimilarity(results []embedding.SearchResult) float64 {
 	if len(results) == 0 {
 		return 0.0
@@ -92,6 +86,14 @@ func getMinSimilarity(results []embedding.SearchResult) float64 {
 		}
 	}
 	return min
+}
+
+// truncateString safely truncates a string to maxLen characters
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 type ValidateContentArgs struct {
@@ -134,7 +136,7 @@ func GetCheckMCPClaimTool() mcp.Tool {
 		},
 		"required": []string{"content"},
 	}
-	schemaBytes, _ := json.Marshal(schema)
+	schemaBytes := utils.MustMarshalSchema(schema, checkMCPClaimToolName)
 
 	description := `Validate any MCP-related content against the official specification to check accuracy and completeness.
 
@@ -318,7 +320,7 @@ func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.Vector
 
 						log.Debug("Generated compound evidence",
 							zap.String("claim", compound.OriginalClaim),
-							zap.String("evidence_summary", evidence[:min(200, len(evidence))]))
+							zap.String("evidence_summary", truncateString(evidence, 200)))
 					} else {
 						log.Warn("Failed to search evidence for compound claim",
 							zap.String("claim", compound.OriginalClaim),
@@ -626,20 +628,9 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 	// Merge and deduplicate results
 	results = mergeSearchResults(results, additionalResults, defaultSearchTopK*2)
 
-	// Convert search results for telemetry
-	var retrievalDocs []telemetry.RetrievalDocument
+	// Calculate average similarity for telemetry
 	var totalSimilarity float64
-	for i, result := range results {
-		retrievalDocs = append(retrievalDocs, telemetry.RetrievalDocument{
-			ID:      fmt.Sprintf("mcp_doc_%d", i),
-			Score:   result.Similarity,
-			Content: result.Chunk.Content,
-			Metadata: map[string]interface{}{
-				"source":     "mcp_specification",
-				"version":    specVersion,
-				"chunk_type": "specification_section",
-			},
-		})
+	for _, result := range results {
 		totalSimilarity += result.Similarity
 	}
 
@@ -647,7 +638,7 @@ func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 
 	// Add retrieval results to span using telemetry builder
 	searchSpan.SetAttributes(
-		attribute.String("retrieval.query", content[:min(200, len(content))]),
+		attribute.String("retrieval.query", truncateString(content, 200)),
 		attribute.Int("retrieval.top_k", defaultSearchTopK),
 		attribute.Float64("retrieval.similarity.avg", avgSimilarity),
 		attribute.Float64("retrieval.similarity.max", getMaxSimilarity(results)),

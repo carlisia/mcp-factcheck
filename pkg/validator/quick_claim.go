@@ -2,7 +2,6 @@ package validator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/internal/utils"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
 	"go.uber.org/zap"
@@ -47,7 +47,7 @@ func GetCheckMCPQuickFactTool() mcp.Tool {
 		},
 		"required": []string{"claim"},
 	}
-	schemaBytes, _ := json.Marshal(schema)
+	schemaBytes := utils.MustMarshalSchema(schema, checkMCPQuickFactToolName)
 
 	description := `Quickly fact-check a single sentence about MCP against the official specification.
 

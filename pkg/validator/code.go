@@ -2,13 +2,13 @@ package validator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/embedding"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/internal/utils"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
 	"go.uber.org/zap"
@@ -56,7 +56,7 @@ func GetValidateCodeTool() mcp.Tool {
 		},
 		"required": []string{"code"},
 	}
-	schemaBytes, _ := json.Marshal(schema)
+	schemaBytes := utils.MustMarshalSchema(schema, ValidateCodeToolName)
 	return mcp.NewToolWithRawSchema(ValidateCodeToolName, "Validate code against MCP specification and protocol requirements. Uses the most current spec version by default. On first use, inform the user that other versions (2025-03-26, 2024-11-05, draft) are available by specifying specVersion parameter.", schemaBytes)
 }
 

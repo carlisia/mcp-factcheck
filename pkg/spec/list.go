@@ -1,9 +1,9 @@
 package spec
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/carlisia/mcp-factcheck/internal/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -19,7 +19,7 @@ func GetListSpecVersionsTool() mcp.Tool {
 		"type":       "object",
 		"properties": map[string]any{},
 	}
-	schemaBytes, _ := json.Marshal(schema)
+	schemaBytes := utils.MustMarshalSchema(schema, ListSpecVersionsToolName)
 	return mcp.NewToolWithRawSchema(ListSpecVersionsToolName, "List available MCP specification versions. Use this when users ask about MCP specs, what MCP versions exist, what specifications are available, or want to know which MCP versions they can validate against.", schemaBytes)
 }
 
