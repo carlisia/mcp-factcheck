@@ -1,0 +1,301 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  # Binary names
+  SERVER_BINARY: mcp-factcheck-server
+  CLIENT_BINARY: factcheck-curl
+  LOADER_BINARY: specloader
+
+  # Directories
+  BIN_DIR: ./bin
+  DATA_DIR: ./data
+  EMBEDDINGS_DIR: ./data/embeddings
+  SPECS_DIR: ./data/specs
+
+  # Go build flags
+  GO_FLAGS: -v
+  LDFLAGS: -s -w
+
+  # Default spec version
+  DEFAULT_SPEC_VERSION: draft
+
+env:
+  CGO_ENABLED: "0"
+
+# Global options
+silent: false
+output: prefixed
+
+tasks:
+  # Quick Start:
+  #   1. task setup                    # Extract specs and generate embeddings (requires OPENAI_API_KEY)
+  #   2. task run:server               # Start the MCP server
+  #   3. task run:curl -- tools/list   # Test the server
+  #
+  # Common workflows:
+  #   task check                       # Run all quality checks before committing
+  #   task dev                         # Start development mode with auto-reload
+  #   task test:coverage               # Run tests with coverage report
+  #
+  # Getting help:
+  #   task --list                      # List all available tasks
+  #   task --summary <task-name>       # Show detailed info about a task
+
+  # ============================================================================
+  # BUILD TASKS
+  # ============================================================================
+
+  # Build all binaries
+  build:
+    desc: Build all binaries
+    deps:
+      - build:server
+      - build:client
+      - build:loader
+    cmds:
+      - echo "All builds complete - binaries in {{.BIN_DIR}}/"
+
+  # Build the main MCP fact-check server binary
+  build:server:
+    desc: Build the MCP fact-check server
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - echo "Building {{.SERVER_BINARY}}..."
+      - go build {{.GO_FLAGS}} -ldflags="{{.LDFLAGS}}" -o {{.BIN_DIR}}/{{.SERVER_BINARY}} ./cmd/mcp-factcheck-server
+    sources:
+      - ./cmd/mcp-factcheck-server/**/*.go
+      - ./pkg/**/*.go
+      - ./internal/**/*.go
+      - ./embedding/**/*.go
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BIN_DIR}}/{{.SERVER_BINARY}}"
+
+  # Build the curl-based test client
+  build:client:
+    desc: Build the fact-check curl client
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - echo "Building {{.CLIENT_BINARY}}..."
+      - go build {{.GO_FLAGS}} -ldflags="{{.LDFLAGS}}" -o {{.BIN_DIR}}/{{.CLIENT_BINARY}} ./cmd/factcheck-curl
+    sources:
+      - ./cmd/factcheck-curl/**/*.go
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BIN_DIR}}/{{.CLIENT_BINARY}}"
+
+  # Build the spec loader utility for extracting and embedding specs
+  build:loader:
+    desc: Build the spec loader utility
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - echo "Building {{.LOADER_BINARY}}..."
+      - go build {{.GO_FLAGS}} -ldflags="{{.LDFLAGS}}" -o {{.BIN_DIR}}/{{.LOADER_BINARY}} ./utils/cmd
+    sources:
+      - ./utils/**/*.go
+      - ./internal/**/*.go
+      - ./embedding/**/*.go
+      - ./vectorstore/**/*.go
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BIN_DIR}}/{{.LOADER_BINARY}}"
+
+  # ============================================================================
+  # CODE QUALITY TASKS
+  # ============================================================================
+
+  # Run all linters but don't fail on errors (for quick checks)
+  lint:
+    desc: Run linter, report lint issues (doesn't fail on lint errors)
+    cmds:
+      - cmd: golangci-lint run --timeout 5m
+        ignore_error: true
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint is not installed. Please install it: https://golangci-lint.run/usage/install/"
+
+  # Run linters and automatically fix issues where possible
+  lint:fix:
+    desc: Run linter, apply fixes.
+    cmds:
+      - golangci-lint run --fix ./...
+
+  # Format all Go code according to gofmt standards
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+      - 'echo "Code formatted"'
+
+  # Run Go's built-in static analysis tool
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+      - 'echo "Vet complete"'
+
+  # Run all code quality checks in sequence
+  check:
+    desc: Run all checks (fmt, vet, lint, test)
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: lint
+      - task: test
+
+  # ============================================================================
+  # TESTING TASKS
+  # ============================================================================
+
+  # Run all unit tests with verbose output
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test -v ./...
+
+  # Run tests and generate HTML coverage report
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -v -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
+
+  # ============================================================================
+  # RUN/DEVELOPMENT TASKS
+  # ============================================================================
+
+  # Run the MCP server (builds first if needed)
+  # The server will use stdio transport by default for MCP communication
+  # Example:
+  #   task run:server
+  run:server:
+    desc: Run the MCP fact-check server
+    deps: [build:server]
+    cmds:
+      - "{{.BIN_DIR}}/{{.SERVER_BINARY}} --data-dir {{.EMBEDDINGS_DIR}}"
+
+  # Run the curl client to test the server
+  # Examples:
+  #   task run:curl -- tools/list
+  #   task run:curl -- tools/call search_spec '{"query":"initialization"}'
+  #   task run:curl -- tools/call validate_code '{"code":"import mcp from \"@modelcontextprotocol/sdk\""}'
+  run:curl:
+    desc: Run factcheck-curl to test the server
+    deps: [build:client]
+    cmds:
+      - "{{.BIN_DIR}}/{{.CLIENT_BINARY}} --cmd {{.BIN_DIR}}/{{.SERVER_BINARY}} --data-dir {{.EMBEDDINGS_DIR}} {{.CLI_ARGS}}"
+
+  # Watch files and auto-rebuild/restart server on changes
+  # Requires 'entr' to be installed: https://github.com/eradman/entr
+  # Example:
+  #   task dev
+  # Then edit any .go file and the server will automatically restart
+  dev:
+    desc: Development mode - rebuild and run server on file changes
+    deps: [build:server]
+    cmds:
+      - 'echo "Starting development mode (requires entr to be installed)..."'
+      - find . -name "*.go" | entr -r task run:server
+
+  # ============================================================================
+  # DATA MANAGEMENT TASKS
+  # ============================================================================
+
+  # Extract MCP specification from GitHub for a specific version
+  # Examples:
+  #   task extract:spec                    # extracts draft version (default)
+  #   task extract:spec -- draft           # extracts draft version
+  #   task extract:spec -- 2025-06-18      # extracts specific version
+  #   task extract:spec -- 2024-11-05      # extracts older version
+  extract:spec:
+    desc: Extract MCP specification from GitHub
+    deps: [build:loader]
+    vars:
+      VERSION: "{{.CLI_ARGS | default .DEFAULT_SPEC_VERSION}}"
+    cmds:
+      - "{{.BIN_DIR}}/{{.LOADER_BINARY}} spec --version {{.VERSION}}"
+      - 'echo "Extracted spec version {{.VERSION}}"'
+
+  # Generate vector embeddings for a spec version
+  # Examples:
+  #   task generate:embeddings              # generates for draft (default)
+  #   task generate:embeddings -- draft     # generates for draft
+  #   task generate:embeddings -- 2025-06-18  # generates for specific version
+  # Note: Requires OPENAI_API_KEY environment variable to be set
+  generate:embeddings:
+    desc: Generate embeddings for a spec version
+    deps: [build:loader]
+    vars:
+      VERSION: "{{.CLI_ARGS | default .DEFAULT_SPEC_VERSION}}"
+    cmds:
+      - "{{.BIN_DIR}}/{{.LOADER_BINARY}} embed --version {{.VERSION}}"
+      - 'echo "Generated embeddings for version {{.VERSION}}"'
+
+  # Extract and generate embeddings for all supported spec versions
+  # This task runs automatically for all versions: draft, 2025-06-18, 2025-03-26, 2024-11-05
+  # Note: Requires OPENAI_API_KEY environment variable to be set
+  # Example:
+  #   export OPENAI_API_KEY=sk-...
+  #   task setup
+  setup:
+    desc: Initial setup - extract specs and generate embeddings for all versions
+    deps: [build:loader]
+    cmds:
+      - mkdir -p {{.SPECS_DIR}} {{.EMBEDDINGS_DIR}}
+      - for: [draft, "2025-06-18", "2025-03-26", "2024-11-05"]
+        cmd: |
+          echo "Processing version {{.ITEM}}..."
+          {{.BIN_DIR}}/{{.LOADER_BINARY}} spec --version {{.ITEM}}
+          {{.BIN_DIR}}/{{.LOADER_BINARY}} embed --version {{.ITEM}}
+
+  # Show which spec versions have embeddings available
+  list:versions:
+    desc: List available MCP spec versions in embeddings
+    cmds:
+      - 'ls -la {{.EMBEDDINGS_DIR}}/*.json 2>/dev/null | awk -F"/" "{print \$NF}" | sed "s/.json//" || echo "No embeddings found. Run ''task setup'' first."'
+
+  # ============================================================================
+  # MAINTENANCE TASKS
+  # ============================================================================
+
+  # Remove all build artifacts and generated files
+  clean:
+    desc: Clean build artifacts and generated files
+    cmds:
+      - rm -rf {{.BIN_DIR}}
+      - rm -f coverage.out coverage.html
+      - go clean -cache
+      - 'echo "Cleaned build artifacts"'
+
+  # Download and update Go module dependencies
+  deps:
+    desc: Download and tidy Go dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+      - 'echo "Dependencies updated"'
+
+  # Install built binaries to system GOPATH
+  install:
+    desc: Install binaries to GOPATH/bin
+    deps: [build]
+    cmds:
+      - cp {{.BIN_DIR}}/{{.SERVER_BINARY}} $(go env GOPATH)/bin/
+      - cp {{.BIN_DIR}}/{{.CLIENT_BINARY}} $(go env GOPATH)/bin/
+      - cp {{.BIN_DIR}}/{{.LOADER_BINARY}} $(go env GOPATH)/bin/
+      - 'echo "Installed binaries to $(go env GOPATH)/bin/"'
+
+  # Remove installed binaries from system GOPATH
+  uninstall:
+    desc: Remove installed binaries from GOPATH/bin
+    cmds:
+      - rm -f $(go env GOPATH)/bin/{{.SERVER_BINARY}}
+      - rm -f $(go env GOPATH)/bin/{{.CLIENT_BINARY}}
+      - rm -f $(go env GOPATH)/bin/{{.LOADER_BINARY}}
+      - 'echo "Removed binaries from $(go env GOPATH)/bin/"'
