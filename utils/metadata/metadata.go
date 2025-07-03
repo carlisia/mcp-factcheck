@@ -23,12 +23,12 @@ type SpecMetadata struct {
 
 // VersionMetadata represents metadata for a single spec version
 type VersionMetadata struct {
-	ReleaseDate      string                        `json:"release_date,omitempty"`      // For official versions
+	ReleaseDate      string                        `json:"release_date,omitempty"` // For official versions
 	ExtractedDate    string                        `json:"extracted_date"`
 	SourceCommit     string                        `json:"source_commit"`
 	SourceRepo       string                        `json:"source_repo"`
-	SourceBranch     string                        `json:"source_branch,omitempty"`      // For draft
-	SourceTag        string                        `json:"source_tag,omitempty"`         // For releases
+	SourceBranch     string                        `json:"source_branch,omitempty"` // For draft
+	SourceTag        string                        `json:"source_tag,omitempty"`    // For releases
 	ExtractorVersion string                        `json:"extractor_version"`
 	Embeddings       map[string]*EmbeddingMetadata `json:"embeddings"`
 }

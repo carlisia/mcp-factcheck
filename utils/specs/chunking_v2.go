@@ -69,18 +69,18 @@ type ChunkResult struct {
 func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkResult {
 	var chunks []ChunkResult
 	position := 0
-	
+
 	// Track current header context
 	currentHeader := ""
 	headerPattern := regexp.MustCompile(`^#+\s+(.+)$`)
 	bulletPattern := regexp.MustCompile(`^[-*•]\s+(.+)$`)
-	
+
 	lines := strings.Split(content, "\n")
 	var currentChunk strings.Builder
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Check if this is a header
 		if matches := headerPattern.FindStringSubmatch(trimmed); matches != nil {
 			// Save any accumulated content
@@ -94,10 +94,10 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 				position++
 				currentChunk.Reset()
 			}
-			
+
 			// Update header context
 			currentHeader = matches[1]
-			
+
 			// Add header as its own chunk
 			chunks = append(chunks, ChunkResult{
 				Content:  trimmed,
@@ -108,7 +108,7 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 			position++
 			continue
 		}
-		
+
 		// Check if this is a bullet point
 		if strategy.SplitByBullet && bulletPattern.MatchString(trimmed) {
 			// Save any accumulated content
@@ -122,13 +122,13 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 				position++
 				currentChunk.Reset()
 			}
-			
+
 			// Create bullet chunk (include header context if enabled)
 			bulletContent := trimmed
 			if strategy.KeepHeaders && currentHeader != "" {
 				bulletContent = currentHeader + "\n" + trimmed
 			}
-			
+
 			chunks = append(chunks, ChunkResult{
 				Content:  bulletContent,
 				Type:     "bullet",
@@ -138,7 +138,7 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 			position++
 			continue
 		}
-		
+
 		// Handle regular content
 		if trimmed == "" {
 			// Empty line - might signal end of paragraph
@@ -158,7 +158,7 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 				currentChunk.WriteString(" ")
 			}
 			currentChunk.WriteString(trimmed)
-			
+
 			// Check if we should split by sentence
 			if strategy.SplitBySentence && strings.HasSuffix(trimmed, ".") {
 				chunks = append(chunks, ChunkResult{
@@ -172,7 +172,7 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 			}
 		}
 	}
-	
+
 	// Add any remaining content
 	if currentChunk.Len() > 0 {
 		chunks = append(chunks, ChunkResult{
@@ -182,39 +182,39 @@ func ParseMarkdownSectionsV2(content string, strategy ChunkingStrategy) []ChunkR
 			Position: position,
 		})
 	}
-	
+
 	// Apply sliding window if overlap is specified
 	if strategy.ChunkOverlap > 0 {
 		chunks = applySlidingWindow(chunks, strategy.ChunkSize, strategy.ChunkOverlap)
 	}
-	
+
 	return chunks
 }
 
 // applySlidingWindow creates overlapping chunks
 func applySlidingWindow(chunks []ChunkResult, targetSize, overlap int) []ChunkResult {
 	var windowedChunks []ChunkResult
-	
+
 	for i := 0; i < len(chunks); i++ {
 		// Combine chunks until we reach target size
 		combined := chunks[i].Content
 		parent := chunks[i].Parent
 		chunkType := chunks[i].Type
-		
+
 		// Look ahead to combine smaller chunks
 		j := i + 1
 		for j < len(chunks) && len(combined) < targetSize {
 			combined += " " + chunks[j].Content
 			j++
 		}
-		
+
 		windowedChunks = append(windowedChunks, ChunkResult{
 			Content:  combined,
 			Type:     chunkType,
 			Parent:   parent,
 			Position: i,
 		})
-		
+
 		// Move forward considering overlap
 		if overlap > 0 && j-i > 1 {
 			// Calculate how many chunks to skip based on overlap
@@ -225,7 +225,7 @@ func applySlidingWindow(chunks []ChunkResult, targetSize, overlap int) []ChunkRe
 			i += skip - 1
 		}
 	}
-	
+
 	return windowedChunks
 }
 

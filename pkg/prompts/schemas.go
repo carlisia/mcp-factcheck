@@ -7,23 +7,23 @@ import (
 
 // ResponseSchema defines the expected structure for LLM responses
 type ResponseSchema struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Version     string                 `json:"version"`
-	Fields      []ResponseField        `json:"fields"`
-	Required    []string               `json:"required"`
-	Examples    []json.RawMessage      `json:"examples,omitempty"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Version     string            `json:"version"`
+	Fields      []ResponseField   `json:"fields"`
+	Required    []string          `json:"required"`
+	Examples    []json.RawMessage `json:"examples,omitempty"`
 }
 
 // ResponseField defines a field in the response schema
 type ResponseField struct {
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Required    bool                   `json:"required"`
+	Name        string                   `json:"name"`
+	Type        string                   `json:"type"`
+	Description string                   `json:"description"`
+	Required    bool                     `json:"required"`
 	Properties  map[string]ResponseField `json:"properties,omitempty"`
-	Items       *ResponseField         `json:"items,omitempty"`
-	Example     any                    `json:"example,omitempty"`
+	Items       *ResponseField           `json:"items,omitempty"`
+	Example     any                      `json:"example,omitempty"`
 }
 
 // FactCheckResponseSchema defines the structured response for fact-checking

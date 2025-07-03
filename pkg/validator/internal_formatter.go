@@ -86,13 +86,13 @@ func NewInternalFormatter() (*InternalFormatter, error) {
 		"add": func(a, b int) int { return a + b },
 		"mul": func(a, b float64) float64 { return a * b },
 	}
-	
+
 	// Parse the template
 	tmpl, err := template.New("validation").Funcs(funcMap).Parse(formatTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse validation template: %w", err)
 	}
-	
+
 	return &InternalFormatter{tmpl: tmpl}, nil
 }
 
@@ -101,17 +101,17 @@ func NewInternalFormatter() (*InternalFormatter, error) {
 // showing claim extraction, validation results, missing best practices, and corrections.
 func (f *InternalFormatter) FormatValidationData(data *ValidationResponse) (string, error) {
 	var buf bytes.Buffer
-	
+
 	// Wrap data in expected structure
 	templateData := map[string]interface{}{
 		"validation_data": data,
 	}
-	
+
 	err := f.tmpl.Execute(&buf, templateData)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
-	
+
 	return buf.String(), nil
 }
 
@@ -122,18 +122,18 @@ func (f *InternalFormatter) FormatValidationData(data *ValidationResponse) (stri
 func FormatWithTemplate(result ValidationResult, matches []ValidationMatch) (string, error) {
 	// Build the validation response data
 	response := buildValidationResponse(result, matches)
-	
+
 	// Create formatter
 	formatter, err := NewInternalFormatter()
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Format using template
 	formatted, err := formatter.FormatValidationData(&response)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return formatted, nil
 }

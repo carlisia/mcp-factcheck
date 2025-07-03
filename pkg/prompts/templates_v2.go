@@ -21,14 +21,14 @@ func (v TemplateVersion) String() string {
 
 // PromptResponsePair defines a paired prompt and response template
 type PromptResponsePair struct {
-	Name             string           `json:"name"`
-	Description      string           `json:"description"`
-	Version          TemplateVersion  `json:"version"`
-	SpecVersions     []string         `json:"spec_versions"`
-	RequestTemplate  string           `json:"request_template"`
-	ResponseSchema   ResponseSchema   `json:"response_schema"`
-	ValidationRules  []ValidationRule `json:"validation_rules,omitempty"`
-	PostProcessing   PostProcessor    `json:"post_processing,omitempty"`
+	Name            string           `json:"name"`
+	Description     string           `json:"description"`
+	Version         TemplateVersion  `json:"version"`
+	SpecVersions    []string         `json:"spec_versions"`
+	RequestTemplate string           `json:"request_template"`
+	ResponseSchema  ResponseSchema   `json:"response_schema"`
+	ValidationRules []ValidationRule `json:"validation_rules,omitempty"`
+	PostProcessing  PostProcessor    `json:"post_processing,omitempty"`
 }
 
 // ValidationRule defines custom validation logic
@@ -47,9 +47,9 @@ type PostProcessor struct {
 
 // FactCheckTemplateV2 is the formalized fact-check prompt-response pair
 var FactCheckTemplateV2 = PromptResponsePair{
-	Name:        "fact-check-v2",
-	Description: "Validates MCP content against specification with structured response",
-	Version:     TemplateVersion{Major: 2, Minor: 0, Patch: 0},
+	Name:         "fact-check-v2",
+	Description:  "Validates MCP content against specification with structured response",
+	Version:      TemplateVersion{Major: 2, Minor: 0, Patch: 0},
 	SpecVersions: []string{"draft", "2025-06-18", "2025-03-26", "2024-11-05"},
 	RequestTemplate: `MCP Claim Extraction & Fact-Checking
 

@@ -72,7 +72,7 @@ func runSpec(cmd *cobra.Command, args []string) error {
 		log.Printf("Warning: Failed to load metadata: %v", err)
 	} else {
 		// Get commit hash and branch/tag info
-		ref, refType, err := metadata.GetBranchOrTag(utilspecs.MCPRepoOwner, utilspecs.MCPRepoName, specVersion)
+		ref, _, err := metadata.GetBranchOrTag(utilspecs.MCPRepoOwner, utilspecs.MCPRepoName, specVersion)
 		if err != nil {
 			log.Printf("Warning: Failed to determine ref type: %v", err)
 			ref = utilspecs.MCPRepoBranch

@@ -112,7 +112,7 @@ func (f *WorkflowFormatter) extractClaimsFromContent() []string {
 			}
 		}
 	}
-	
+
 	// If no bullet points found but content exists, treat sentences as claims
 	if len(claims) == 0 && f.content != "" {
 		// Split by sentence-ending punctuation
@@ -126,7 +126,7 @@ func (f *WorkflowFormatter) extractClaimsFromContent() []string {
 			}
 		}
 	}
-	
+
 	return claims
 }
 

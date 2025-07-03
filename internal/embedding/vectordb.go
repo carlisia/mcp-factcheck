@@ -26,7 +26,7 @@ func (db *VectorDB) Search(version string, queryEmbedding []float64, topK int) (
 		// Successfully found fine-grained embeddings
 		return results, nil
 	}
-	
+
 	// Fall back to regular version
 	return db.store.Search(version, queryEmbedding, topK)
 }
