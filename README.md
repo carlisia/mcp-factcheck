@@ -12,6 +12,7 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
 
 - **Semantic search** with OpenAI embeddings to find relevant specification sections
 - **AI-powered validation** to detect inaccuracies and suggest corrections
+- **Compound claim decomposition** to validate complex statements with multiple assertions
 - **Multiple spec versions** support (draft, 2025-06-18, 2025-03-26, 2024-11-05)
 
 ## Features
@@ -21,6 +22,7 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
 1. **`check_mcp_claim`** - Comprehensive validation of MCP-related content
 
    - Validates multi-claim content (documentation, tutorials, bullet points)
+   - Automatically decomposes compound claims (e.g., "X and Y") for accurate validation
    - Provides step-by-step validation workflow
    - Identifies missing best practices and modal verb issues
    - Returns corrected content with confidence scores

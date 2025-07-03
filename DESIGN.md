@@ -268,12 +268,15 @@ pkg/
 │   ├── builder.go         # Fluent span builder
 │   └── interfaces.go      # Provider, Middleware interfaces
 └── validator/             # Content/code validation
+    ├── claim_expansion.go # Query expansion for better search
     ├── claim_search.go    # Claim extraction and search enhancement
     ├── code.go            # validate_code implementation
+    ├── compound_claims.go # Compound claim decomposition
     ├── content.go         # check_mcp_claim implementation
     ├── format_workflow.go # Step-by-step workflow formatting
     ├── internal_formatter.go # Template-based formatting
-    └── quick_claim.go     # check_mcp_quick_fact implementation
+    ├── quick_claim.go     # check_mcp_quick_fact implementation
+    └── stability.go       # Content stability checking
 
 utils/
 ├── cmd/                   # CLI tools
@@ -309,6 +312,7 @@ utils/
 1. **False Negatives**: The system claimed "rate limit is not mentioned in the spec" when the spec actually states "Both parties SHOULD implement rate limiting"
 2. **Context Loss**: Short claims like "MCP enforces X" couldn't find spec sections saying "implementations should enforce X"
 3. **Compound Claims**: Bullet points with multiple claims (e.g., "enforces ACLs, rate limits, and provenance") needed to be split for accurate validation
+   - **Solution**: Implemented compound claim decomposition that splits "X and Y" into separate subclaims for independent validation
 
 ### Chunking Strategy
 
@@ -414,6 +418,44 @@ This ensures complete traceability without manual bookkeeping. The metadata file
 - Compound sentences with semicolons
 - List patterns ("enforces X, Y, and Z")
 - Maintains original claim for reference
+
+### Compound Claim Decomposition
+
+**Purpose**: Improve validation accuracy for claims containing "and" by searching for evidence independently for each subclaim.
+
+**How It Works**:
+
+1. **Detection**: Identifies claims containing " and " as potential compound claims
+2. **Decomposition**: Splits into subclaims while preserving subject/verb:
+   - "Servers implement validation and timeouts" → 
+     - "Servers implement validation"
+     - "Servers implement timeouts"
+3. **Independent Search**: Each subclaim is searched separately:
+   - Generates multiple search queries per subclaim
+   - Collects evidence from different spec sections
+   - Deduplicates results across queries
+4. **Evidence Aggregation**: Combines evidence for all subclaims
+5. **Validation**: Claim is accurate only if ALL subclaims have supporting evidence
+
+**Example Flow**:
+
+```text
+Original: "MCP supports request validation and timeouts"
+    ↓
+Decompose: ["MCP supports request validation", "MCP supports timeouts"]
+    ↓
+Search Each: 
+    - Subclaim 1 → Find validation mentions in spec
+    - Subclaim 2 → Find timeout mentions in spec
+    ↓
+Aggregate: Both found → Compound claim is ACCURATE
+```
+
+**Benefits**:
+
+- Prevents false negatives when concepts appear in different spec sections
+- More thorough evidence collection
+- Better handling of multi-part requirements
 
 ### Template System
 

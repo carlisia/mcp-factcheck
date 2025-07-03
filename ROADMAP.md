@@ -26,6 +26,7 @@
 | Aggressive search strategies for short queries                           | ✅ Completed   |
 | Context-aware validation (full statement understanding)                  | ✅ Completed   |
 | Validation explanation/reasoning output                                  | ✅ Completed   |
+| Compound claim decomposition for improved accuracy                       | ✅ Completed   |
 | User prompt: Spec diff to compare curr vs draft (topic-based or full)    | ❌ Planned     |
 | Support for validating partial/incomplete content                        | ✅ Completed   |
 | Schema-based code validation                                             | ❌ Planned     |
