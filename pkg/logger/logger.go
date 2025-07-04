@@ -1,3 +1,6 @@
+// Package logger provides structured JSON logging with ordered fields.
+// It uses zap for high-performance logging and ensures logs are written
+// to stderr to avoid interfering with MCP stdio communication.
 package logger
 
 import (
@@ -17,13 +20,15 @@ var (
 	sugar        *zap.SugaredLogger
 )
 
-// orderedJSONEncoder ensures timestamp comes first in JSON output
+// orderedJSONEncoder is a custom zapcore.Encoder that ensures timestamp appears
+// first in JSON output for better log readability and consistency.
 type orderedJSONEncoder struct {
 	zapcore.Encoder
 	pool buffer.Pool
 }
 
-// Clone implements zapcore.Encoder
+// Clone implements zapcore.Encoder interface by creating a new instance
+// with a cloned underlying encoder.
 func (e *orderedJSONEncoder) Clone() zapcore.Encoder {
 	return &orderedJSONEncoder{
 		Encoder: e.Encoder.Clone(),
@@ -31,7 +36,8 @@ func (e *orderedJSONEncoder) Clone() zapcore.Encoder {
 	}
 }
 
-// EncodeEntry ensures timestamp is the first field
+// EncodeEntry implements zapcore.Encoder interface and ensures timestamp is the first field
+// in the JSON output, followed by level, caller, message, and other fields in a consistent order.
 func (e *orderedJSONEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	// Get a buffer from the pool
 	buf := e.pool.Get()
@@ -113,7 +119,10 @@ func (e *orderedJSONEncoder) EncodeEntry(entry zapcore.Entry, fields []zapcore.F
 	return buf, nil
 }
 
-// Initialize sets up the global logger with appropriate configuration
+// Initialize sets up the global logger with appropriate configuration.
+// In development mode, it uses development config with debug level.
+// In production, it uses production config with info level.
+// All logs are written to stderr to avoid interfering with MCP stdio communication.
 func Initialize(isDevelopment bool) error {
 	var config zap.Config
 
@@ -163,7 +172,8 @@ func Initialize(isDevelopment bool) error {
 	return nil
 }
 
-// Get returns the global logger instance
+// Get returns the global logger instance.
+// If not initialized, it returns a no-op logger to prevent nil panics.
 func Get() *zap.Logger {
 	if globalLogger == nil {
 		// Fallback to no-op logger if not initialized
@@ -172,7 +182,9 @@ func Get() *zap.Logger {
 	return globalLogger
 }
 
-// Sugar returns the global sugared logger instance
+// Sugar returns the global sugared logger instance.
+// Sugared loggers provide a more ergonomic API for common logging patterns.
+// If not initialized, it returns a no-op sugared logger.
 func Sugar() *zap.SugaredLogger {
 	if sugar == nil {
 		// Fallback to no-op logger if not initialized
@@ -181,7 +193,9 @@ func Sugar() *zap.SugaredLogger {
 	return sugar
 }
 
-// WithRequestID returns a logger with the request ID from context
+// WithRequestID returns a logger with the request ID from context.
+// This enables request tracing across log entries for better debugging
+// and correlation of related log messages.
 func WithRequestID(ctx context.Context) *zap.Logger {
 	logger := Get()
 
@@ -192,12 +206,14 @@ func WithRequestID(ctx context.Context) *zap.Logger {
 	return logger
 }
 
-// WithRequestIDSugar returns a sugared logger with the request ID from context
+// WithRequestIDSugar returns a sugared logger with the request ID from context.
+// This combines the ergonomic API of sugared loggers with request tracing capabilities.
 func WithRequestIDSugar(ctx context.Context) *zap.SugaredLogger {
 	return WithRequestID(ctx).Sugar()
 }
 
 // Sync flushes any buffered log entries. Returns error if sync fails.
+// This should be called before program exit to ensure all logs are written.
 func Sync() error {
 	if globalLogger != nil {
 		return globalLogger.Sync()
@@ -205,7 +221,9 @@ func Sync() error {
 	return nil
 }
 
-// IsDevMode checks if we're in development mode based on environment
+// IsDevMode checks if we're in development mode based on environment variables.
+// It checks ENVIRONMENT, ENV, and DEBUG variables to determine the mode.
+// Returns true if any indicate development/debug mode.
 func IsDevMode() bool {
 	return os.Getenv("ENVIRONMENT") == "development" ||
 		os.Getenv("ENV") == "dev" ||

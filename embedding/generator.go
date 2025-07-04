@@ -1,3 +1,6 @@
+// Package embedding provides text embedding generation and fact-checking capabilities.
+// It uses OpenAI's API for generating embeddings and performing LLM-based validation
+// of content against MCP specifications.
 package embedding
 
 import (
@@ -19,12 +22,15 @@ const (
 	factCheckMaxTokens   = 2500 // Increased to handle longer validation responses with many claims
 )
 
-// Generator handles embedding generation and LLM operations using OpenAI
+// Generator handles embedding generation and LLM operations using OpenAI.
+// It provides methods for generating text embeddings and performing
+// fact-checking against MCP specifications.
 type Generator struct {
 	client *openai.Client
 }
 
-// NewGenerator creates a new embedding generator using environment variable
+// NewGenerator creates a new embedding generator using the OPENAI_API_KEY
+// environment variable. Returns an error if the key is not set.
 func NewGenerator() (*Generator, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
@@ -34,7 +40,8 @@ func NewGenerator() (*Generator, error) {
 	return NewGeneratorWithKey(apiKey)
 }
 
-// NewGeneratorWithKey creates a new embedding generator with provided API key
+// NewGeneratorWithKey creates a new embedding generator with the provided API key.
+// This allows for explicit key management without relying on environment variables.
 func NewGeneratorWithKey(apiKey string) (*Generator, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key cannot be empty")
@@ -44,15 +51,10 @@ func NewGeneratorWithKey(apiKey string) (*Generator, error) {
 	return &Generator{client: client}, nil
 }
 
-// max returns the larger of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
 
-// GenerateEmbedding creates an embedding for a single text chunk
+// GenerateEmbedding creates an embedding for a single text chunk using OpenAI's
+// text-embedding-ada-002 model. The returned embedding is a 1536-dimensional vector
+// suitable for semantic similarity search.
 func (g *Generator) GenerateEmbedding(ctx context.Context, content string) ([]float64, error) {
 	resp, err := g.client.CreateEmbeddings(ctx, openai.EmbeddingRequest{
 		Input: []string{content},
@@ -75,7 +77,8 @@ func (g *Generator) GenerateEmbedding(ctx context.Context, content string) ([]fl
 	return embedding, nil
 }
 
-// ClaimResult represents a single claim's fact-check result
+// ClaimResult represents a single claim's fact-check result including
+// accuracy assessment, corrections, and explanations for any issues found.
 type ClaimResult struct {
 	Claim       string `json:"claim"`
 	IsAccurate  bool   `json:"is_accurate"`
@@ -83,7 +86,8 @@ type ClaimResult struct {
 	Explanation string `json:"explanation"`
 }
 
-// FactCheckResponse represents the new format from the fact-checking prompt
+// FactCheckResponse represents the structured response from the LLM fact-checking
+// prompt. It includes individual claim analysis and overall accuracy assessment.
 type FactCheckResponse struct {
 	Claims                 []ClaimResult `json:"claims"`
 	OverallIsAccurate      bool          `json:"overall_is_accurate"`
@@ -92,7 +96,9 @@ type FactCheckResponse struct {
 	AdvisoryLanguageIssues []string      `json:"advisory_language_issues,omitempty"`
 }
 
-// FactCheckResult represents the result of fact-checking content against spec
+// FactCheckResult represents the comprehensive result of fact-checking content
+// against MCP specifications. It includes claim-by-claim analysis, best practice
+// recommendations, and advisory language clarifications.
 type FactCheckResult struct {
 	IsAccurate             bool     `json:"is_accurate"`
 	Inaccuracies           []string `json:"inaccuracies"`
@@ -105,7 +111,9 @@ type FactCheckResult struct {
 	RawResponse            string   `json:"-"`                        // Raw LLM response for debugging
 }
 
-// Claim represents a single claim with its validation details
+// Claim represents a single claim extracted from content with its validation details.
+// Each claim is assessed for accuracy against the MCP specification with corrections
+// and explanations provided when issues are found.
 type Claim struct {
 	Claim       string `json:"claim"`
 	IsAccurate  bool   `json:"is_accurate"`
@@ -114,6 +122,9 @@ type Claim struct {
 }
 
 // FactCheckAgainstSpec validates content claims against MCP specification sections
+// using an LLM. It extracts claims from the content, checks each against the provided
+// spec sections, and returns detailed validation results including corrections and
+// best practice recommendations.
 func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, specSections []string, compoundEvidence map[string]string) (*FactCheckResult, error) {
 	// Create the fact-check prompt renderer
 	promptRenderer, err := prompts.NewFactCheckPrompt()

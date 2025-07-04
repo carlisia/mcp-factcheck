@@ -1,3 +1,5 @@
+// Package spec provides MCP tools for searching and listing MCP specifications.
+// It implements semantic search capabilities and version management for MCP specs.
 package spec
 
 import (
@@ -11,24 +13,31 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// vectorDB defines the interface for vector database operations needed by search
+// vectorDB defines the interface for vector database operations needed by search.
+// It provides semantic search capabilities over embedded specification content.
 type vectorDB interface {
 	Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
 }
 
-// embeddingGenerator defines the interface for embedding generation needed by search
+// embeddingGenerator defines the interface for embedding generation needed by search.
+// It converts text queries into vector embeddings for semantic similarity matching.
 type embeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, content string) ([]float64, error)
 }
 
+// SearchSpecToolName is the name of the MCP tool for searching specifications.
 const SearchSpecToolName = "search_spec"
 
+// SearchSpecArgs contains the arguments for the search_spec tool.
 type SearchSpecArgs struct {
 	Query       string `json:"query"`
 	SpecVersion string `json:"spec_version,omitempty"`
 	TopK        int    `json:"top_k,omitempty"`
 }
 
+// GetSearchSpecTool returns the MCP tool definition for searching MCP specifications
+// using semantic similarity. The tool supports querying specific spec versions and
+// controlling the number of results returned.
 func GetSearchSpecTool() mcp.Tool {
 	schema := map[string]any{
 		"type": "object",
@@ -57,6 +66,9 @@ func GetSearchSpecTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(SearchSpecToolName, "Search MCP specification using semantic similarity", schemaBytes)
 }
 
+// HandleSearchSpec processes search requests against MCP specifications.
+// It generates embeddings for the query and performs semantic search to find
+// the most relevant specification sections.
 func HandleSearchSpec(ctx context.Context, db vectorDB, gen embeddingGenerator, args any) ([]mcp.Content, error) {
 	params, ok := args.(map[string]any)
 	if !ok {

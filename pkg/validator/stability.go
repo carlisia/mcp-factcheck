@@ -1,3 +1,5 @@
+// Package validator provides content and code validation against MCP specifications.
+// It includes stability checking to detect validation loops and ensure content convergence.
 package validator
 
 import (
@@ -7,14 +9,17 @@ import (
 	"unicode/utf8"
 )
 
-// ContentStabilityChecker helps detect when validation results in no meaningful changes
+// ContentStabilityChecker detects when validation results in no meaningful changes
+// or when content is cycling through states. It tracks content history to identify
+// validation loops and determine when content has reached a stable state.
 type ContentStabilityChecker struct {
 	// Track content hashes to detect circular validation
 	contentHistory []string
 	maxHistory     int
 }
 
-// NewContentStabilityChecker creates a new stability checker
+// NewContentStabilityChecker creates a new stability checker with a default
+// history size of 5 validation cycles.
 func NewContentStabilityChecker() *ContentStabilityChecker {
 	return &ContentStabilityChecker{
 		contentHistory: make([]string, 0, 5),
@@ -27,7 +32,9 @@ func (c *ContentStabilityChecker) Reset() {
 	c.contentHistory = make([]string, 0, 5)
 }
 
-// normalizeContent removes formatting variations that don't affect meaning
+// normalizeContent removes formatting variations that don't affect meaning.
+// It normalizes whitespace, line endings, and bullet point styles to allow
+// for accurate content comparison.
 func normalizeContent(content string) string {
 	// Normalize whitespace
 	normalized := strings.TrimSpace(content)
@@ -62,14 +69,18 @@ func normalizeContent(content string) string {
 	return strings.Join(lines, "\n")
 }
 
-// contentHash generates a hash of normalized content
+// contentHash generates a hash of normalized content using MD5.
+// The content is normalized before hashing to ensure consistent results
+// regardless of formatting variations.
 func contentHash(content string) string {
 	normalized := normalizeContent(content)
 	hash := md5.Sum([]byte(normalized))
 	return hex.EncodeToString(hash[:])
 }
 
-// CheckStability checks if content has stabilized (no changes) or is in a loop
+// CheckStability checks if content has stabilized (no changes) or is in a loop.
+// It compares the original and validated content after normalization and tracks
+// the content history to detect cycles.
 func (c *ContentStabilityChecker) CheckStability(originalContent, validatedContent string) StabilityResult {
 	origHash := contentHash(originalContent)
 	validatedHash := contentHash(validatedContent)
@@ -100,7 +111,9 @@ func (c *ContentStabilityChecker) CheckStability(originalContent, validatedConte
 	return result
 }
 
-// StabilityResult contains the analysis of content stability
+// StabilityResult contains the analysis of content stability after validation.
+// It indicates whether content is stable, in a loop, and provides normalized
+// versions of both original and validated content for comparison.
 type StabilityResult struct {
 	IsStable            bool   // Content hasn't changed meaningfully
 	IsInLoop            bool   // Content is cycling through states
@@ -109,7 +122,9 @@ type StabilityResult struct {
 	NormalizedValidated string // Validated content after normalization
 }
 
-// GetStabilityMessage returns a user-friendly message about the stability
+// GetStabilityMessage returns a user-friendly message about the stability state.
+// It provides clear feedback about whether content is already valid or if a
+// validation loop has been detected.
 func (r StabilityResult) GetStabilityMessage() string {
 	if r.IsStable {
 		return "✓ Content is already valid - no changes needed"

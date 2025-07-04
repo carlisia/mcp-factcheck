@@ -1,3 +1,5 @@
+// Package pkg provides the main MCP fact-check server implementation.
+// It exposes MCP tools for validating content and code against MCP specifications.
 package pkg
 
 import (
@@ -19,7 +21,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// FactCheckServer wraps the actual MCP server with fact-check specific functionality
+// FactCheckServer wraps the actual MCP server with fact-check specific functionality.
+// It provides MCP tools for validating content and code against MCP specifications
+// using semantic search and LLM-based fact-checking.
 type FactCheckServer struct {
 	vectorDB      *mcpembedding.VectorDB
 	generator     *embedding.Generator
@@ -29,23 +33,27 @@ type FactCheckServer struct {
 	promptService *prompts.Service
 }
 
-// zapError implements zap.ObjectMarshaler for structured error logging
+// zapError implements zap.ObjectMarshaler for structured error logging.
+// It provides consistent error formatting in JSON logs with code and message fields.
 type zapError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-// MarshalLogObject implements zap.ObjectMarshaler
+// MarshalLogObject implements zap.ObjectMarshaler interface to provide
+// structured logging of errors with consistent field names.
 func (e zapError) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddInt("code", e.Code)
 	enc.AddString("message", e.Message)
 	return nil
 }
 
-// ServerOption is a function that configures the FactCheckServer
+// ServerOption is a function that configures the FactCheckServer.
+// Options can be passed to NewFactCheckServer to customize server behavior.
 type ServerOption func(*serverConfig)
 
-// serverConfig holds configuration options for the server
+// serverConfig holds configuration options for the server.
+// It is modified by ServerOption functions during server initialization.
 type serverConfig struct {
 	logMCPMessages bool
 	logMCPPayloads bool
@@ -59,7 +67,10 @@ func WithMCPLogging(logMessages, logPayloads bool) ServerOption {
 	}
 }
 
-// NewFactCheckServer creates a new fact-check server instance using clean telemetry abstractions
+// NewFactCheckServer creates a new fact-check server instance.
+// It initializes the vector database, embedding generator, and MCP server with
+// all available fact-checking tools. The server logs to stderr to avoid
+// interfering with MCP stdio communication.
 func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...ServerOption) (*FactCheckServer, error) {
 	// Apply options
 	cfg := &serverConfig{
