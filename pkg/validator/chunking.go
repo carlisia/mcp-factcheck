@@ -324,7 +324,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 	}
 
 	// Format response
-	response := FormatChunkedValidationResult(aggregated)
+	response := formatChunkedValidationResult(aggregated)
 	return []mcp.Content{mcp.NewTextContent(response)}, nil
 }
 
@@ -384,8 +384,8 @@ func summarizeChunkMatches(results []embedding.SearchResult, maxMatches int) []V
 	return matches
 }
 
-// FormatChunkedValidationResult creates a structured response for chunked validation
-func FormatChunkedValidationResult(result AggregatedValidationResult) string {
+// formatChunkedValidationResult creates a structured response for chunked validation
+func formatChunkedValidationResult(result AggregatedValidationResult) string {
 	response := map[string]interface{}{
 		"validation_type": "chunked_content",
 		"total_chunks":    len(result.ChunkResults),
