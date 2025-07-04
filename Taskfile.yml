@@ -152,11 +152,11 @@ tasks:
   # TESTING TASKS
   # ============================================================================
 
-  # Run all unit tests with verbose output
+  # Run all unit tests with verbose output (exclude e2e tests)
   test:
     desc: Run unit tests
     cmds:
-      - go test -v ./...
+      - go test -v $(go list ./... | grep -v '/test/e2e')
 
   # Run tests and generate HTML coverage report
   test:coverage:
@@ -165,6 +165,23 @@ tasks:
       - go test -v -coverprofile=coverage.out ./...
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report generated: coverage.html"'
+
+  # Run end-to-end tests (requires valid OPENAI_API_KEY for full tests)
+  # These tests validate the MCP tool handlers with actual embeddings
+  # Example:
+  #   export OPENAI_API_KEY=sk-...
+  #   task test:e2e
+  test:e2e:
+    desc: Run end-to-end tests
+    deps: [build]
+    cmds:
+      - go test -v ./test/e2e/...
+
+  # Run all tests including both unit and e2e tests
+  # Note: e2e tests require OPENAI_API_KEY to be set
+  test:all:
+    desc: Run all tests (unit and e2e)
+    deps: [test, test:e2e]
 
   # ============================================================================
   # RUN/DEVELOPMENT TASKS

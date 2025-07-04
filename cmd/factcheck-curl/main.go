@@ -161,13 +161,13 @@ func NewMCPClient(serverCmd, dataDir string, timeout time.Duration) (*MCPClient,
 
 func (c *MCPClient) Close() error {
 	var errs []error
-	
+
 	if c.stdin != nil {
 		if err := c.stdin.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("failed to close stdin: %w", err))
 		}
 	}
-	
+
 	if c.cmd != nil && c.cmd.Process != nil {
 		if err := c.cmd.Process.Kill(); err != nil {
 			// Process might have already exited, which is OK
@@ -182,7 +182,7 @@ func (c *MCPClient) Close() error {
 			}
 		}
 	}
-	
+
 	if len(errs) > 0 {
 		return fmt.Errorf("cleanup errors: %v", errs)
 	}

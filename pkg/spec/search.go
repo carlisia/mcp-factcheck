@@ -11,6 +11,16 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+// vectorDB defines the interface for vector database operations needed by search
+type vectorDB interface {
+	Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
+}
+
+// embeddingGenerator defines the interface for embedding generation needed by search
+type embeddingGenerator interface {
+	GenerateEmbedding(ctx context.Context, content string) ([]float64, error)
+}
+
 const SearchSpecToolName = "search_spec"
 
 type SearchSpecArgs struct {
@@ -47,7 +57,7 @@ func GetSearchSpecTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(SearchSpecToolName, "Search MCP specification using semantic similarity", schemaBytes)
 }
 
-func HandleSearchSpec(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleSearchSpec(ctx context.Context, db vectorDB, gen embeddingGenerator, args any) ([]mcp.Content, error) {
 	params, ok := args.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("arguments must be a map")
@@ -72,13 +82,13 @@ func HandleSearchSpec(ctx context.Context, vectorDB *mcpembedding.VectorDB, gene
 	}
 
 	// Generate embedding for query
-	queryEmbedding, err := generator.GenerateEmbedding(ctx, query)
+	queryEmbedding, err := gen.GenerateEmbedding(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
 
 	// Search specifications
-	results, err := vectorDB.Search(specVersion, queryEmbedding, topK)
+	results, err := db.Search(specVersion, queryEmbedding, topK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search specifications: %w", err)
 	}
@@ -95,4 +105,9 @@ func HandleSearchSpec(ctx context.Context, vectorDB *mcpembedding.VectorDB, gene
 	}
 
 	return contentParts, nil
+}
+
+// HandleSearchSpecMCP is the MCP-compatible wrapper that accepts concrete types
+func HandleSearchSpecMCP(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+	return HandleSearchSpec(ctx, vectorDB, generator, args)
 }

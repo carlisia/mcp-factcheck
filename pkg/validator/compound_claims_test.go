@@ -79,7 +79,7 @@ func TestExtractKeyTerms(t *testing.T) {
 		{
 			name:     "Claim with punctuation",
 			claim:    "MCP provides tools, resources, and prompts.",
-			expected: []string{"mcp", "provides", "tools", "resources", "prompts"},
+			expected: []string{"MCP", "provides", "tools", "resources", "prompts"},
 		},
 	}
 

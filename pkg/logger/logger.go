@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-
 var (
 	globalLogger *zap.Logger
 	sugar        *zap.SugaredLogger

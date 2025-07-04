@@ -118,12 +118,12 @@ func (b *spanBuilder) WithRetrieval(query string, topK int, documents []Retrieva
 
 func (b *spanBuilder) WithTool(name, description string, parameters any) SpanBuilder {
 	paramJSON, err := json.Marshal(parameters)
-	
+
 	b.attributes = append(b.attributes,
 		attribute.String("tool.name", name),
 		attribute.String("tool.description", description),
 	)
-	
+
 	if err != nil {
 		b.attributes = append(b.attributes, attribute.String("tool.parameters.error", err.Error()))
 	} else {
