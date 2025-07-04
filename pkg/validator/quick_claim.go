@@ -20,6 +20,17 @@ const (
 	quickSearchTopK           = 15 // More results for better coverage
 )
 
+// Import aliases for compile-time checks
+type (
+	mcpVectorDB = mcpembedding.VectorDB
+)
+
+// Compile-time interface implementation checks
+var (
+	_ QuickFactVectorDB           = (*mcpVectorDB)(nil)
+	_ QuickFactEmbeddingGenerator = (*embedding.Generator)(nil)
+)
+
 // CheckMCPClaimArgs contains arguments for checking a single MCP claim.
 // It includes the claim text and optionally the spec version to validate against.
 type CheckMCPClaimArgs struct {
@@ -66,10 +77,21 @@ This tool is optimized for single sentences. For comprehensive content validatio
 	return mcp.NewToolWithRawSchema(checkMCPQuickFactToolName, description, schemaBytes)
 }
 
+// QuickFactVectorDB defines the interface for vector database operations needed by quick fact checking
+type QuickFactVectorDB interface {
+	Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
+}
+
+// QuickFactEmbeddingGenerator defines the interface for embedding and fact-checking operations
+type QuickFactEmbeddingGenerator interface {
+	GenerateEmbedding(ctx context.Context, text string) ([]float64, error)
+	FactCheckAgainstSpec(ctx context.Context, claim string, specSections []string, compoundEvidence map[string]string) (*embedding.FactCheckResult, error)
+}
+
 // HandleCheckMCPQuickFact handles quick fact-checking requests for single MCP claims.
 // It uses aggressive search strategies to find relevant spec sections and returns
 // a concise verdict on whether the claim is accurate according to the MCP specification.
-func HandleCheckMCPQuickFact(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleCheckMCPQuickFact(ctx context.Context, vectorDB QuickFactVectorDB, generator QuickFactEmbeddingGenerator, args any) ([]mcp.Content, error) {
 	log := logger.WithRequestID(ctx)
 
 	params, ok := args.(map[string]any)
@@ -123,7 +145,7 @@ func HandleCheckMCPQuickFact(ctx context.Context, vectorDB *mcpembedding.VectorD
 	return []mcp.Content{mcp.NewTextContent(response)}, nil
 }
 
-func performAggressiveClaimSearch(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, claim string, specVersion string) ([]embedding.SearchResult, error) {
+func performAggressiveClaimSearch(ctx context.Context, vectorDB QuickFactVectorDB, generator QuickFactEmbeddingGenerator, claim string, specVersion string) ([]embedding.SearchResult, error) {
 	log := logger.WithRequestID(ctx)
 
 	var allQueries []string
