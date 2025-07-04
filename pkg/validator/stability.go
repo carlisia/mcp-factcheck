@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"strings"
+	"unicode/utf8"
 )
 
 // ContentStabilityChecker helps detect when validation results in no meaningful changes
@@ -21,24 +22,40 @@ func NewContentStabilityChecker() *ContentStabilityChecker {
 	}
 }
 
+// Reset clears the content history, useful for testing or starting fresh validation cycles
+func (c *ContentStabilityChecker) Reset() {
+	c.contentHistory = make([]string, 0, 5)
+}
+
 // normalizeContent removes formatting variations that don't affect meaning
 func normalizeContent(content string) string {
 	// Normalize whitespace
 	normalized := strings.TrimSpace(content)
 
-	// Replace multiple spaces with single space
-	normalized = strings.Join(strings.Fields(normalized), " ")
-
-	// Normalize line endings
+	// Normalize line endings first
 	normalized = strings.ReplaceAll(normalized, "\r\n", "\n")
 
-	// Normalize bullet points
+	// Normalize bullet points and whitespace per line
 	lines := strings.Split(normalized, "\n")
 	for i, line := range lines {
-		line = strings.TrimSpace(line)
+		// Normalize whitespace within each line
+		trimmed := strings.TrimSpace(line)
+		trimmed = strings.Join(strings.Fields(trimmed), " ")
+
 		// Normalize different bullet styles to standard dash
-		if strings.HasPrefix(line, "•") || strings.HasPrefix(line, "*") || strings.HasPrefix(line, "·") {
-			lines[i] = "-" + line[1:]
+		if len(trimmed) > 0 {
+			// Check for various bullet point characters using rune comparison
+			firstRune, _ := utf8.DecodeRuneInString(trimmed)
+			switch firstRune {
+			case '•', '*', '·', '◦', '▪', '▫', '‣', '⁃', '●':
+				// Skip the first rune and prepend dash
+				_, size := utf8.DecodeRuneInString(trimmed)
+				lines[i] = "- " + strings.TrimSpace(trimmed[size:])
+			default:
+				lines[i] = trimmed
+			}
+		} else {
+			lines[i] = ""
 		}
 	}
 
