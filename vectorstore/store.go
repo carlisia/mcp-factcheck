@@ -11,17 +11,21 @@ import (
 	"github.com/carlisia/mcp-factcheck/embedding"
 )
 
-// Store handles storage and retrieval of embeddings from the filesystem
+// Store handles storage and retrieval of embeddings from the filesystem.
+// It provides persistence for specification embeddings and enables semantic
+// search operations using cosine similarity.
 type Store struct {
 	dataDir string
 }
 
-// NewStore creates a new vector store
+// NewStore creates a new vector store with the specified data directory.
+// The directory will be created if it doesn't exist when storing embeddings.
 func NewStore(dataDir string) *Store {
 	return &Store{dataDir: dataDir}
 }
 
-// Store saves a spec embedding to the database
+// Store saves a spec embedding to the filesystem as a JSON file.
+// The file is named using the spec version (e.g., "draft.json").
 func (s *Store) Store(specEmbedding *embedding.SpecEmbedding) error {
 	// Ensure data directory exists
 	if err := os.MkdirAll(s.dataDir, 0755); err != nil {

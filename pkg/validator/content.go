@@ -44,7 +44,7 @@ const (
 	minimumConfidence = 0.1 // Minimum confidence when no results
 )
 
-// Helper function for debugging
+// getKeys returns all keys from a map[string]any for debugging purposes.
 func getKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
