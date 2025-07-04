@@ -1,0 +1,97 @@
+package testutil
+
+import (
+	"context"
+	"errors"
+
+	"github.com/carlisia/mcp-factcheck/embedding"
+)
+
+// Mock creation helpers for common scenarios
+
+// NewMockVectorDBWithError creates a VectorDB that always returns an error
+func NewMockVectorDBWithError(err error) *MockVectorDB {
+	return &MockVectorDB{
+		SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+			return nil, err
+		},
+		ListVersionsFunc: func() ([]string, error) {
+			return nil, err
+		},
+	}
+}
+
+// NewMockVectorDBWithResults creates a VectorDB that returns specific results
+func NewMockVectorDBWithResults(results []embedding.SearchResult) *MockVectorDB {
+	return &MockVectorDB{
+		SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+			// Respect topK limit
+			if topK > 0 && len(results) > topK {
+				return results[:topK], nil
+			}
+			return results, nil
+		},
+	}
+}
+
+// NewMockEmbeddingGeneratorWithError creates an EmbeddingGenerator that always returns an error
+func NewMockEmbeddingGeneratorWithError(err error) *MockEmbeddingGenerator {
+	return &MockEmbeddingGenerator{
+		GenerateFunc: func(ctx context.Context, content string) ([]float64, error) {
+			// Check context first
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return nil, err
+		},
+	}
+}
+
+// NewMockEmbeddingGeneratorWithEmbedding creates an EmbeddingGenerator that returns a specific embedding
+func NewMockEmbeddingGeneratorWithEmbedding(embedding []float64) *MockEmbeddingGenerator {
+	return &MockEmbeddingGenerator{
+		GenerateFunc: func(ctx context.Context, content string) ([]float64, error) {
+			// Check context first
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return embedding, nil
+		},
+	}
+}
+
+// NewMockEmbeddingGeneratorSlow creates an EmbeddingGenerator that simulates slow operation
+func NewMockEmbeddingGeneratorSlow() *MockEmbeddingGenerator {
+	return &MockEmbeddingGenerator{
+		GenerateFunc: func(ctx context.Context, content string) ([]float64, error) {
+			// This will block until context is cancelled
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	}
+}
+
+// CreateTestSearchResults creates sample search results for testing
+func CreateTestSearchResults(contents ...string) []embedding.SearchResult {
+	results := make([]embedding.SearchResult, len(contents))
+	for i, content := range contents {
+		results[i] = embedding.SearchResult{
+			Chunk: embedding.EmbeddedChunk{
+				Content:  content,
+				Version:  "test",
+				Section:  "test-section",
+				Metadata: map[string]any{"index": i},
+			},
+			Similarity: 0.9 - float64(i)*0.1, // Decreasing similarity
+			Rank:       i + 1,
+		}
+	}
+	return results
+}
+
+// Common test errors
+var (
+	ErrTestDatabase  = errors.New("test database error")
+	ErrTestEmbedding = errors.New("test embedding error")
+	ErrTestTimeout   = errors.New("test timeout error")
+)
