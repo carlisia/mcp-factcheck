@@ -28,13 +28,6 @@ type embeddingGenerator interface {
 // SearchSpecToolName is the name of the MCP tool for searching specifications.
 const SearchSpecToolName = "search_spec"
 
-// SearchSpecArgs contains the arguments for the search_spec tool.
-type SearchSpecArgs struct {
-	Query       string `json:"query"`
-	SpecVersion string `json:"spec_version,omitempty"`
-	TopK        int    `json:"top_k,omitempty"`
-}
-
 // GetSearchSpecTool returns the MCP tool definition for searching MCP specifications
 // using semantic similarity. The tool supports querying specific spec versions and
 // controlling the number of results returned.
