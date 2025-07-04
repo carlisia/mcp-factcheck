@@ -137,7 +137,7 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 	matches := summarizeCodeMatches(results, 3)
 
 	// Create optimized response
-	response := FormatValidationResult(validationResult, matches)
+	response := formatValidationResult(validationResult, matches)
 
 	log.Info("Code validation completed successfully",
 		zap.Int("response_length", len(response)))

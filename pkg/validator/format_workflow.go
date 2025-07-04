@@ -12,16 +12,16 @@ const (
 	statusInaccurate = "✗ Inaccurate"
 )
 
-// WorkflowFormatter handles formatting of validation results into user-friendly reports
-type WorkflowFormatter struct {
+// workflowFormatter handles formatting of validation results into user-friendly reports
+type workflowFormatter struct {
 	result  ValidationResult
 	content string
 	sb      strings.Builder
 }
 
-// NewWorkflowFormatter creates a new formatter instance
-func NewWorkflowFormatter(result ValidationResult, content string) *WorkflowFormatter {
-	return &WorkflowFormatter{
+// newWorkflowFormatter creates a new formatter instance
+func newWorkflowFormatter(result ValidationResult, content string) *workflowFormatter {
+	return &workflowFormatter{
 		result:  result,
 		content: content,
 	}
@@ -29,12 +29,12 @@ func NewWorkflowFormatter(result ValidationResult, content string) *WorkflowForm
 
 // FormatValidationWorkflow formats validation results into a step-by-step workflow
 func FormatValidationWorkflow(result ValidationResult, content string) string {
-	formatter := NewWorkflowFormatter(result, content)
+	formatter := newWorkflowFormatter(result, content)
 	return formatter.Format()
 }
 
 // Format generates the complete validation workflow report
-func (f *WorkflowFormatter) Format() string {
+func (f *workflowFormatter) Format() string {
 	f.writeHeader()
 	f.writeClaimExtraction()
 	f.writeValidationResults()
@@ -50,11 +50,11 @@ func (f *WorkflowFormatter) Format() string {
 	return f.sb.String()
 }
 
-func (f *WorkflowFormatter) writeHeader() {
+func (f *workflowFormatter) writeHeader() {
 	f.sb.WriteString(headerTitle)
 }
 
-func (f *WorkflowFormatter) writeClaimExtraction() {
+func (f *workflowFormatter) writeClaimExtraction() {
 	f.sb.WriteString("## Step 1: Claim Extraction\n\n")
 	f.sb.WriteString("I've extracted the following claims from your content:\n")
 
@@ -73,7 +73,7 @@ func (f *WorkflowFormatter) writeClaimExtraction() {
 	}
 }
 
-func (f *WorkflowFormatter) extractClaims() []string {
+func (f *workflowFormatter) extractClaims() []string {
 	// Use detailed claims if available
 	if f.result.FactCheckResult != nil && len(f.result.FactCheckResult.Claims) > 0 {
 		claims := make([]string, len(f.result.FactCheckResult.Claims))
@@ -92,7 +92,7 @@ func (f *WorkflowFormatter) extractClaims() []string {
 	return f.extractClaimsFromContent()
 }
 
-func (f *WorkflowFormatter) extractClaimsFromContent() []string {
+func (f *workflowFormatter) extractClaimsFromContent() []string {
 	if f.content == "" {
 		return nil
 	}
@@ -130,7 +130,7 @@ func (f *WorkflowFormatter) extractClaimsFromContent() []string {
 	return claims
 }
 
-func (f *WorkflowFormatter) writeValidationResults() {
+func (f *workflowFormatter) writeValidationResults() {
 	f.sb.WriteString("\n## Step 2: Validation Results\n\n")
 
 	if f.result.FactCheckResult != nil && len(f.result.FactCheckResult.Claims) > 0 {
@@ -140,7 +140,7 @@ func (f *WorkflowFormatter) writeValidationResults() {
 	}
 }
 
-func (f *WorkflowFormatter) writeDetailedClaimResults() {
+func (f *workflowFormatter) writeDetailedClaimResults() {
 	for _, claim := range f.result.FactCheckResult.Claims {
 		fmt.Fprintf(&f.sb, "### Claim: %q\n", claim.Claim)
 
@@ -161,7 +161,7 @@ func (f *WorkflowFormatter) writeDetailedClaimResults() {
 	}
 }
 
-func (f *WorkflowFormatter) writeBasicValidationResults() {
+func (f *workflowFormatter) writeBasicValidationResults() {
 	for i, issue := range f.result.Issues {
 		fmt.Fprintf(&f.sb, "### Issue %d: %s\n", i+1, issue)
 		fmt.Fprintf(&f.sb, "**Status:** %s\n", statusInaccurate)
@@ -173,7 +173,7 @@ func (f *WorkflowFormatter) writeBasicValidationResults() {
 	}
 }
 
-func (f *WorkflowFormatter) writeBestPractices() {
+func (f *workflowFormatter) writeBestPractices() {
 	if f.result.FactCheckResult == nil || len(f.result.FactCheckResult.MissingBestPractices) == 0 {
 		return
 	}
@@ -187,7 +187,7 @@ func (f *WorkflowFormatter) writeBestPractices() {
 	f.sb.WriteString("\n")
 }
 
-func (f *WorkflowFormatter) writeLanguageIssues() {
+func (f *workflowFormatter) writeLanguageIssues() {
 	if f.result.FactCheckResult == nil || len(f.result.FactCheckResult.AdvisoryLanguageIssues) == 0 {
 		return
 	}
@@ -201,7 +201,7 @@ func (f *WorkflowFormatter) writeLanguageIssues() {
 	f.sb.WriteString("\n")
 }
 
-func (f *WorkflowFormatter) writeSummary() {
+func (f *workflowFormatter) writeSummary() {
 	f.sb.WriteString("## Summary\n\n")
 
 	accuracyStatus := "Content contains inaccuracies"
@@ -214,7 +214,7 @@ func (f *WorkflowFormatter) writeSummary() {
 	fmt.Fprintf(&f.sb, "**Spec Version:** %s\n\n", f.result.SpecVersion)
 }
 
-func (f *WorkflowFormatter) writeCorrectedContent() {
+func (f *workflowFormatter) writeCorrectedContent() {
 	f.sb.WriteString("## Corrected Content\n\n")
 	f.sb.WriteString("Based on the validation findings, here's the corrected version of your content:\n\n")
 
@@ -226,7 +226,7 @@ func (f *WorkflowFormatter) writeCorrectedContent() {
 	}
 }
 
-func (f *WorkflowFormatter) writeNextSteps() {
+func (f *workflowFormatter) writeNextSteps() {
 	f.sb.WriteString("\n## Next Steps\n\n")
 	f.sb.WriteString("Would you like me to:\n")
 	f.sb.WriteString("1. Validate the corrected content to ensure all issues are resolved?\n")
@@ -236,7 +236,7 @@ func (f *WorkflowFormatter) writeNextSteps() {
 }
 
 // generateCorrectedContent creates a corrected version of the content
-func (f *WorkflowFormatter) generateCorrectedContent(claims []string) string {
+func (f *workflowFormatter) generateCorrectedContent(claims []string) string {
 	var sb strings.Builder
 
 	sb.WriteString("**MCP Server Design** (based on the specification):\n\n")

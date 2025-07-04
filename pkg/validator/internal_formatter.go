@@ -71,16 +71,16 @@ Would you like me to:
 Please let me know which step you'd like to proceed with.
 {{- end }}`
 
-// InternalFormatter handles internal template-based formatting of validation results.
+// internalFormatter handles internal template-based formatting of validation results.
 // It uses Go's text/template package to generate consistent, structured output
 // for MCP content validation reports.
-type InternalFormatter struct {
+type internalFormatter struct {
 	tmpl *template.Template
 }
 
-// NewInternalFormatter creates a new internal formatter with the embedded validation template.
+// newInternalFormatter creates a new internal formatter with the embedded validation template.
 // The formatter includes custom template functions for formatting validation data.
-func NewInternalFormatter() (*InternalFormatter, error) {
+func newInternalFormatter() (*internalFormatter, error) {
 	// Define template functions
 	funcMap := template.FuncMap{
 		"add": func(a, b int) int { return a + b },
@@ -93,13 +93,13 @@ func NewInternalFormatter() (*InternalFormatter, error) {
 		return nil, fmt.Errorf("failed to parse validation template: %w", err)
 	}
 
-	return &InternalFormatter{tmpl: tmpl}, nil
+	return &internalFormatter{tmpl: tmpl}, nil
 }
 
 // FormatValidationData formats validation data using the internal template.
 // It takes a ValidationResponse and produces a structured markdown report
 // showing claim extraction, validation results, missing best practices, and corrections.
-func (f *InternalFormatter) FormatValidationData(data *ValidationResponse) (string, error) {
+func (f *internalFormatter) FormatValidationData(data *validationResponse) (string, error) {
 	var buf bytes.Buffer
 
 	// Wrap data in expected structure
@@ -124,7 +124,7 @@ func FormatWithTemplate(result ValidationResult, matches []ValidationMatch) (str
 	response := buildValidationResponse(result, matches)
 
 	// Create formatter
-	formatter, err := NewInternalFormatter()
+	formatter, err := newInternalFormatter()
 	if err != nil {
 		return "", err
 	}

@@ -88,9 +88,9 @@ func SummarizeMatches(results []interface{}, maxMatches int) []ValidationMatch {
 	return matches
 }
 
-// ClaimDetail represents detailed information about a claim including
+// claimDetail represents detailed information about a claim including
 // its accuracy assessment, corrections if needed, and explanations.
-type ClaimDetail struct {
+type claimDetail struct {
 	Claim       string `json:"claim"`
 	IsAccurate  bool   `json:"is_accurate"`
 	Correction  string `json:"correction,omitempty"`
@@ -98,12 +98,12 @@ type ClaimDetail struct {
 	Issue       string `json:"issue,omitempty"`
 }
 
-// ValidationResponse represents the complete validation response structure
+// validationResponse represents the complete validation response structure
 // that is returned to users. It includes all validation results, claim analysis,
 // suggestions, and references to relevant specification sections.
-type ValidationResponse struct {
-	ValidationResult       ValidationSummary `json:"validation_result"`
-	Claims                 []ClaimDetail     `json:"claims"`
+type validationResponse struct {
+	ValidationResult       validationSummary `json:"validation_result"`
+	Claims                 []claimDetail     `json:"claims"`
 	ParsedClaims           []string          `json:"parsed_claims"`
 	Issues                 []string          `json:"issues"`
 	Suggestions            []string          `json:"suggestions"`
@@ -113,19 +113,19 @@ type ValidationResponse struct {
 	SpecReferences         []ValidationMatch `json:"spec_references"`
 }
 
-// ValidationSummary provides a high-level summary of validation results
+// validationSummary provides a high-level summary of validation results
 // including overall validity, confidence score, and a human-readable summary.
-type ValidationSummary struct {
+type validationSummary struct {
 	IsValid     bool    `json:"is_valid"`
 	Confidence  float64 `json:"confidence"`
 	SpecVersion string  `json:"spec_version"`
 	Summary     string  `json:"summary"`
 }
 
-// FormatValidationResult creates a structured JSON response with all validation details.
+// formatValidationResult creates a structured JSON response with all validation details.
 // It includes a directive header instructing LLMs to use the format-validation-results
 // prompt for proper formatting.
-func FormatValidationResult(result ValidationResult, matches []ValidationMatch) string {
+func formatValidationResult(result ValidationResult, matches []ValidationMatch) string {
 	response := buildValidationResponse(result, matches)
 
 	jsonBytes, err := json.MarshalIndent(response, "", "  ")
@@ -139,9 +139,9 @@ func FormatValidationResult(result ValidationResult, matches []ValidationMatch) 
 
 // buildValidationResponse constructs the complete validation response structure
 // by combining validation results with matched specification references.
-func buildValidationResponse(result ValidationResult, matches []ValidationMatch) ValidationResponse {
-	response := ValidationResponse{
-		ValidationResult: ValidationSummary{
+func buildValidationResponse(result ValidationResult, matches []ValidationMatch) validationResponse {
+	response := validationResponse{
+		ValidationResult: validationSummary{
 			IsValid:     result.IsValid,
 			Confidence:  result.Confidence,
 			SpecVersion: result.SpecVersion,
@@ -169,13 +169,13 @@ func buildValidationResponse(result ValidationResult, matches []ValidationMatch)
 // buildClaimDetails constructs detailed claim information from validation results.
 // It prioritizes fact-check results when available, otherwise builds from parsed
 // claims and identified issues.
-func buildClaimDetails(result ValidationResult) []ClaimDetail {
-	var claims []ClaimDetail
+func buildClaimDetails(result ValidationResult) []claimDetail {
+	var claims []claimDetail
 
 	// Use fact check claims if available
 	if result.FactCheckResult != nil && len(result.FactCheckResult.Claims) > 0 {
 		for _, claim := range result.FactCheckResult.Claims {
-			claims = append(claims, ClaimDetail{
+			claims = append(claims, claimDetail{
 				Claim:       claim.Claim,
 				IsAccurate:  claim.IsAccurate,
 				Correction:  claim.Correction,
@@ -187,7 +187,7 @@ func buildClaimDetails(result ValidationResult) []ClaimDetail {
 
 	// Build from parsed claims and issues
 	for _, claim := range result.ParsedClaims {
-		detail := ClaimDetail{
+		detail := claimDetail{
 			Claim:      claim,
 			IsAccurate: true,
 		}
