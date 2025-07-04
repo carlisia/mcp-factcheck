@@ -77,19 +77,19 @@ func (g *Generator) GenerateEmbedding(ctx context.Context, content string) ([]fl
 	return embedding, nil
 }
 
-// ClaimResult represents a single claim's fact-check result including
+// claimResult represents a single claim's fact-check result including
 // accuracy assessment, corrections, and explanations for any issues found.
-type ClaimResult struct {
+type claimResult struct {
 	Claim       string `json:"claim"`
 	IsAccurate  bool   `json:"is_accurate"`
 	Correction  string `json:"correction"`
 	Explanation string `json:"explanation"`
 }
 
-// FactCheckResponse represents the structured response from the LLM fact-checking
+// factCheckResponse represents the structured response from the LLM fact-checking
 // prompt. It includes individual claim analysis and overall accuracy assessment.
-type FactCheckResponse struct {
-	Claims                 []ClaimResult `json:"claims"`
+type factCheckResponse struct {
+	Claims                 []claimResult `json:"claims"`
 	OverallIsAccurate      bool          `json:"overall_is_accurate"`
 	Summary                string        `json:"summary"`
 	MissingBestPractices   []string      `json:"missing_best_practices,omitempty"`
@@ -178,7 +178,7 @@ func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, sp
 	}
 
 	// Parse the JSON response in the new format
-	var response FactCheckResponse
+	var response factCheckResponse
 	content = resp.Choices[0].Message.Content
 
 	// Store raw response for debugging
