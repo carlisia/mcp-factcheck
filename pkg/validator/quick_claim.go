@@ -77,12 +77,14 @@ This tool is optimized for single sentences. For comprehensive content validatio
 	return mcp.NewToolWithRawSchema(checkMCPQuickFactToolName, description, schemaBytes)
 }
 
-// QuickFactVectorDB defines the interface for vector database operations needed by quick fact checking
+// QuickFactVectorDB defines the interface for vector database operations needed by quick fact checking.
+// It provides semantic search capabilities for finding relevant specification sections.
 type QuickFactVectorDB interface {
 	Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
 }
 
-// QuickFactEmbeddingGenerator defines the interface for embedding and fact-checking operations
+// QuickFactEmbeddingGenerator defines the interface for embedding and fact-checking operations.
+// It handles text embedding generation and fact validation against specification sections.
 type QuickFactEmbeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float64, error)
 	FactCheckAgainstSpec(ctx context.Context, claim string, specSections []string, compoundEvidence map[string]string) (*embedding.FactCheckResult, error)
@@ -255,7 +257,9 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB QuickFactVectorD
 	return finalResults, nil
 }
 
-// extractTopicFromClaim extracts the main topic/object from a claim
+// extractTopicFromClaim extracts the main topic/object from a claim.
+// It removes common prefixes and verb patterns to isolate the core subject
+// being discussed, which helps in generating more targeted search queries.
 func extractTopicFromClaim(claim string) string {
 	// Remove common prefixes
 	topic := strings.TrimPrefix(strings.ToLower(claim), "mcp ")

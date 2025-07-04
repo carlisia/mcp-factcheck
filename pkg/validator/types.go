@@ -9,12 +9,14 @@ import (
 	"github.com/carlisia/mcp-factcheck/embedding"
 )
 
-// Common errors used across validator package
+// Common errors used across validator package.
 var (
+	// errArgumentsNotMap is returned when tool arguments are not provided as a map[string]any.
 	errArgumentsNotMap = errors.New("arguments must be a map")
 )
 
-// ValidationResult represents a structured validation response
+// ValidationResult represents a structured validation response containing
+// the complete analysis of content validity against MCP specifications.
 type ValidationResult struct {
 	IsValid          bool                       `json:"is_valid"`
 	Confidence       float64                    `json:"confidence"`
@@ -27,7 +29,9 @@ type ValidationResult struct {
 	DebugInfo        *ValidationDebugInfo       `json:"debug_info,omitempty"` // Detailed debugging information
 }
 
-// ValidationDebugInfo contains detailed information for debugging validation issues
+// ValidationDebugInfo contains detailed information for debugging validation issues.
+// It provides transparency into the validation process including search queries,
+// spec matches, and reasoning behind validation decisions.
 type ValidationDebugInfo struct {
 	Timestamp           string           `json:"timestamp"`
 	SearchQueries       []string         `json:"search_queries"`
@@ -37,14 +41,16 @@ type ValidationDebugInfo struct {
 	ValidationIteration int              `json:"validation_iteration"`
 }
 
-// SpecMatchDebug contains debug info about spec matches
+// SpecMatchDebug contains debug information about specification matches found
+// during validation, including similarity scores and chunk identifiers.
 type SpecMatchDebug struct {
 	Content    string  `json:"content"`
 	Similarity float64 `json:"similarity"`
 	ChunkID    string  `json:"chunk_id"`
 }
 
-// ClaimDebugInfo contains debug info for individual claim validation
+// ClaimDebugInfo contains debug information for individual claim validation,
+// tracking the validation status, issues found, and supporting evidence from the spec.
 type ClaimDebugInfo struct {
 	OriginalClaim    string   `json:"original_claim"`
 	ValidationStatus string   `json:"validation_status"`
@@ -53,14 +59,17 @@ type ClaimDebugInfo struct {
 	Confidence       float64  `json:"confidence"`
 }
 
-// ValidationMatch represents a summarized spec match
+// ValidationMatch represents a summarized specification match with relevance
+// scoring and a concise summary of the matched content.
 type ValidationMatch struct {
 	Topic     string  `json:"topic"`
 	Relevance float64 `json:"relevance"`
 	Summary   string  `json:"summary"`
 }
 
-// SummarizeMatches creates concise summaries from search results
+// SummarizeMatches creates concise summaries from search results.
+// It extracts the most relevant matches up to maxMatches and formats them
+// for inclusion in validation responses.
 func SummarizeMatches(results []interface{}, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
@@ -79,7 +88,8 @@ func SummarizeMatches(results []interface{}, maxMatches int) []ValidationMatch {
 	return matches
 }
 
-// ClaimDetail represents detailed information about a claim
+// ClaimDetail represents detailed information about a claim including
+// its accuracy assessment, corrections if needed, and explanations.
 type ClaimDetail struct {
 	Claim       string `json:"claim"`
 	IsAccurate  bool   `json:"is_accurate"`
@@ -89,6 +99,8 @@ type ClaimDetail struct {
 }
 
 // ValidationResponse represents the complete validation response structure
+// that is returned to users. It includes all validation results, claim analysis,
+// suggestions, and references to relevant specification sections.
 type ValidationResponse struct {
 	ValidationResult       ValidationSummary `json:"validation_result"`
 	Claims                 []ClaimDetail     `json:"claims"`
@@ -102,6 +114,7 @@ type ValidationResponse struct {
 }
 
 // ValidationSummary provides a high-level summary of validation results
+// including overall validity, confidence score, and a human-readable summary.
 type ValidationSummary struct {
 	IsValid     bool    `json:"is_valid"`
 	Confidence  float64 `json:"confidence"`
@@ -109,7 +122,9 @@ type ValidationSummary struct {
 	Summary     string  `json:"summary"`
 }
 
-// FormatValidationResult creates a structured response with all validation details
+// FormatValidationResult creates a structured JSON response with all validation details.
+// It includes a directive header instructing LLMs to use the format-validation-results
+// prompt for proper formatting.
 func FormatValidationResult(result ValidationResult, matches []ValidationMatch) string {
 	response := buildValidationResponse(result, matches)
 
@@ -122,7 +137,8 @@ func FormatValidationResult(result ValidationResult, matches []ValidationMatch) 
 	return formatDirective() + string(jsonBytes)
 }
 
-// buildValidationResponse constructs the complete validation response
+// buildValidationResponse constructs the complete validation response structure
+// by combining validation results with matched specification references.
 func buildValidationResponse(result ValidationResult, matches []ValidationMatch) ValidationResponse {
 	response := ValidationResponse{
 		ValidationResult: ValidationSummary{
@@ -150,7 +166,9 @@ func buildValidationResponse(result ValidationResult, matches []ValidationMatch)
 	return response
 }
 
-// buildClaimDetails constructs detailed claim information
+// buildClaimDetails constructs detailed claim information from validation results.
+// It prioritizes fact-check results when available, otherwise builds from parsed
+// claims and identified issues.
 func buildClaimDetails(result ValidationResult) []ClaimDetail {
 	var claims []ClaimDetail
 
@@ -192,7 +210,8 @@ func buildClaimDetails(result ValidationResult) []ClaimDetail {
 	return claims
 }
 
-// formatSummary creates a human-readable summary
+// formatSummary creates a human-readable summary of the validation result
+// expressing validity and confidence in natural language.
 func formatSummary(isValid bool, confidence float64) string {
 	validity := "invalid"
 	if isValid {
@@ -201,7 +220,9 @@ func formatSummary(isValid bool, confidence float64) string {
 	return fmt.Sprintf("Content is %s with %.0f%% confidence", validity, confidence*100)
 }
 
-// formatDirective returns the directive header for LLM processing
+// formatDirective returns the directive header for LLM processing.
+// This header instructs LLMs to use the format-validation-results prompt
+// rather than attempting to interpret or reformat the JSON directly.
 func formatDirective() string {
 	return `[VALIDATION COMPLETE - DO NOT INTERPRET THIS JSON]
 
