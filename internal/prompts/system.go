@@ -1,3 +1,5 @@
+// Package prompts contains system prompts and templates for LLM interactions.
+// It provides structured prompts for fact-checking, content validation, and other AI operations.
 package prompts
 
 // System prompts for different LLM roles

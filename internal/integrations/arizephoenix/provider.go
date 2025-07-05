@@ -1,3 +1,5 @@
+// Package arizephoenix provides integration with Arize Phoenix for observability and telemetry.
+// It implements OpenTelemetry tracing with Phoenix-specific instrumentation for LLM operations.
 package arizephoenix
 
 import (

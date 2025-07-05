@@ -1,3 +1,5 @@
+// Package specs provides utilities for managing MCP specification versions.
+// It defines valid spec versions and helper functions for version validation.
 package specs
 
 import "slices"

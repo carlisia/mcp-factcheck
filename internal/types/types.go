@@ -1,3 +1,5 @@
+// Package types defines common data structures used throughout the MCP fact-check system.
+// It includes request/response types for verification operations and validation methods.
 package types
 
 import (

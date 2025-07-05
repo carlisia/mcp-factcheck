@@ -1,3 +1,5 @@
+// Package utils provides common utility functions used throughout the internal packages.
+// It includes file I/O operations, schema marshaling, and other shared functionality.
 package utils
 
 import (
