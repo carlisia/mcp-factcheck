@@ -3,7 +3,7 @@
 package embedding
 
 import (
-	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 )
 
 // VectorDB handles MCP-specific vector database operations for the runtime server.
@@ -24,7 +24,7 @@ func NewVectorDB(dataDir string) *VectorDB {
 // Search performs similarity search against a spec version.
 // It attempts to use fine-grained embeddings (version-fine) if available,
 // falling back to regular embeddings. Returns the top K most similar results.
-func (db *VectorDB) Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
+func (db *VectorDB) Search(version string, queryEmbedding []float64, topK int) ([]embedtypes.SearchResult, error) {
 	// Try fine-grained version first if available
 	fineVersion := version + "-fine"
 	results, err := db.store.Search(fineVersion, queryEmbedding, topK)

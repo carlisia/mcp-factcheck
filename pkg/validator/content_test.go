@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/specs"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

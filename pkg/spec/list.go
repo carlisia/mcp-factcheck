@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/internal/utils"
+	"github.com/carlisia/mcp-factcheck/pkg/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

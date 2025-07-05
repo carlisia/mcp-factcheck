@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -29,7 +30,7 @@ func defaultMetadata(section string) map[string]any {
 func createTestVectorDB(t *testing.T) *mcpembedding.VectorDB {
 	// Use the default spec version to match what handlers expect
 	defaultVersion := "2025-06-18"
-	defaultChunks := []core.EmbeddedChunk{
+	defaultChunks := []embedtypes.EmbeddedChunk{
 		{
 			ID:        "chunk1",
 			Version:   defaultVersion,
@@ -60,11 +61,11 @@ func createTestVectorDB(t *testing.T) *mcpembedding.VectorDB {
 
 // createTestVectorDBWithChunks creates a test vector database with custom chunks.
 // This allows tests to specify custom content and versions for specific test scenarios.
-func createTestVectorDBWithChunks(t *testing.T, version string, chunks []core.EmbeddedChunk) *mcpembedding.VectorDB {
+func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embedtypes.EmbeddedChunk) *mcpembedding.VectorDB {
 	t.Helper()
 	tempDir := t.TempDir()
 
-	data := core.SpecEmbedding{
+	data := embedtypes.SpecEmbedding{
 		Version: version,
 		Chunks:  chunks,
 		Count:   len(chunks),

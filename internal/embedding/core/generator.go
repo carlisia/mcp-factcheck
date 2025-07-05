@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/carlisia/mcp-factcheck/internal/prompts"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
@@ -96,36 +97,11 @@ type factCheckResponse struct {
 	AdvisoryLanguageIssues []string      `json:"advisory_language_issues,omitempty"`
 }
 
-// FactCheckResult represents the comprehensive result of fact-checking content
-// against MCP specifications. It includes claim-by-claim analysis, best practice
-// recommendations, and advisory language clarifications.
-type FactCheckResult struct {
-	IsAccurate             bool     `json:"is_accurate"`
-	Inaccuracies           []string `json:"inaccuracies"`
-	Corrections            []string `json:"corrections"`
-	Explanation            string   `json:"explanation"`
-	ParsedClaims           []string `json:"parsed_claims"`            // All claims extracted from content
-	MissingBestPractices   []string `json:"missing_best_practices"`   // SHOULD requirements not mentioned
-	AdvisoryLanguageIssues []string `json:"advisory_language_issues"` // MAY/CAN confusion
-	Claims                 []Claim  `json:"claims"`                   // Detailed claim analysis
-	RawResponse            string   `json:"-"`                        // Raw LLM response for debugging
-}
-
-// Claim represents a single claim extracted from content with its validation details.
-// Each claim is assessed for accuracy against the MCP specification with corrections
-// and explanations provided when issues are found.
-type Claim struct {
-	Claim       string `json:"claim"`
-	IsAccurate  bool   `json:"is_accurate"`
-	Correction  string `json:"correction,omitempty"`
-	Explanation string `json:"explanation,omitempty"`
-}
-
 // FactCheckAgainstSpec validates content claims against MCP specification sections
 // using an LLM. It extracts claims from the content, checks each against the provided
 // spec sections, and returns detailed validation results including corrections and
 // best practice recommendations.
-func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, specSections []string, compoundEvidence map[string]string) (*FactCheckResult, error) {
+func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, specSections []string, compoundEvidence map[string]string) (*embedtypes.FactCheckResult, error) {
 	// Create the fact-check prompt renderer
 	promptRenderer, err := prompts.NewFactCheckPrompt()
 	if err != nil {
@@ -219,7 +195,7 @@ func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, sp
 		}
 
 		// Try parsing the old format as fallback
-		var result FactCheckResult
+		var result embedtypes.FactCheckResult
 		if err2 := json.Unmarshal([]byte(content), &result); err2 == nil {
 			result.RawResponse = rawResponse
 			return &result, nil
@@ -231,7 +207,7 @@ func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, sp
 			errorMsg = "Response was truncated - content too long for analysis. Consider using chunked validation for large documents."
 		}
 
-		return &FactCheckResult{
+		return &embedtypes.FactCheckResult{
 			IsAccurate:   false,
 			Inaccuracies: []string{errorMsg},
 			Explanation:  fmt.Sprintf("The validation could not be completed. %s", errorMsg),
@@ -240,7 +216,7 @@ func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, sp
 	}
 
 	// Convert new format to FactCheckResult
-	result := &FactCheckResult{
+	result := &embedtypes.FactCheckResult{
 		IsAccurate:             response.OverallIsAccurate,
 		Inaccuracies:           []string{},
 		Corrections:            []string{},
@@ -248,7 +224,7 @@ func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, sp
 		ParsedClaims:           []string{},
 		MissingBestPractices:   response.MissingBestPractices,
 		AdvisoryLanguageIssues: response.AdvisoryLanguageIssues,
-		Claims:                 []Claim{},
+		Claims:                 []embedtypes.Claim{},
 	}
 
 	// Extract all claims and track inaccuracies
@@ -256,7 +232,12 @@ func (g *Generator) FactCheckAgainstSpec(ctx context.Context, content string, sp
 		result.ParsedClaims = append(result.ParsedClaims, claim.Claim)
 
 		// Add to detailed claims
-		result.Claims = append(result.Claims, Claim(claim))
+		result.Claims = append(result.Claims, embedtypes.Claim{
+			Claim:       claim.Claim,
+			IsAccurate:  claim.IsAccurate,
+			Correction:  claim.Correction,
+			Explanation: claim.Explanation,
+		})
 
 		if !claim.IsAccurate {
 			result.Inaccuracies = append(result.Inaccuracies, claim.Claim)

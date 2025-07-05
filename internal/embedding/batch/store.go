@@ -2,7 +2,7 @@ package batch
 
 import (
 	"github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 )
 
 // EmbeddingStore handles storage of embeddings for the specloader utility
@@ -18,6 +18,6 @@ func NewEmbeddingStore(dataDir string) *EmbeddingStore {
 }
 
 // Store saves a spec embedding to the database
-func (es *EmbeddingStore) Store(specEmbedding *core.SpecEmbedding) error {
+func (es *EmbeddingStore) Store(specEmbedding *embedtypes.SpecEmbedding) error {
 	return es.store.Store(specEmbedding)
 }

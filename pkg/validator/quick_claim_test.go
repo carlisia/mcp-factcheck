@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
-	"github.com/carlisia/mcp-factcheck/internal/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
+	"github.com/carlisia/mcp-factcheck/pkg/specs"
 	"github.com/carlisia/mcp-factcheck/testutil"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -146,9 +146,9 @@ func TestHandleCheckMCPQuickFact(t *testing.T) {
 				"claim": "MCP supports unicode: 你好世界 émojis 🌍",
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
-				results := []core.SearchResult{
+				results := []embedtypes.SearchResult{
 					{
-						Chunk: core.EmbeddedChunk{
+						Chunk: embedtypes.EmbeddedChunk{
 							Content: "MCP fully supports Unicode characters in all text fields",
 						},
 						Similarity: 0.85,
@@ -170,7 +170,7 @@ func TestHandleCheckMCPQuickFact(t *testing.T) {
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
 				// Return empty results
-				return testutil.NewMockVectorDBWithResults([]core.SearchResult{}),
+				return testutil.NewMockVectorDBWithResults([]embedtypes.SearchResult{}),
 					testutil.NewMockEmbeddingGeneratorWithEmbedding([]float64{0.1, 0.2, 0.3})
 			},
 			WantErr: false,
@@ -188,7 +188,7 @@ func TestHandleCheckMCPQuickFact(t *testing.T) {
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
 				db := &testutil.MockVectorDB{
-					SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
+					SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]embedtypes.SearchResult, error) {
 						if version != specs.DefaultSpecVersion {
 							t.Errorf("Expected version=%s, got %s", specs.DefaultSpecVersion, version)
 						}

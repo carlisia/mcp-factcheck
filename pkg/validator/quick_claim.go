@@ -7,9 +7,10 @@ import (
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/internal/specs"
-	"github.com/carlisia/mcp-factcheck/internal/utils"
+	"github.com/carlisia/mcp-factcheck/pkg/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/utils"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
 	"go.uber.org/zap"
@@ -80,14 +81,14 @@ This tool is optimized for single sentences. For comprehensive content validatio
 // QuickFactVectorDB defines the interface for vector database operations needed by quick fact checking.
 // It provides semantic search capabilities for finding relevant specification sections.
 type QuickFactVectorDB interface {
-	Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error)
+	Search(version string, queryEmbedding []float64, topK int) ([]embedtypes.SearchResult, error)
 }
 
 // QuickFactEmbeddingGenerator defines the interface for embedding and fact-checking operations.
 // It handles text embedding generation and fact validation against specification sections.
 type QuickFactEmbeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float64, error)
-	FactCheckAgainstSpec(ctx context.Context, claim string, specSections []string, compoundEvidence map[string]string) (*core.FactCheckResult, error)
+	FactCheckAgainstSpec(ctx context.Context, claim string, specSections []string, compoundEvidence map[string]string) (*embedtypes.FactCheckResult, error)
 }
 
 // HandleCheckMCPQuickFact handles quick fact-checking requests for single MCP claims.
@@ -147,7 +148,7 @@ func HandleCheckMCPQuickFact(ctx context.Context, vectorDB QuickFactVectorDB, ge
 	return []mcp.Content{mcp.NewTextContent(response)}, nil
 }
 
-func performAggressiveClaimSearch(ctx context.Context, vectorDB QuickFactVectorDB, generator QuickFactEmbeddingGenerator, claim string, specVersion string) ([]core.SearchResult, error) {
+func performAggressiveClaimSearch(ctx context.Context, vectorDB QuickFactVectorDB, generator QuickFactEmbeddingGenerator, claim string, specVersion string) ([]embedtypes.SearchResult, error) {
 	log := logger.WithRequestID(ctx)
 
 	var allQueries []string
@@ -204,7 +205,7 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB QuickFactVectorD
 	}
 
 	// Collect all results
-	resultMap := make(map[string]core.SearchResult)
+	resultMap := make(map[string]embedtypes.SearchResult)
 
 	for _, query := range allQueries {
 		log.Debug("Aggressive claim search",
@@ -236,7 +237,7 @@ func performAggressiveClaimSearch(ctx context.Context, vectorDB QuickFactVectorD
 	}
 
 	// Convert to slice and sort
-	var finalResults []core.SearchResult
+	var finalResults []embedtypes.SearchResult
 	for _, result := range resultMap {
 		finalResults = append(finalResults, result)
 	}
@@ -282,7 +283,7 @@ func extractTopicFromClaim(claim string) string {
 	return topic
 }
 
-func formatQuickClaimResponse(claim string, factCheck *core.FactCheckResult, specVersion string) string {
+func formatQuickClaimResponse(claim string, factCheck *embedtypes.FactCheckResult, specVersion string) string {
 	var response strings.Builder
 
 	// Status icon and claim

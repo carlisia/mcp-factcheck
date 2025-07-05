@@ -7,16 +7,17 @@ import (
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/internal/specs"
-	"github.com/carlisia/mcp-factcheck/internal/utils"
+	"github.com/carlisia/mcp-factcheck/pkg/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // vectorDB defines the interface for vector database operations needed by search.
 // It provides semantic search capabilities over embedded specification content.
 type vectorDB interface {
-	Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error)
+	Search(version string, queryEmbedding []float64, topK int) ([]embedtypes.SearchResult, error)
 }
 
 // embeddingGenerator defines the interface for embedding generation needed by search.

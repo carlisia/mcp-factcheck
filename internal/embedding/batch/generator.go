@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 )
 
 // BatchGenerator handles batch embedding generation for spec processing
@@ -30,8 +31,8 @@ func NewGenerator() (*core.Generator, error) {
 }
 
 // GenerateSpecEmbeddings creates embeddings for all chunks in a spec
-func (g *BatchGenerator) GenerateSpecEmbeddings(ctx context.Context, version string, chunks []string) (*core.SpecEmbedding, error) {
-	var embeddedChunks []core.EmbeddedChunk
+func (g *BatchGenerator) GenerateSpecEmbeddings(ctx context.Context, version string, chunks []string) (*embedtypes.SpecEmbedding, error) {
+	var embeddedChunks []embedtypes.EmbeddedChunk
 
 	for i, chunk := range chunks {
 		if len(chunk) == 0 {
@@ -47,7 +48,7 @@ func (g *BatchGenerator) GenerateSpecEmbeddings(ctx context.Context, version str
 		// Create chunk ID
 		chunkID := generateChunkID(version, i, chunk)
 
-		embeddedChunk := core.EmbeddedChunk{
+		embeddedChunk := embedtypes.EmbeddedChunk{
 			ID:        chunkID,
 			Version:   version,
 			Content:   chunk,
@@ -61,7 +62,7 @@ func (g *BatchGenerator) GenerateSpecEmbeddings(ctx context.Context, version str
 		embeddedChunks = append(embeddedChunks, embeddedChunk)
 	}
 
-	return &core.SpecEmbedding{
+	return &embedtypes.SpecEmbedding{
 		Version: version,
 		Chunks:  embeddedChunks,
 		Count:   len(embeddedChunks),

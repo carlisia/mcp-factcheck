@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/pkg/spec"
 )
@@ -26,7 +26,7 @@ func TestSpec_HandleListSpecVersions_WithCustomVersion(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a VectorDB with a custom spec version
-	chunks := []core.EmbeddedChunk{
+	chunks := []embedtypes.EmbeddedChunk{
 		{
 			ID:        "custom-test",
 			Version:   "2025-06-18",
@@ -94,7 +94,7 @@ func TestSpec_HandleListSpecVersions_WithNonJSONFiles(t *testing.T) {
 	}
 
 	// Also write a valid JSON file to ensure it's found
-	chunks := []core.EmbeddedChunk{
+	chunks := []embedtypes.EmbeddedChunk{
 		{
 			ID:        "test",
 			Version:   "valid",

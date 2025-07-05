@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/internal/specs"
-	"github.com/carlisia/mcp-factcheck/internal/utils"
+	"github.com/carlisia/mcp-factcheck/pkg/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/utils"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
 	"go.uber.org/zap"
@@ -146,7 +147,7 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 }
 
 // analyzeCodeValidation determines if code follows MCP patterns
-func analyzeCodeValidation(code, codeAnalysis string, results []core.SearchResult, specVersion string) ValidationResult {
+func analyzeCodeValidation(code, codeAnalysis string, results []embedtypes.SearchResult, specVersion string) ValidationResult {
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
@@ -210,7 +211,7 @@ func analyzeCodeValidation(code, codeAnalysis string, results []core.SearchResul
 }
 
 // summarizeCodeMatches creates concise summaries from search results
-func summarizeCodeMatches(results []core.SearchResult, maxMatches int) []ValidationMatch {
+func summarizeCodeMatches(results []embedtypes.SearchResult, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}

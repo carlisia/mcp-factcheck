@@ -3,7 +3,7 @@ package spec
 import (
 	"context"
 
-	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 )
 
 // Compile-time interface conformance checks
@@ -12,11 +12,11 @@ var _ embeddingGenerator = (*mockEmbeddingGenerator)(nil)
 
 // mockSearchVectorDB is a test implementation of vectorDB interface for search tests
 type mockSearchVectorDB struct {
-	searchFunc       func(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error)
+	searchFunc       func(version string, queryEmbedding []float64, topK int) ([]embedtypes.SearchResult, error)
 	listVersionsFunc func() ([]string, error)
 }
 
-func (m *mockSearchVectorDB) Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
+func (m *mockSearchVectorDB) Search(version string, queryEmbedding []float64, topK int) ([]embedtypes.SearchResult, error) {
 	// Optional trace logging for debugging - uncomment when needed
 	// fmt.Printf("[mockSearch] version=%s topK=%d embeddingLen=%d\n", version, topK, len(queryEmbedding))
 
@@ -25,9 +25,9 @@ func (m *mockSearchVectorDB) Search(version string, queryEmbedding []float64, to
 	}
 
 	// Default behavior: return a mock result
-	return []core.SearchResult{
+	return []embedtypes.SearchResult{
 		{
-			Chunk: core.EmbeddedChunk{
+			Chunk: embedtypes.EmbeddedChunk{
 				Content: "MCP uses JSON-RPC 2.0 for communication protocol",
 			},
 			Similarity: 0.95,

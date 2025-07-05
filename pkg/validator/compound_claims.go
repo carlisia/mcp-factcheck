@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ type CompoundClaim struct {
 type SubClaim struct {
 	Text           string
 	SearchQueries  []string
-	SearchResults  []core.SearchResult
+	SearchResults  []embedtypes.SearchResult
 	HasEvidence    bool
 	EvidenceQuotes []string
 }
@@ -155,7 +156,7 @@ func SearchEvidenceForSubClaims(
 			zap.Int("query_count", len(subClaim.SearchQueries)))
 
 		// Collect all results from all queries
-		var allResults []core.SearchResult
+		var allResults []embedtypes.SearchResult
 		seenChunks := make(map[string]bool)
 
 		for _, query := range subClaim.SearchQueries {

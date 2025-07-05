@@ -9,9 +9,10 @@ import (
 	"time"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
+	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
-	"github.com/carlisia/mcp-factcheck/internal/specs"
-	"github.com/carlisia/mcp-factcheck/internal/utils"
+	"github.com/carlisia/mcp-factcheck/pkg/specs"
+	"github.com/carlisia/mcp-factcheck/pkg/utils"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -62,7 +63,7 @@ func getContentPreview(content string, maxLen int) string {
 }
 
 // Helper functions for OpenInference
-func getMaxSimilarity(results []core.SearchResult) float64 {
+func getMaxSimilarity(results []embedtypes.SearchResult) float64 {
 	if len(results) == 0 {
 		return 0.0
 	}
@@ -75,7 +76,7 @@ func getMaxSimilarity(results []core.SearchResult) float64 {
 	return max
 }
 
-func getMinSimilarity(results []core.SearchResult) float64 {
+func getMinSimilarity(results []embedtypes.SearchResult) float64 {
 	if len(results) == 0 {
 		return 0.0
 	}
@@ -248,7 +249,7 @@ func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, g
 }
 
 // analyzeContentValidation determines if content is valid and provides insights
-func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content string, results []core.SearchResult, specVersion string) ValidationResult {
+func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content string, results []embedtypes.SearchResult, specVersion string) ValidationResult {
 	// Increment validation counter for debugging
 	validationCounter++
 
@@ -425,7 +426,7 @@ func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.Vector
 }
 
 // summarizeContentMatches creates concise summaries from search results
-func summarizeContentMatches(results []core.SearchResult, maxMatches int) []ValidationMatch {
+func summarizeContentMatches(results []embedtypes.SearchResult, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}
@@ -465,8 +466,8 @@ func summarizeContentMatches(results []core.SearchResult, maxMatches int) []Vali
 }
 
 // performTargetedSearches searches for specific concepts mentioned in the content
-func performTargetedSearches(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content, specVersion string) []core.SearchResult {
-	var allResults []core.SearchResult
+func performTargetedSearches(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content, specVersion string) []embedtypes.SearchResult {
+	var allResults []embedtypes.SearchResult
 	log := logger.WithRequestID(ctx)
 
 	// Extract key concepts from content
@@ -532,10 +533,10 @@ func extractKeyConcepts(content string) []string {
 }
 
 // mergeSearchResults merges and deduplicates search results
-func mergeSearchResults(primary, additional []core.SearchResult, maxResults int) []core.SearchResult {
+func mergeSearchResults(primary, additional []embedtypes.SearchResult, maxResults int) []embedtypes.SearchResult {
 	// Use a map to track unique chunks by ID
 	seen := make(map[string]bool)
-	merged := []core.SearchResult{}
+	merged := []embedtypes.SearchResult{}
 
 	// Add primary results first
 	for _, result := range primary {
