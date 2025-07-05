@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
 	"github.com/carlisia/mcp-factcheck/testutil"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -91,7 +91,7 @@ func TestHandleSearchSpec(t *testing.T) {
 				"query": "",
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
-				return testutil.NewMockVectorDBWithResults([]embedding.SearchResult{}),
+				return testutil.NewMockVectorDBWithResults([]core.SearchResult{}),
 					testutil.NewMockEmbeddingGeneratorWithEmbedding([]float64{0.1, 0.2, 0.3})
 			},
 			WantErr: false,
@@ -214,7 +214,7 @@ func TestHandleSearchSpec(t *testing.T) {
 				"query": "nonexistent topic xyz123",
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
-				return testutil.NewMockVectorDBWithResults([]embedding.SearchResult{}),
+				return testutil.NewMockVectorDBWithResults([]core.SearchResult{}),
 					testutil.NewMockEmbeddingGeneratorWithEmbedding([]float64{0.1, 0.2, 0.3})
 			},
 			WantErr: false,
@@ -232,7 +232,7 @@ func TestHandleSearchSpec(t *testing.T) {
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
 				db := &testutil.MockVectorDB{
-					SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+					SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
 						if topK != 3 {
 							t.Errorf("Expected topK=3, got %d", topK)
 						}
@@ -253,11 +253,11 @@ func TestHandleSearchSpec(t *testing.T) {
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
 				db := &testutil.MockVectorDB{
-					SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+					SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
 						if version != specs.DefaultSpecVersion {
 							t.Errorf("Expected version=%s, got %s", specs.DefaultSpecVersion, version)
 						}
-						return []embedding.SearchResult{}, nil
+						return []core.SearchResult{}, nil
 					},
 				}
 				return db, testutil.NewMockEmbeddingGeneratorWithEmbedding([]float64{0.1})
@@ -273,9 +273,9 @@ func TestHandleSearchSpec(t *testing.T) {
 				"query": "unicode test 你好世界",
 			},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
-				results := []embedding.SearchResult{
+				results := []core.SearchResult{
 					{
-						Chunk: embedding.EmbeddedChunk{
+						Chunk: core.EmbeddedChunk{
 							Content: "Unicode support: 你好世界 (Hello World) 🌍 émojis work too!",
 						},
 						Similarity: 0.95,

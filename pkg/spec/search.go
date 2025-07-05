@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
 	"github.com/carlisia/mcp-factcheck/internal/utils"
@@ -16,7 +16,7 @@ import (
 // vectorDB defines the interface for vector database operations needed by search.
 // It provides semantic search capabilities over embedded specification content.
 type vectorDB interface {
-	Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
+	Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error)
 }
 
 // embeddingGenerator defines the interface for embedding generation needed by search.
@@ -113,6 +113,6 @@ func HandleSearchSpec(ctx context.Context, db vectorDB, gen embeddingGenerator, 
 }
 
 // HandleSearchSpecMCP is the MCP-compatible wrapper that accepts concrete types
-func HandleSearchSpecMCP(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleSearchSpecMCP(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, args any) ([]mcp.Content, error) {
 	return HandleSearchSpec(ctx, vectorDB, generator, args)
 }

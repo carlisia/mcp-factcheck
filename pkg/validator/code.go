@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
 	"github.com/carlisia/mcp-factcheck/internal/utils"
@@ -60,7 +60,7 @@ func GetValidateCodeTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(ValidateCodeToolName, "Validate code against MCP specification and protocol requirements. Uses the most current spec version by default. On first use, inform the user that other versions (2025-03-26, 2024-11-05, draft) are available by specifying specVersion parameter.", schemaBytes)
 }
 
-func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, args any) ([]mcp.Content, error) {
 	// Get structured logger with request ID
 	log := logger.WithRequestID(ctx)
 
@@ -146,7 +146,7 @@ func HandleValidateCode(ctx context.Context, vectorDB *mcpembedding.VectorDB, ge
 }
 
 // analyzeCodeValidation determines if code follows MCP patterns
-func analyzeCodeValidation(code, codeAnalysis string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeCodeValidation(code, codeAnalysis string, results []core.SearchResult, specVersion string) ValidationResult {
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
@@ -210,7 +210,7 @@ func analyzeCodeValidation(code, codeAnalysis string, results []embedding.Search
 }
 
 // summarizeCodeMatches creates concise summaries from search results
-func summarizeCodeMatches(results []embedding.SearchResult, maxMatches int) []ValidationMatch {
+func summarizeCodeMatches(results []core.SearchResult, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}

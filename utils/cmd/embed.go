@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/utils/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/batch"
 	"github.com/carlisia/mcp-factcheck/utils/metadata"
 	"github.com/spf13/cobra"
 )
@@ -61,7 +61,7 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 	log.Println("Generating embeddings...")
 
 	// Create batch embedding generator
-	generator, err := embedding.NewBatchGenerator()
+	generator, err := batch.NewBatchGenerator()
 	if err != nil {
 		return fmt.Errorf("failed to create embedding generator: %w", err)
 	}
@@ -75,7 +75,7 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 	log.Printf("Generated embeddings for %d chunks", specEmbedding.Count)
 
 	// Store in embedding database
-	embeddingStore := embedding.NewEmbeddingStore(embedDataDir)
+	embeddingStore := batch.NewEmbeddingStore(embedDataDir)
 	if err := embeddingStore.Store(specEmbedding); err != nil {
 		return fmt.Errorf("failed to store embeddings: %w", err)
 	}

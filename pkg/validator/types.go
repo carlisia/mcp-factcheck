@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 )
 
 // Common errors used across validator package.
@@ -25,7 +25,7 @@ type ValidationResult struct {
 	Suggestions      []string                   `json:"suggestions,omitempty"`
 	CorrectedVersion string                     `json:"corrected_version,omitempty"`
 	SpecVersion      string                     `json:"spec_version"`
-	FactCheckResult  *embedding.FactCheckResult `json:"-"`                    // omit from JSON
+	FactCheckResult  *core.FactCheckResult `json:"-"`                    // omit from JSON
 	DebugInfo        *ValidationDebugInfo       `json:"debug_info,omitempty"` // Detailed debugging information
 }
 

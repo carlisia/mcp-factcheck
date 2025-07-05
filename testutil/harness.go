@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -20,7 +20,7 @@ type HandlerTestCase struct {
 
 // VectorDB defines the minimal interface required for handler tests.
 type VectorDB interface {
-	Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
+	Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error)
 	ListVersions() ([]string, error)
 }
 
@@ -75,15 +75,15 @@ func RunHandlerTestCases(t *testing.T, handler HandlerFunc, testCases []HandlerT
 
 // MockVectorDB is a test implementation of VectorDB for unit testing
 type MockVectorDB struct {
-	SearchFunc       func(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error)
+	SearchFunc       func(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error)
 	ListVersionsFunc func() ([]string, error)
 }
 
-func (m *MockVectorDB) Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+func (m *MockVectorDB) Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
 	if m.SearchFunc != nil {
 		return m.SearchFunc(version, queryEmbedding, topK)
 	}
-	return []embedding.SearchResult{}, nil
+	return []core.SearchResult{}, nil
 }
 
 func (m *MockVectorDB) ListVersions() ([]string, error) {

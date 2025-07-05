@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -117,7 +117,7 @@ type AggregatedValidationResult struct {
 }
 
 // HandleChunkedValidation processes long content by chunking it and validating each piece
-func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content, specVersion string) ([]mcp.Content, error) {
+func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content, specVersion string) ([]mcp.Content, error) {
 	// Start content chunking span using telemetry builder
 	ctx, chunkingSpan := telemetry.NewSpanBuilder().
 		WithKind("CHAIN").
@@ -329,7 +329,7 @@ func HandleChunkedValidation(ctx context.Context, vectorDB *mcpembedding.VectorD
 }
 
 // analyzeChunkValidation determines if a chunk is valid and provides insights
-func analyzeChunkValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeChunkValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content string, results []core.SearchResult, specVersion string) ValidationResult {
 	if len(results) == 0 {
 		return ValidationResult{
 			IsValid:     false,
@@ -345,7 +345,7 @@ func analyzeChunkValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB
 }
 
 // summarizeChunkMatches creates concise summaries from search results for a chunk
-func summarizeChunkMatches(results []embedding.SearchResult, maxMatches int) []ValidationMatch {
+func summarizeChunkMatches(results []core.SearchResult, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}

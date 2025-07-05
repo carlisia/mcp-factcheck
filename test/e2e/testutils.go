@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // setupTestEnv initializes a default VectorDB and Generator for use in tests.
 // It returns mock-backed, isolated instances with default content.
-func setupTestEnv(t *testing.T) (*mcpembedding.VectorDB, *embedding.Generator) {
+func setupTestEnv(t *testing.T) (*mcpembedding.VectorDB, *core.Generator) {
 	return createTestVectorDB(t), createTestGenerator(t)
 }
 
@@ -29,7 +29,7 @@ func defaultMetadata(section string) map[string]any {
 func createTestVectorDB(t *testing.T) *mcpembedding.VectorDB {
 	// Use the default spec version to match what handlers expect
 	defaultVersion := "2025-06-18"
-	defaultChunks := []embedding.EmbeddedChunk{
+	defaultChunks := []core.EmbeddedChunk{
 		{
 			ID:        "chunk1",
 			Version:   defaultVersion,
@@ -60,11 +60,11 @@ func createTestVectorDB(t *testing.T) *mcpembedding.VectorDB {
 
 // createTestVectorDBWithChunks creates a test vector database with custom chunks.
 // This allows tests to specify custom content and versions for specific test scenarios.
-func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embedding.EmbeddedChunk) *mcpembedding.VectorDB {
+func createTestVectorDBWithChunks(t *testing.T, version string, chunks []core.EmbeddedChunk) *mcpembedding.VectorDB {
 	t.Helper()
 	tempDir := t.TempDir()
 
-	data := embedding.SpecEmbedding{
+	data := core.SpecEmbedding{
 		Version: version,
 		Chunks:  chunks,
 		Count:   len(chunks),
@@ -85,12 +85,12 @@ func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embeddi
 
 // createTestGenerator creates a test embedding generator.
 // It respects existing OPENAI_API_KEY environment variables to avoid overwriting developer credentials.
-func createTestGenerator(t *testing.T) *embedding.Generator {
+func createTestGenerator(t *testing.T) *core.Generator {
 	// Set test API key only if not already set
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Setenv("OPENAI_API_KEY", "test-key")
 	}
-	gen, err := embedding.NewGenerator()
+	gen, err := core.NewGenerator()
 	if err != nil {
 		t.Fatalf("Failed to create generator: %v", err)
 	}

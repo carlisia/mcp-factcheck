@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"go.uber.org/zap"
@@ -22,7 +22,7 @@ type CompoundClaim struct {
 type SubClaim struct {
 	Text           string
 	SearchQueries  []string
-	SearchResults  []embedding.SearchResult
+	SearchResults  []core.SearchResult
 	HasEvidence    bool
 	EvidenceQuotes []string
 }
@@ -141,7 +141,7 @@ func SearchEvidenceForSubClaims(
 	ctx context.Context,
 	compound *CompoundClaim,
 	vectorDB *mcpembedding.VectorDB,
-	generator *embedding.Generator,
+	generator *core.Generator,
 	specVersion string,
 	topK int,
 ) error {
@@ -155,7 +155,7 @@ func SearchEvidenceForSubClaims(
 			zap.Int("query_count", len(subClaim.SearchQueries)))
 
 		// Collect all results from all queries
-		var allResults []embedding.SearchResult
+		var allResults []core.SearchResult
 		seenChunks := make(map[string]bool)
 
 		for _, query := range subClaim.SearchQueries {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/specs"
 	"github.com/carlisia/mcp-factcheck/internal/utils"
@@ -62,7 +62,7 @@ func getContentPreview(content string, maxLen int) string {
 }
 
 // Helper functions for OpenInference
-func getMaxSimilarity(results []embedding.SearchResult) float64 {
+func getMaxSimilarity(results []core.SearchResult) float64 {
 	if len(results) == 0 {
 		return 0.0
 	}
@@ -75,7 +75,7 @@ func getMaxSimilarity(results []embedding.SearchResult) float64 {
 	return max
 }
 
-func getMinSimilarity(results []embedding.SearchResult) float64 {
+func getMinSimilarity(results []core.SearchResult) float64 {
 	if len(results) == 0 {
 		return 0.0
 	}
@@ -164,7 +164,7 @@ For single-sentence questions like "Does MCP support X?", use check_mcp_quick_fa
 	return mcp.NewToolWithRawSchema(checkMCPClaimToolName, description, schemaBytes)
 }
 
-func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, args any) ([]mcp.Content, error) {
+func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, args any) ([]mcp.Content, error) {
 	// Get structured logger with request ID
 	log := logger.WithRequestID(ctx)
 
@@ -248,7 +248,7 @@ func HandleCheckMCPClaim(ctx context.Context, vectorDB *mcpembedding.VectorDB, g
 }
 
 // analyzeContentValidation determines if content is valid and provides insights
-func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content string, results []embedding.SearchResult, specVersion string) ValidationResult {
+func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content string, results []core.SearchResult, specVersion string) ValidationResult {
 	// Increment validation counter for debugging
 	validationCounter++
 
@@ -425,7 +425,7 @@ func analyzeContentValidation(ctx context.Context, vectorDB *mcpembedding.Vector
 }
 
 // summarizeContentMatches creates concise summaries from search results
-func summarizeContentMatches(results []embedding.SearchResult, maxMatches int) []ValidationMatch {
+func summarizeContentMatches(results []core.SearchResult, maxMatches int) []ValidationMatch {
 	if maxMatches > len(results) {
 		maxMatches = len(results)
 	}
@@ -465,8 +465,8 @@ func summarizeContentMatches(results []embedding.SearchResult, maxMatches int) [
 }
 
 // performTargetedSearches searches for specific concepts mentioned in the content
-func performTargetedSearches(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content, specVersion string) []embedding.SearchResult {
-	var allResults []embedding.SearchResult
+func performTargetedSearches(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content, specVersion string) []core.SearchResult {
+	var allResults []core.SearchResult
 	log := logger.WithRequestID(ctx)
 
 	// Extract key concepts from content
@@ -532,10 +532,10 @@ func extractKeyConcepts(content string) []string {
 }
 
 // mergeSearchResults merges and deduplicates search results
-func mergeSearchResults(primary, additional []embedding.SearchResult, maxResults int) []embedding.SearchResult {
+func mergeSearchResults(primary, additional []core.SearchResult, maxResults int) []core.SearchResult {
 	// Use a map to track unique chunks by ID
 	seen := make(map[string]bool)
-	merged := []embedding.SearchResult{}
+	merged := []core.SearchResult{}
 
 	// Add primary results first
 	for _, result := range primary {
@@ -596,7 +596,7 @@ func formatDebugInfo(debug *ValidationDebugInfo) string {
 	return strings.Join(sections, "\n")
 }
 
-func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *embedding.Generator, content, specVersion string) ([]mcp.Content, error) {
+func handleSingleValidation(ctx context.Context, vectorDB *mcpembedding.VectorDB, generator *core.Generator, content, specVersion string) ([]mcp.Content, error) {
 	// Start embedding generation span using telemetry builder
 	embeddingCtx, embeddingSpan := telemetry.StartEmbeddingSpan(ctx, content)
 

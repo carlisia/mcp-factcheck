@@ -8,7 +8,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/carlisia/mcp-factcheck/pkg/prompts"
@@ -26,7 +26,7 @@ import (
 // using semantic search and LLM-based fact-checking.
 type FactCheckServer struct {
 	vectorDB      *mcpembedding.VectorDB
-	generator     *embedding.Generator
+	generator     *core.Generator
 	mcpServer     *server.MCPServer
 	provider      any
 	middleware    any
@@ -82,7 +82,7 @@ func NewFactCheckServer(dataDir string, provider any, middleware any, opts ...Se
 	}
 	vectorDB := mcpembedding.NewVectorDB(dataDir)
 
-	generator, err := embedding.NewGenerator()
+	generator, err := core.NewGenerator()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create embedding generator: %w", err)
 	}
@@ -392,6 +392,6 @@ func (s *FactCheckServer) GetVectorDB() *mcpembedding.VectorDB {
 }
 
 // GetGenerator returns the embedding generator instance
-func (s *FactCheckServer) GetGenerator() *embedding.Generator {
+func (s *FactCheckServer) GetGenerator() *core.Generator {
 	return s.generator
 }

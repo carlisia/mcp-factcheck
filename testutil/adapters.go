@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 )
 
 // VectorDBAdapter provides common adapter functionality for tests that need to
@@ -15,7 +15,7 @@ type VectorDBAdapter struct {
 }
 
 // Search delegates to the underlying mock VectorDB
-func (a *VectorDBAdapter) Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+func (a *VectorDBAdapter) Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
 	return a.VectorDB.Search(version, queryEmbedding, topK)
 }
 
@@ -41,14 +41,14 @@ type FactCheckingEmbeddingGeneratorAdapter struct {
 // It uses simple heuristics based on the claim and spec sections to determine accuracy,
 // simulating just enough logic to verify handler code paths without duplicating
 // production fact-checking logic.
-func (a *FactCheckingEmbeddingGeneratorAdapter) FactCheckAgainstSpec(ctx context.Context, claim string, specSections []string, compoundEvidence map[string]string) (*embedding.FactCheckResult, error) {
+func (a *FactCheckingEmbeddingGeneratorAdapter) FactCheckAgainstSpec(ctx context.Context, claim string, specSections []string, compoundEvidence map[string]string) (*core.FactCheckResult, error) {
 	// Try to generate embedding first - some tests expect this behavior
 	_, err := a.GenerateEmbedding(ctx, claim)
 	if err != nil {
 		// Return uncertain result if embedding fails
-		return &embedding.FactCheckResult{
+		return &core.FactCheckResult{
 			IsAccurate: false,
-			Claims: []embedding.Claim{{
+			Claims: []core.Claim{{
 				Claim:       claim,
 				IsAccurate:  false,
 				Explanation: "Unable to verify claim",
@@ -63,9 +63,9 @@ func (a *FactCheckingEmbeddingGeneratorAdapter) FactCheckAgainstSpec(ctx context
 
 		// Test accurate claims
 		if strings.Contains(claimLower, "json-rpc") && strings.Contains(sectionLower, "json-rpc") {
-			return &embedding.FactCheckResult{
+			return &core.FactCheckResult{
 				IsAccurate: true,
-				Claims: []embedding.Claim{{
+				Claims: []core.Claim{{
 					Claim:      claim,
 					IsAccurate: true,
 				}},
@@ -74,9 +74,9 @@ func (a *FactCheckingEmbeddingGeneratorAdapter) FactCheckAgainstSpec(ctx context
 
 		// Test inaccurate claims
 		if strings.Contains(claimLower, "xml") && strings.Contains(sectionLower, "json") && !strings.Contains(sectionLower, "xml") {
-			return &embedding.FactCheckResult{
+			return &core.FactCheckResult{
 				IsAccurate: false,
-				Claims: []embedding.Claim{{
+				Claims: []core.Claim{{
 					Claim:      claim,
 					IsAccurate: false,
 				}},
@@ -85,9 +85,9 @@ func (a *FactCheckingEmbeddingGeneratorAdapter) FactCheckAgainstSpec(ctx context
 
 		// Test unicode support
 		if strings.Contains(claimLower, "unicode") && strings.Contains(sectionLower, "unicode") {
-			return &embedding.FactCheckResult{
+			return &core.FactCheckResult{
 				IsAccurate: true,
-				Claims: []embedding.Claim{{
+				Claims: []core.Claim{{
 					Claim:      claim,
 					IsAccurate: true,
 				}},
@@ -96,9 +96,9 @@ func (a *FactCheckingEmbeddingGeneratorAdapter) FactCheckAgainstSpec(ctx context
 	}
 
 	// Default to uncertain/inaccurate
-	return &embedding.FactCheckResult{
+	return &core.FactCheckResult{
 		IsAccurate: false,
-		Claims: []embedding.Claim{{
+		Claims: []core.Claim{{
 			Claim:       claim,
 			IsAccurate:  false,
 			Explanation: "? Uncertain",
