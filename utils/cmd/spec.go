@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	specs "github.com/carlisia/mcp-factcheck/internal/specs"
+	specs "github.com/carlisia/mcp-factcheck/pkg/specs"
 	"github.com/carlisia/mcp-factcheck/utils/metadata"
 	utilspecs "github.com/carlisia/mcp-factcheck/utils/specs"
 	"github.com/spf13/cobra"
