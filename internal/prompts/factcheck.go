@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"text/template"
 
-	"github.com/carlisia/mcp-factcheck/pkg/prompts"
 )
 
 //go:embed templates/fact-check.tmpl
@@ -45,13 +44,13 @@ func NewFactCheckPrompt() (*FactCheckPrompt, error) {
 func (p *FactCheckPrompt) Render(data FactCheckData) (string, error) {
 	// Add shared rules to the data if not already provided
 	if data.ClaimExtractionRules == "" {
-		data.ClaimExtractionRules = prompts.ClaimExtractionRules
+		data.ClaimExtractionRules = claimExtractionRules
 	}
 	if data.AccuracyCheckingRules == "" {
-		data.AccuracyCheckingRules = prompts.AccuracyCheckingRules
+		data.AccuracyCheckingRules = accuracyCheckingRules
 	}
 	if data.SpecificationGuidanceNote == "" {
-		data.SpecificationGuidanceNote = prompts.SpecificationGuidanceNote
+		data.SpecificationGuidanceNote = specificationGuidanceNote
 	}
 
 	var buf bytes.Buffer
