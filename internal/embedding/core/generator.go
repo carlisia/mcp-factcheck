@@ -1,7 +1,7 @@
-// Package embedding provides text embedding generation and fact-checking capabilities.
+// Package core provides text embedding generation and fact-checking capabilities.
 // It uses OpenAI's API for generating embeddings and performing LLM-based validation
 // of content against MCP specifications.
-package embedding
+package core
 
 import (
 	"context"

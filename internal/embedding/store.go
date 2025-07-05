@@ -1,4 +1,4 @@
-package vectorstore
+package embedding
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/carlisia/mcp-factcheck/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
 )
 
 // Store handles storage and retrieval of embeddings from the filesystem.
@@ -26,7 +26,7 @@ func NewStore(dataDir string) *Store {
 
 // Store saves a spec embedding to the filesystem as a JSON file.
 // The file is named using the spec version (e.g., "draft.json").
-func (s *Store) Store(specEmbedding *embedding.SpecEmbedding) error {
+func (s *Store) Store(specEmbedding *core.SpecEmbedding) error {
 	// Ensure data directory exists
 	if err := os.MkdirAll(s.dataDir, 0755); err != nil {
 		return fmt.Errorf("failed to create data directory: %w", err)
@@ -56,7 +56,7 @@ func (s *Store) Store(specEmbedding *embedding.SpecEmbedding) error {
 }
 
 // Load retrieves a spec embedding from the database
-func (s *Store) Load(version string) (*embedding.SpecEmbedding, error) {
+func (s *Store) Load(version string) (*core.SpecEmbedding, error) {
 	filename := filepath.Join(s.dataDir, fmt.Sprintf("%s.json", version))
 
 	file, err := os.Open(filename)
@@ -71,7 +71,7 @@ func (s *Store) Load(version string) (*embedding.SpecEmbedding, error) {
 		}
 	}()
 
-	var specEmbedding embedding.SpecEmbedding
+	var specEmbedding core.SpecEmbedding
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&specEmbedding); err != nil {
 		return nil, fmt.Errorf("failed to decode spec embedding: %w", err)
@@ -81,7 +81,7 @@ func (s *Store) Load(version string) (*embedding.SpecEmbedding, error) {
 }
 
 // Search performs similarity search against a spec version
-func (s *Store) Search(version string, queryEmbedding []float64, topK int) ([]embedding.SearchResult, error) {
+func (s *Store) Search(version string, queryEmbedding []float64, topK int) ([]core.SearchResult, error) {
 	// Load spec embeddings
 	specEmbedding, err := s.Load(version)
 	if err != nil {
@@ -89,10 +89,10 @@ func (s *Store) Search(version string, queryEmbedding []float64, topK int) ([]em
 	}
 
 	// Calculate similarities
-	var results []embedding.SearchResult
+	var results []core.SearchResult
 	for _, chunk := range specEmbedding.Chunks {
 		similarity := cosineSimilarity(queryEmbedding, chunk.Embedding)
-		results = append(results, embedding.SearchResult{
+		results = append(results, core.SearchResult{
 			Chunk:      chunk,
 			Similarity: similarity,
 		})

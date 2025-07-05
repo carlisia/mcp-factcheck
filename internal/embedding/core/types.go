@@ -1,4 +1,4 @@
-package embedding
+package core
 
 // EmbeddedChunk represents a chunk of text with its embedding vector.
 // Each chunk contains a portion of MCP specification content along with
