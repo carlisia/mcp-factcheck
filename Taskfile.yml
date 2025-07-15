@@ -4,14 +4,14 @@ version: "3"
 
 vars:
   # Binary names
-  SERVER_BINARY: mcp-factcheck-server
+  SERVER_BINARY: mfc
   CLIENT_BINARY: factcheck-curl
   LOADER_BINARY: specloader
 
   # Directories
   BIN_DIR: ./bin
   DATA_DIR: ./data
-  EMBEDDINGS_DIR: ./data/embeddings
+  EMBEDDINGS_DIR: ./internal/storage/embeddings
   SPECS_DIR: ./data/specs
 
   # Go build flags
@@ -60,15 +60,21 @@ tasks:
   # Build the main MCP fact-check server binary
   build:server:
     desc: Build the MCP fact-check server
+    vars:
+      VERSION:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+      COMMIT:
+        sh: git rev-parse --short HEAD 2>/dev/null || echo "none"
+      BUILD_DATE:
+        sh: date -u '+%Y-%m-%d_%H:%M:%S'
     cmds:
       - mkdir -p {{.BIN_DIR}}
-      - echo "Building {{.SERVER_BINARY}}..."
-      - go build {{.GO_FLAGS}} -ldflags="{{.LDFLAGS}}" -o {{.BIN_DIR}}/{{.SERVER_BINARY}} ./cmd/mcp-factcheck-server
+      - echo "Building {{.SERVER_BINARY}} with embedded data..."
+      - go build {{.GO_FLAGS}} -ldflags="{{.LDFLAGS}} -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X 'main.buildDate={{.BUILD_DATE}}'" -o {{.BIN_DIR}}/{{.SERVER_BINARY}} ./cmd/server
     sources:
-      - ./cmd/mcp-factcheck-server/**/*.go
+      - ./cmd/server/**/*.go
       - ./pkg/**/*.go
       - ./internal/**/*.go
-      - ./embedding/**/*.go
       - go.mod
       - go.sum
     generates:
@@ -98,8 +104,6 @@ tasks:
     sources:
       - ./utils/**/*.go
       - ./internal/**/*.go
-      - ./embedding/**/*.go
-      - ./vectorstore/**/*.go
       - go.mod
       - go.sum
     generates:
@@ -195,7 +199,7 @@ tasks:
     desc: Run the MCP fact-check server
     deps: [build:server]
     cmds:
-      - "{{.BIN_DIR}}/{{.SERVER_BINARY}} --data-dir {{.EMBEDDINGS_DIR}}"
+      - "{{.BIN_DIR}}/{{.SERVER_BINARY}}"
 
   # Run the curl client to test the server
   # Examples:
@@ -206,7 +210,7 @@ tasks:
     desc: Run factcheck-curl to test the server
     deps: [build:client]
     cmds:
-      - "{{.BIN_DIR}}/{{.CLIENT_BINARY}} --cmd {{.BIN_DIR}}/{{.SERVER_BINARY}} --data-dir {{.EMBEDDINGS_DIR}} {{.CLI_ARGS}}"
+      - "{{.BIN_DIR}}/{{.CLIENT_BINARY}} --cmd {{.BIN_DIR}}/{{.SERVER_BINARY}} {{.CLI_ARGS}}"
 
   # Watch files and auto-rebuild/restart server on changes
   # Requires 'entr' to be installed: https://github.com/eradman/entr
