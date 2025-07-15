@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/pkg/specs"
-	"github.com/carlisia/mcp-factcheck/pkg/validator"
+	"github.com/carlisia/mcp-factcheck/internal/tooldef"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -39,7 +38,7 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 			name: "validate content claim with all parameters",
 			args: checkClaimArgs{
 				Content:     "MCP provides tools and resources for building AI applications",
-				SpecVersion: specs.DefaultSpecVersion,
+				SpecVersion: tooldef.Current,
 				UseChunking: false,
 			},
 			assert: assertNonEmpty,
@@ -67,7 +66,7 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := validator.HandleCheckMCPClaim(ctx, vectorDB, generator, tt.args.toMap())
+			got, err := validation.HandleCheckMCPClaim(ctx, vectorDB, generator, tt.args.toMap())
 			// Note: These tests will fail with real API calls using test key
 			assertErr(t, err, false)
 			if tt.assert != nil {
@@ -141,7 +140,7 @@ func TestValidator_HandleCheckMCPClaim_WithInvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validator.HandleCheckMCPClaim(ctx, vectorDB, generator, tt.args)
+			_, err := validation.HandleCheckMCPClaim(ctx, vectorDB, generator, tt.args)
 			assertErr(t, err, tt.wantErr)
 		})
 	}

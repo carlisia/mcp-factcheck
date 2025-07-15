@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
+	"github.com/carlisia/mcp-factcheck/internal/contentprep"
 	"github.com/carlisia/mcp-factcheck/testutil"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -40,7 +40,7 @@ func SampleHandlerFunc(ctx context.Context, db testutil.VectorDB, gen testutil.E
 	var content []mcp.Content
 	content = append(content, mcp.NewTextContent("Search Results:\n"))
 	for _, result := range results {
-		content = append(content, mcp.NewTextContent(result.Chunk.Content))
+		content = append(content, mcp.NewTextContent(result.Content))
 	}
 	return content, nil
 }
@@ -129,7 +129,7 @@ func TestExampleHandler_WithHarness(t *testing.T) {
 			Name: "empty search results",
 			Args: map[string]any{"query": "nonexistent"},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
-				return testutil.NewMockVectorDBWithResults([]embedtypes.SearchResult{}),
+				return testutil.NewMockVectorDBWithResults([]contentprep.SearchResult{}),
 					testutil.NewMockEmbeddingGeneratorWithEmbedding([]float64{0.1, 0.2})
 			},
 			WantErr: false,

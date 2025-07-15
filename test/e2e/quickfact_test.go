@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/pkg/specs"
-	"github.com/carlisia/mcp-factcheck/pkg/validator"
+	"github.com/carlisia/mcp-factcheck/internal/tooldef"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -37,7 +36,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
 			name: "check accurate claim with spec version",
 			args: quickFactArgs{
 				Claim:       "MCP uses JSON-RPC",
-				SpecVersion: specs.DefaultSpecVersion,
+				SpecVersion: tooldef.Current,
 			},
 			check: assertNonEmpty,
 		},
@@ -62,7 +61,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := validator.HandleCheckMCPQuickFact(ctx, vectorDB, generator, tt.args.toMap())
+			got, err := validation.HandleCheckMCPQuickFact(ctx, vectorDB, generator, tt.args.toMap())
 			assertSuccess(t, err, got)
 			if tt.check != nil {
 				tt.check(t, got)
@@ -123,7 +122,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithInvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validator.HandleCheckMCPQuickFact(ctx, vectorDB, generator, tt.args)
+			_, err := validation.HandleCheckMCPQuickFact(ctx, vectorDB, generator, tt.args)
 			assertErr(t, err, tt.wantErr)
 		})
 	}

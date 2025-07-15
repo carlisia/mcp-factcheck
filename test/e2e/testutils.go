@@ -1,4 +1,3 @@
-// Package e2e contains end-to-end tests and test utilities for the MCP fact-check server.
 package e2e
 
 import (
@@ -7,16 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/embedding/core"
-	"github.com/carlisia/mcp-factcheck/pkg/embedtypes"
-	mcpembedding "github.com/carlisia/mcp-factcheck/internal/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/storage"
+	"github.com/carlisia/mcp-factcheck/pkg/llm"
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // setupTestEnv initializes a default VectorDB and Generator for use in tests.
 // It returns mock-backed, isolated instances with default content.
-func setupTestEnv(t *testing.T) (*mcpembedding.VectorDB, *core.Generator) {
-	return createTestVectorDB(t), createTestGenerator(t)
+func setupTestEnv(t *testing.T) (*storage.VectorDB, *llm.Client) {
+	return createTestVectorDB(t), createTestRuntimeService(t)
 }
 
 // defaultMetadata creates a default metadata map with the given section.
@@ -27,10 +27,10 @@ func defaultMetadata(section string) map[string]any {
 
 // createTestVectorDB creates a temporary vector database for testing with default chunks.
 // It sets up a basic test environment with protocol and overview sections.
-func createTestVectorDB(t *testing.T) *mcpembedding.VectorDB {
+func createTestVectorDB(t *testing.T) *storage.VectorDB {
 	// Use the default spec version to match what handlers expect
 	defaultVersion := "2025-06-18"
-	defaultChunks := []embedtypes.EmbeddedChunk{
+	defaultChunks := []embedding.EmbeddedChunk{
 		{
 			ID:        "chunk1",
 			Version:   defaultVersion,
@@ -61,11 +61,11 @@ func createTestVectorDB(t *testing.T) *mcpembedding.VectorDB {
 
 // createTestVectorDBWithChunks creates a test vector database with custom chunks.
 // This allows tests to specify custom content and versions for specific test scenarios.
-func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embedtypes.EmbeddedChunk) *mcpembedding.VectorDB {
+func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embedding.EmbeddedChunk) *storage.VectorDB {
 	t.Helper()
 	tempDir := t.TempDir()
 
-	data := embedtypes.SpecEmbedding{
+	data := embedding.SpecEmbedding{
 		Version: version,
 		Chunks:  chunks,
 		Count:   len(chunks),
@@ -81,19 +81,21 @@ func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embedty
 		t.Fatalf("Failed to write embedding file: %v", err)
 	}
 
-	return mcpembedding.NewVectorDB(tempDir)
+	return storage.NewVectorDB(tempDir)
 }
 
-// createTestGenerator creates a test embedding generator.
+// createTestRuntimeService creates a test embedding generator.
 // It respects existing OPENAI_API_KEY environment variables to avoid overwriting developer credentials.
-func createTestGenerator(t *testing.T) *core.Generator {
+func createTestRuntimeService(t *testing.T) *llm.Client {
 	// Set test API key only if not already set
 	if os.Getenv("OPENAI_API_KEY") == "" {
 		t.Setenv("OPENAI_API_KEY", "test-key")
 	}
-	gen, err := core.NewGenerator()
+	// Create with no-op telemetry for tests
+	telemetry := logger.NewNoOpTelemetryProvider()
+	gen, err := llm.New(telemetry)
 	if err != nil {
-		t.Fatalf("Failed to create generator: %v", err)
+		t.Fatalf("Failed to create runtime service: %v", err)
 	}
 	return gen
 }
@@ -127,7 +129,6 @@ func assertNonEmpty(t *testing.T, result []mcp.Content) {
 	}
 }
 
-
 // assertMinContentCount checks that result has at least expected number of items.
 // Use this when the exact count may vary but a minimum is required.
 func assertMinContentCount(t *testing.T, result []mcp.Content, min int) {
@@ -144,7 +145,6 @@ func assertSuccess(t *testing.T, err error, result []mcp.Content) {
 	assertErr(t, err, false)
 	assertNonEmpty(t, result)
 }
-
 
 // assertContainsVersion checks that the result contains a specific version string.
 // This is useful for verifying that list operations include expected versions.

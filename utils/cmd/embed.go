@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/internal/embedding/batch"
+	"github.com/carlisia/mcp-factcheck/internal/embedding"
+	"github.com/carlisia/mcp-factcheck/internal/integrations/llm"
 	"github.com/carlisia/mcp-factcheck/utils/metadata"
 	"github.com/spf13/cobra"
 )
@@ -22,12 +21,10 @@ var embedCmd = &cobra.Command{
 
 var (
 	embedVersion string
-	embedDataDir string
 )
 
 func init() {
 	embedCmd.Flags().StringVar(&embedVersion, "version", "", "MCP spec version to generate embeddings for (required)")
-	embedCmd.Flags().StringVar(&embedDataDir, "data-dir", "./data/embeddings", "Directory to store vector database")
 
 	if err := embedCmd.MarkFlagRequired("version"); err != nil {
 		// This is a programming error, panic is appropriate
@@ -60,26 +57,28 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 	// Generate embeddings
 	log.Println("Generating embeddings...")
 
-	// Create batch embedding generator
-	generator, err := batch.NewBatchGenerator()
+	// Create LLM client
+	client, err := llm.New()
 	if err != nil {
-		return fmt.Errorf("failed to create embedding generator: %w", err)
+		return fmt.Errorf("failed to create LLM client: %w", err)
 	}
 
-	// Generate embeddings for all chunks
-	specEmbedding, err := generator.GenerateSpecEmbeddings(context.Background(), embedVersion, chunks)
+	// Generate embeddings
+	specEmbedding, err := embedding.ProcessSpec(context.Background(), embedVersion, chunks, client.CreateEmbedding)
 	if err != nil {
 		return fmt.Errorf("failed to generate embeddings: %w", err)
 	}
 
-	log.Printf("Generated embeddings for %d chunks", specEmbedding.Count)
-
-	// Store in embedding database
-	embeddingStore := batch.NewEmbeddingStore(embedDataDir)
-	if err := embeddingStore.Store(specEmbedding); err != nil {
+	// Store embeddings
+	// Always use the embedded storage directory
+	embedDataDir := "./internal/storage/embeddings"
+	log.Printf("Storing embeddings in: %s", embedDataDir)
+	storer := embedding.NewEmbeddingStorage(embedDataDir)
+	if err := storer.WriteEmbeddings(specEmbedding); err != nil {
 		return fmt.Errorf("failed to store embeddings: %w", err)
 	}
-	log.Printf("Stored embeddings in database: %s", embedDataDir)
+
+	log.Printf("Generated and stored embeddings for %d chunks", specEmbedding.Count)
 
 	// Update metadata
 	log.Printf("Updating metadata...")
@@ -108,29 +107,5 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 }
 
 func loadChunksFromJSON(filePath string) ([]string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			log.Printf("Warning: Failed to close file %s: %v", filePath, err)
-		}
-	}()
-
-	var data struct {
-		Chunks []string `json:"chunks"`
-		Count  int      `json:"count"`
-	}
-
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&data); err != nil {
-		return nil, fmt.Errorf("failed to decode JSON: %w", err)
-	}
-
-	if len(data.Chunks) == 0 {
-		return nil, fmt.Errorf("no chunks found in file")
-	}
-
-	return data.Chunks, nil
+	return embedding.LoadChunksFromJSON(filePath)
 }

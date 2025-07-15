@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	specs "github.com/carlisia/mcp-factcheck/pkg/specs"
+	"github.com/carlisia/mcp-factcheck/internal/tools"
 	"github.com/carlisia/mcp-factcheck/utils/metadata"
 	utilspecs "github.com/carlisia/mcp-factcheck/utils/specs"
 	"github.com/spf13/cobra"
@@ -38,8 +38,8 @@ func init() {
 
 func runSpec(cmd *cobra.Command, args []string) error {
 	// Validate version
-	if !specs.IsValidSpecVersion(specVersion) {
-		return fmt.Errorf("invalid spec version: %s. Valid versions: %v", specVersion, specs.ValidSpecVersions)
+	if !tools.IsValidSpecVersion(specVersion) {
+		return fmt.Errorf("invalid spec version: %s. Valid versions: %v", specVersion, tools.ValidSpecVersions)
 	}
 
 	log.Printf("Extracting MCP specification version: %s", specVersion)

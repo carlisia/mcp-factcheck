@@ -2,10 +2,10 @@ package e2e
 
 import (
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/pkg/specs"
-	"github.com/carlisia/mcp-factcheck/pkg/spec"
+	"github.com/carlisia/mcp-factcheck/pkg/mcp/handler"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -28,7 +28,7 @@ func (s searchArgs) toMap() map[string]any {
 	return m
 }
 
-func TestSpec_HandleSearchSpec_WithValidQuery(t *testing.T) {
+func TestSpec_SearchSpec_WithValidQuery(t *testing.T) {
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -41,7 +41,7 @@ func TestSpec_HandleSearchSpec_WithValidQuery(t *testing.T) {
 			name: "successful search with all parameters",
 			args: searchArgs{
 				Query:       "MCP communication protocol",
-				SpecVersion: specs.DefaultSpecVersion,
+				SpecVersion: "2025-06-18",
 				TopK:        5.0,
 			},
 			assert: assertNonEmpty,
@@ -72,7 +72,7 @@ func TestSpec_HandleSearchSpec_WithValidQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := spec.HandleSearchSpecMCP(ctx, vectorDB, generator, tt.args.toMap())
+			got, err := handler.SearchSpec(ctx, vectorDB, generator, tt.args.toMap())
 			// Note: These tests will fail with real API calls using test key
 			// In a real e2e test, you'd use a valid API key or mock the external service
 			assertErr(t, err, false)
@@ -112,6 +112,20 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "query with only whitespace",
+			args: map[string]any{
+				"query": "   \t\n   ",
+			},
+			wantErr: true,
+		},
+		{
+			name: "query exceeds max length",
+			args: map[string]any{
+				"query": strings.Repeat("a", 501), // MaxQueryLength is 500
+			},
+			wantErr: true,
+		},
+		{
 			name: "invalid spec version",
 			args: map[string]any{
 				"query":       "test search",
@@ -127,11 +141,35 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 			},
 			wantErr: false, // Handler should use default when topK is invalid
 		},
+		{
+			name: "topK below minimum",
+			args: map[string]any{
+				"query": "test search",
+				"topK":  float64(0),
+			},
+			wantErr: false, // Handler should clamp to minimum
+		},
+		{
+			name: "topK above maximum",
+			args: map[string]any{
+				"query": "test search",
+				"topK":  float64(100),
+			},
+			wantErr: false, // Handler should clamp to maximum
+		},
+		{
+			name: "negative topK",
+			args: map[string]any{
+				"query": "test search",
+				"topK":  float64(-5),
+			},
+			wantErr: false, // Handler should clamp to minimum
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := spec.HandleSearchSpecMCP(ctx, vectorDB, generator, tt.args)
+			_, err := handler.SearchSpec(ctx, vectorDB, generator, tt.args)
 			assertErr(t, err, tt.wantErr)
 		})
 	}
