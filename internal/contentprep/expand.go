@@ -1,11 +1,11 @@
-package validator
+package contentprep
 
 import (
 	"strings"
 )
 
-// expandClaimForSearch expands a claim into multiple search queries to improve spec matching
-func expandClaimForSearch(claim string) []string {
+// Expand expands a claim into multiple search queries to improve spec matching
+func Expand(claim string) []string {
 	queries := []string{claim} // Always include original
 
 	// Normalize the claim
