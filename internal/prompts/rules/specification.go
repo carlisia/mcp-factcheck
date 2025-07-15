@@ -1,29 +1,9 @@
-package prompts
+package rules
 
-// AccuracyCheckingRulesShort provides a condensed version of accuracy checking rules
-// for use in prompt templates. It summarizes the key principles for validating
-// claims against MCP specifications.
-const AccuracyCheckingRulesShort = `Check each claim against the MCP specification:
-- Claims must be explicitly supported by the spec
-- Distinguish between "MCP provides" vs "implementations SHOULD"
-- Mark unsupported claims as inaccurate
-- Be strict—no assumptions beyond the provided spec`
-
-// StylePreservationGuidelines defines the rules for maintaining the original
-// content style, tone, and formatting when making corrections or updates.
-// These guidelines ensure that validated content remains consistent with
-// the author's original intent.
-const StylePreservationGuidelines = `- Preserve the original tone, voice, and style of the content when making corrections or suggestions
-- Match the level of formality, technicality, and overall style unless otherwise directed
-- Maintain the author's intended audience and communication approach
-- Keep formatting conventions consistent with the original content`
-
-// SpecificationGuidanceNote provides comprehensive guidance on interpreting
-// MCP specification requirement levels and modal verbs (MUST, SHOULD, MAY).
-// It helps distinguish between protocol requirements, implementation requirements,
-// best practices, and optional features. This constant is used in prompts to
-// ensure accurate interpretation of specification language.
-const SpecificationGuidanceNote = `Specification Guidance Note:
+// SpecificationGuidance explains the modal verb distinctions in MCP specifications.
+// It provides comprehensive guidance on interpreting requirement levels (MUST, SHOULD, MAY)
+// and helps ensure accurate understanding of specification language strength.
+const SpecificationGuidance = `Specification Guidance Note:
 MCP specifications may use different levels of requirement language:
 - "MUST", "REQUIRED" = hard requirements
 - "SHOULD", "RECOMMENDED" = best practices, strong recommendations
