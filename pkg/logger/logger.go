@@ -1,15 +1,10 @@
-// Package logger provides structured JSON logging with ordered fields.
-// It uses zap for high-performance logging and ensures logs are written
-// to stderr to avoid interfering with MCP stdio communication.
 package logger
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"strings"
 
-	"github.com/carlisia/mcp-factcheck/pkg/telemetry"
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
@@ -17,7 +12,6 @@ import (
 
 var (
 	globalLogger *zap.Logger
-	sugar        *zap.SugaredLogger
 )
 
 // orderedJSONEncoder is a custom zapcore.Encoder that ensures timestamp appears
@@ -134,10 +128,6 @@ func Initialize(isDevelopment bool) error {
 		config.Development = false
 	}
 
-	// Always log to stderr to avoid interfering with MCP stdio communication
-	config.OutputPaths = []string{"stderr"}
-	config.ErrorOutputPaths = []string{"stderr"}
-
 	// Configure encoder settings
 	config.EncoderConfig.TimeKey = "timestamp"
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
@@ -167,7 +157,6 @@ func Initialize(isDevelopment bool) error {
 	logger := zap.New(core, zap.AddCaller())
 
 	globalLogger = logger
-	sugar = logger.Sugar()
 
 	return nil
 }
@@ -180,36 +169,6 @@ func Get() *zap.Logger {
 		globalLogger = zap.NewNop()
 	}
 	return globalLogger
-}
-
-// Sugar returns the global sugared logger instance.
-// Sugared loggers provide a more ergonomic API for common logging patterns.
-// If not initialized, it returns a no-op sugared logger.
-func Sugar() *zap.SugaredLogger {
-	if sugar == nil {
-		// Fallback to no-op logger if not initialized
-		sugar = zap.NewNop().Sugar()
-	}
-	return sugar
-}
-
-// WithRequestID returns a logger with the request ID from context.
-// This enables request tracing across log entries for better debugging
-// and correlation of related log messages.
-func WithRequestID(ctx context.Context) *zap.Logger {
-	logger := Get()
-
-	if requestID := telemetry.GetRequestID(ctx); requestID != "" {
-		return logger.With(zap.String("request_id", requestID))
-	}
-
-	return logger
-}
-
-// WithRequestIDSugar returns a sugared logger with the request ID from context.
-// This combines the ergonomic API of sugared loggers with request tracing capabilities.
-func WithRequestIDSugar(ctx context.Context) *zap.SugaredLogger {
-	return WithRequestID(ctx).Sugar()
 }
 
 // Sync flushes any buffered log entries. Returns error if sync fails.
