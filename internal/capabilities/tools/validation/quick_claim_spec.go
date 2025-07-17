@@ -1,10 +1,11 @@
 package validation
 
 import (
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 	"context"
 	"fmt"
-	
-	"github.com/carlisia/mcp-factcheck/internal/tools"
+
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
 const (
@@ -90,7 +91,7 @@ func ParseQuickClaimArgs(args any) (*QuickClaimRequest, error) {
 // newDefaultQuickClaimRequest creates a QuickClaimRequest with default values
 func newDefaultQuickClaimRequest() QuickClaimRequest {
 	return QuickClaimRequest{
-		SpecVersion: tools.Current,
+		SpecVersion: capabilities.Latest,
 	}
 }
 
@@ -145,10 +146,10 @@ func validateQuickClaimRequest(claim string, version string) (*QuickClaimRequest
 
 // validateWithAggressiveSearch performs validation with multiple search strategies.
 // The aggressive search strategy works as follows:
-// 1. First attempts to retrieve quickSearchTopK (15) results for maximum coverage
-// 2. If insufficient relevant results are found, falls back to fallbackTopK (5)
-// 3. This two-tier approach ensures quick claims get enough context while
-//    maintaining fast response times even for edge cases
+//  1. First attempts to retrieve quickSearchTopK (15) results for maximum coverage
+//  2. If insufficient relevant results are found, falls back to fallbackTopK (5)
+//  3. This two-tier approach ensures quick claims get enough context while
+//     maintaining fast response times even for edge cases
 func validateWithAggressiveSearch(ctx context.Context, claim, specVersion string, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
 	// Use aggressive search strategy with fallback
 	aggressiveStrategy := &tools.AggressiveSearchStrategy{

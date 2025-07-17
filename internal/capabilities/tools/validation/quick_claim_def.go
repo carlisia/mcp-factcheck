@@ -1,11 +1,16 @@
 package validation
 
-import "github.com/carlisia/mcp-factcheck/internal/tools"
+import (
+	"fmt"
+	
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
+)
 
 // MCPQuickClaimToolName is the name of the check MCP quick fact tool
-const MCPQuickClaimToolName = "check-mcp-quick-fact"
+const MCPQuickClaimToolName = "check-mcp-quick-claim"
 
-// QuickClaimDefinition returns the tool definition for check_mcp_quick_fact.
+// QuickClaimDefinition returns the tool definition for Quick Claim.
 // This tool is optimized for validating single sentences or quick questions about MCP,
 // returning concise results with a ✓/✗ verdict.
 func QuickClaimDefinition() tools.Definition {
@@ -18,8 +23,8 @@ func QuickClaimDefinition() tools.Definition {
 			},
 			"specVersion": map[string]any{
 				"type":        "string",
-				"description": "MCP specification version to check against. Options: draft (latest), 2025-06-18, 2025-03-26, 2024-11-05",
-				"default":     tools.Current,
+				"description": fmt.Sprintf("MCP specification version to check against. Options: %s", capabilities.Versions.String()),
+				"default":     capabilities.Latest,
 			},
 		},
 		"required": []string{"claim"},

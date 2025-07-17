@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	
-	"github.com/carlisia/mcp-factcheck/internal/tools"
+
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
 // ClaimsRequest represents a request to validate MCP-related claims or content.
@@ -34,13 +35,10 @@ type ClaimsRequest struct {
 }
 
 const (
-	// ChunkSizeThreshold defines the maximum size for a single content chunk.
-	// Set to 2000 characters based on:
-	// - LLM context window efficiency (smaller chunks = more focused analysis)
-	// - Embedding quality (embeddings work better on coherent, focused text)
-	// - Balance between granularity and processing overhead
-	// This threshold ensures each chunk contains roughly 1-3 paragraphs of text,
-	// maintaining semantic coherence while enabling accurate validation.
+	// ChunkSizeThreshold defines when to automatically enable chunking.
+	// Set to 2000 characters to trigger chunking for longer content.
+	// The actual chunk size used during chunking is 800 characters with 100 character overlap,
+	// as configured in contentprep.Split() for better validation accuracy.
 	ChunkSizeThreshold = 2000
 )
 
@@ -84,9 +82,14 @@ func ParseClaimsArgs(args any) (*ClaimsRequest, error) {
 	}
 
 	// Extract parameters
-	content, ok := params["content"].(string)
-	if !ok {
+	contentRaw, exists := params["content"]
+	if !exists {
 		return nil, fmt.Errorf("content parameter is required")
+	}
+
+	content, ok := contentRaw.(string)
+	if !ok {
+		return nil, fmt.Errorf("content must be a string")
 	}
 
 	specVersion, _ := params["specVersion"].(string)
@@ -99,7 +102,7 @@ func ParseClaimsArgs(args any) (*ClaimsRequest, error) {
 // newDefaultClaimsRequest creates a ClaimsRequest with default values
 func newDefaultClaimsRequest() ClaimsRequest {
 	return ClaimsRequest{
-		SpecVersion: tools.Current,
+		SpecVersion: capabilities.Latest,
 		UseChunking: false,
 	}
 }
@@ -144,7 +147,11 @@ func (b *claimsRequestBuilder) WithSpecVersion(version string) *claimsRequestBui
 
 // WithChunking explicitly sets chunking behavior
 func (b *claimsRequestBuilder) WithChunking(useChunking bool) *claimsRequestBuilder {
-	b.request.UseChunking = useChunking
+	// Only override auto-chunking if explicitly enabling
+	// This preserves auto-enable behavior for long content
+	if useChunking || !b.request.UseChunking {
+		b.request.UseChunking = useChunking
+	}
 	return b
 }
 
@@ -179,7 +186,7 @@ func validateSingleContent(ctx context.Context, content, specVersion string, emb
 	// Perform fact-checking
 	factCheckResult, err := performClaimCheck(ctx, llmFunc, content, searchResults)
 	if err != nil {
-		return nil, fmt.Errorf("failed to perform fact-check: %w", err)
+		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
 	// Build validation result
@@ -199,102 +206,11 @@ func validateSingleContent(ctx context.Context, content, specVersion string, emb
 
 // validateWithChunking validates content by splitting it into chunks
 func validateWithChunking(ctx context.Context, req ClaimsRequest, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
-	// Split content into chunks
-	chunks := chunkContent(req.Content)
-
-	// Validate each chunk
-	var allClaims []Claim
-	var allIssues []string
-	var allSuggestions []string
-	var chunkErrors []error
-	totalConfidence := 0.0
-	validChunks := 0
-	processedChunks := 0
-
-	for i, chunk := range chunks {
-		result, err := validateSingleContent(ctx, chunk, req.SpecVersion, embedFunc, searchFunc, llmFunc)
-		if err != nil {
-			// Collect error for reporting but continue processing
-			chunkErrors = append(chunkErrors, fmt.Errorf("chunk %d validation failed: %w", i+1, err))
-			continue
-		}
-
-		processedChunks++
-		if result.FactCheckResult != nil {
-			allClaims = append(allClaims, result.FactCheckResult.Claims...)
-			allIssues = append(allIssues, result.FactCheckResult.Inaccuracies...)
-			allSuggestions = append(allSuggestions, result.FactCheckResult.Suggestions...)
-			totalConfidence += result.Confidence
-			if result.IsValid {
-				validChunks++
-			}
-		}
-	}
-
-	// Add chunk error information to issues if any chunks failed
-	if len(chunkErrors) > 0 {
-		errorSummary := fmt.Sprintf("Warning: %d of %d chunks failed validation", len(chunkErrors), len(chunks))
-		allIssues = append([]string{errorSummary}, allIssues...)
-	}
-
-	// Calculate confidence only from processed chunks
-	avgConfidence := 0.0
-	if processedChunks > 0 {
-		avgConfidence = totalConfidence / float64(processedChunks)
-	}
-
-	// Aggregate results
-	isValid := validChunks == len(chunks) && len(chunkErrors) == 0
-
-	// Create corrected version if needed
-	correctedVersion := ""
-	if !isValid && len(allClaims) > 0 {
-		correctedVersion = buildCorrectedVersion(req.Content, allClaims)
-	}
-
-	return &Result{
-		IsValid:          isValid,
-		Confidence:       avgConfidence,
-		Issues:           deduplicate(allIssues),
-		Suggestions:      deduplicate(allSuggestions),
-		CorrectedVersion: correctedVersion,
-		SpecVersion:      req.SpecVersion,
-		FactCheckResult: &FactCheckResult{
-			IsAccurate:       isValid,
-			Confidence:       avgConfidence,
-			Inaccuracies:     allIssues,
-			Suggestions:      allSuggestions,
-			CorrectedVersion: correctedVersion,
-			Claims:           allClaims,
-		},
-	}, nil
+	// Use comprehensive chunking validation
+	return validateWithChunkingComprehensive(ctx, req, embedFunc, searchFunc, llmFunc)
 }
 
 // Helper functions
-
-func chunkContent(content string) []string {
-	// Simple chunking by paragraphs or sentences
-	var chunks []string
-	currentChunk := ""
-
-	for para := range strings.SplitSeq(content, "\n\n") {
-		if len(currentChunk)+len(para) > ChunkSizeThreshold && currentChunk != "" {
-			chunks = append(chunks, strings.TrimSpace(currentChunk))
-			currentChunk = para
-		} else {
-			if currentChunk != "" {
-				currentChunk += "\n\n"
-			}
-			currentChunk += para
-		}
-	}
-
-	if currentChunk != "" {
-		chunks = append(chunks, strings.TrimSpace(currentChunk))
-	}
-
-	return chunks
-}
 
 func deduplicate(items []string) []string {
 	seen := make(map[string]bool)
@@ -321,11 +237,62 @@ func buildCorrectedVersion(original string, claims []Claim) string {
 
 // FormatClaimsResult formats validation results for claims
 func FormatClaimsResult(result *Result) []string {
-	return tools.NewResultFormatter().
-		WithConfidence(result.Confidence).
-		WithParsedClaims(result.ParsedClaims).
-		WithIssues(result.Issues).
-		WithSuggestions(result.Suggestions).
-		WithCorrectedVersion(result.CorrectedVersion).
-		BuildSections()
+	var sections []string
+	
+	// Header
+	if result.IsValid {
+		sections = append(sections, "✅ Content is ACCURATE")
+	} else {
+		sections = append(sections, "❌ Content is INACCURATE")
+	}
+	
+	// Confidence
+	sections = append(sections, fmt.Sprintf("Confidence: %d%%", int(result.Confidence*100)))
+	
+	// Individual claims from FactCheckResult
+	if result.FactCheckResult != nil && len(result.FactCheckResult.Claims) > 0 {
+		sections = append(sections, "", "Claims:")
+		for _, claim := range result.FactCheckResult.Claims {
+			sections = append(sections, "", claim.Claim)
+			if claim.IsAccurate {
+				sections = append(sections, "✓ Accurate")
+			} else {
+				sections = append(sections, "✗ Inaccurate")
+				if claim.Correction != "" {
+					sections = append(sections, "Correction: "+claim.Correction)
+				}
+			}
+		}
+	}
+	
+	// Inaccuracies
+	if result.FactCheckResult != nil && len(result.FactCheckResult.Inaccuracies) > 0 {
+		sections = append(sections, "", "Inaccuracies Found:")
+		for _, inaccuracy := range result.FactCheckResult.Inaccuracies {
+			sections = append(sections, "• "+inaccuracy)
+		}
+	}
+	
+	// Missing best practices
+	if result.FactCheckResult != nil && len(result.FactCheckResult.MissingBestPractices) > 0 {
+		sections = append(sections, "", "Missing Best Practices:")
+		for _, practice := range result.FactCheckResult.MissingBestPractices {
+			sections = append(sections, "• "+practice)
+		}
+	}
+	
+	// Suggestions
+	if len(result.Suggestions) > 0 && (result.FactCheckResult == nil || len(result.FactCheckResult.MissingBestPractices) == 0) {
+		sections = append(sections, "", "Suggestions:")
+		for _, suggestion := range result.Suggestions {
+			sections = append(sections, "• "+suggestion)
+		}
+	}
+	
+	// Corrected version
+	if result.CorrectedVersion != "" {
+		sections = append(sections, "", "Corrected Version:", result.CorrectedVersion)
+	}
+	
+	return sections
 }

@@ -1,13 +1,16 @@
 package validation
 
 import (
-	"github.com/carlisia/mcp-factcheck/internal/tools"
+	"fmt"
+	
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
 // MCPClaimsToolName is the name of the check MCP claim tool
-const MCPClaimsToolName = "check-mcp-claim"
+const MCPClaimsToolName = "check-mcp-claims"
 
-// ClaimsDefinition returns the tool definition for check_mcp_claim.
+// ClaimsDefinition returns the tool definition for Claims.
 // This tool validates MCP-related claims against the official specifications.
 func ClaimsDefinition() tools.Definition {
 	schema := map[string]any{
@@ -19,8 +22,8 @@ func ClaimsDefinition() tools.Definition {
 			},
 			"specVersion": map[string]any{
 				"type":        "string",
-				"description": "MCP specification version to validate against. Options: draft (latest), 2025-06-18, 2025-03-26, 2024-11-05",
-				"default":     tools.Current,
+				"description": fmt.Sprintf("MCP specification version to validate against. Options: %s", capabilities.Versions.String()),
+				"default":     capabilities.Latest,
 			},
 			"useChunking": map[string]any{
 				"type":        "boolean",

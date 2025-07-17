@@ -71,21 +71,6 @@ type Result struct {
 // LLMCompleteFunc performs LLM completion operations
 type LLMCompleteFunc func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error)
 
-// SearchResult represents spec search result with scoring and content
-type SearchResult struct {
-	Content  string  `json:"content"`
-	Section  string  `json:"section"`
-	Score    float64 `json:"score"`
-	SpecPath string  `json:"spec_path"`
-	Version  string  `json:"version"`
-}
-
-// SearchFunc performs embedding search
-type SearchFunc func(version string, queryEmbedding []float64, topK int) ([]SearchResult, error)
-
-// EmbeddingFunc generates embeddings for content
-type EmbeddingFunc func(ctx context.Context, content string) ([]float64, error)
-
 // ValidateContentLength validates content length and trims whitespace
 func ValidateContentLength(content string, fieldName string, maxLength int) (string, error) {
 	trimmed := strings.TrimSpace(content)
