@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/internal/storage"
-	"github.com/carlisia/mcp-factcheck/internal/tools"
-	"github.com/carlisia/mcp-factcheck/internal/tools/validation"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/validation"
 	"github.com/carlisia/mcp-factcheck/pkg/llm"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// QuickClaimTool creates the MCP tool for check_mcp_quick_claim from the tool definition
+// QuickClaimTool creates the Quick Claim MCP tool from the tool definition
 func QuickClaimTool() mcp.Tool {
 	def := validation.QuickClaimDefinition()
 
@@ -25,7 +25,7 @@ func QuickClaimTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(def.Name, def.Description, schemaBytes)
 }
 
-// HandleQuickClaimValidation handles the check_mcp_quick_fact MCP tool call
+// HandleQuickClaimValidation handles the Quick Claim MCP tool call
 func HandleQuickClaimValidation(ctx context.Context, vectorDB *storage.VectorDB, generator *llm.Client, args any) ([]mcp.Content, error) {
 	// Parse and validate arguments
 	req, err := validation.ParseQuickClaimArgs(args)
@@ -39,7 +39,7 @@ func HandleQuickClaimValidation(ctx context.Context, vectorDB *storage.VectorDB,
 	}
 
 	searchFunc := func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
-		results, err := vectorDB.Search(version, queryEmbedding, topK)
+		results, err := vectorDB.Search(ctx, version, queryEmbedding, topK)
 		if err != nil {
 			return nil, err
 		}

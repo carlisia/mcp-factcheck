@@ -24,12 +24,12 @@
 
 ## Background & Context
 
-The MCP Fact-Check server validates content and code against official Model Context Protocol (MCP) specifications using semantic search with vector embeddings. The system needs to handle various types of validation requests:
+The MCP Fact-Check server validates content against official Model Context Protocol (MCP) specifications using semantic search with vector embeddings. The system handles various types of validation requests:
 
 - Quick single-claim fact-checking (e.g., "Does MCP enforce rate limits?")
 - Comprehensive multi-claim content validation (e.g., documentation, tutorials)
 - Bullet-point technical descriptions
-- Code validation against protocol requirements
+- Content migration between MCP specification versions
 
 ## Terminology
 
@@ -47,15 +47,18 @@ The MCP Fact-Check server validates content and code against official Model Cont
 - **When**: When updating draft specs or adding new official versions
 - **Who**: Manually
 - **Strategies**: Regular (~500 chars) or fine-grained (~230 chars)
-- **Output**: Pre-generated embedding files committed to `data/embeddings/`
+- **Intermediate Output**: Chunked spec JSON files in `data/specs/` (e.g., `draft-spec.json`, `draft-spec-fine.json`)
+- **Final Output**: Pre-generated embedding files in `internal/storage/embeddings/` that are embedded into the binary
 
-**Content Chunking** (Runtime): The optional process of dividing user input into smaller sections for validation when the content is very long. This is ONLY used by the `check_mcp_claim` tool:
+**Content Chunking** (Runtime): The optional process of dividing user input into smaller sections for validation when the content is very long. This is ONLY used by the `check-mcp-claims` tool:
 
 - **Purpose**: Handle large documents that exceed context limits
 - **When**: During validation if content > 2000 chars or explicitly requested
-- **Where**: Only in `check_mcp_claim` tool (NOT used by `check_mcp_quick_fact`)
-- **Strategy**: Split by paragraphs, validate each chunk separately
-- **Output**: Aggregated validation results
+- **Where**: Only in `check-mcp-claims` tool (NOT used by `check-mcp-quick-claim`)
+- **Strategy**: Split by paragraphs (`\n\n`), validate each chunk separately
+- **Fallback**: If no paragraph breaks exist, processes entire content as single chunk
+- **Error Handling**: Failed chunks are tracked but don't stop validation of other chunks
+- **Output**: Aggregated validation results with warnings for any failed chunks
 
 **Embedding**: A numerical vector representation of text that captures semantic meaning, enabling similarity comparisons between different pieces of text.
 
@@ -69,288 +72,143 @@ The MCP Fact-Check server validates content and code against official Model Cont
 
 ## Tool Design & Prompt Flow
 
-### Tool 1: check_mcp_claim
+# MCP Fact-Check Design Document (Enhanced)
 
-**Purpose**: Comprehensive validation of multi-claim content
+## Table of Contents
 
-**Prompt Flow**:
+---
 
-```text
-1. LLM receives content from user (paragraphs, bullets, documentation)
-    ↓
-2. Full Content Embedding Generation
-    ↓
-3. Vector Search (fine embeddings with fallback)
-    ↓
-4. Retrieve Top-K Spec Sections
-    ↓
-5. LLM Fact-Checking Against Spec Sections
-    ↓
-6. Extract Individual Claims from Results
-    ↓
-7. Template-Based Formatting
-    ↓
-8. Step-by-Step Workflow Output
+## Overview & Objectives
+
+The MCP Fact-Check server performs semantic validation against official Model Context Protocol (MCP) specifications using embeddings and semantic search to:
+
+- Quickly verify individual MCP claims.
+- Comprehensively validate multi-claim documentation.
+- Guide content migration across MCP specification versions.
+
+---
+
+## Terminology
+
+**Claim:** Atomic MCP-related statement evaluated for accuracy.
+
+| Type           | Example                                          |
+| -------------- | ------------------------------------------------ |
+| Single Claim   | "MCP enforces rate limits"                       |
+| Compound Claim | "MCP enforces ACLs, rate limits, and provenance" |
+
+**Spec Chunking:** Pre-processing of MCP specification documents into searchable segments (\~500 or fine-grained \~230 chars).
+
+**Content Chunking:** Runtime division of long user inputs (>2000 chars) into manageable segments.
+
+**Embedding:** Vector representation capturing semantic meaning for similarity comparisons.
+
+**Modal Verbs:** Requirements in MCP specifications:
+
+- **MUST/SHALL:** Mandatory
+- **SHOULD:** Recommended
+- **MAY:** Optional
+
+---
+
+## Tool & Prompt Workflow
+
+### Comprehensive Validation (`check-mcp-claims`)
+
+Workflow:
+
+```
+User Content → Embedding Generation → Semantic Search → Claim Extraction → Validation → Structured Output
 ```
 
-**Output Structure**:
+Output:
 
-- Step 1: Claim Extraction
-- Step 2: Validation Results (per claim)
-- Step 3: Missing Best Practices (SHOULD requirements)
-- Step 4: Modal Verb Issues (MUST/SHOULD/MAY)
-- Summary with confidence score
-- Corrected content suggestions
+- Claim-specific validation
+- Missing best practices
+- Modal verb compliance
+- Summary confidence score
+- Content improvement suggestions
 
-### Tool 2: check_mcp_quick_fact
+### Quick Validation (`check-mcp-quick-claim`)
 
-**Purpose**: Quick validation of single claims/questions
+Workflow:
 
-**Prompt Flow**:
-
-```text
-1. LLM receives single claim/question from user
-    ↓
-2. Aggressive Multi-Strategy Search:
-   - Direct claim embedding
-   - Pattern-based expansion ("enforces" → "implementations should")
-   - Negative patterns ("never" → "must not")
-    ↓
-3. Aggregate and Deduplicate Results
-    ↓
-4. LLM Fact-Check Against Best Matches
-    ↓
-5. Concise Formatting
-    ↓
-6. ✓/✗ Verdict with Explanation
+```
+Single Claim → Aggressive Multi-Strategy Search → Semantic Validation → Concise Verdict (✓/✗)
 ```
 
-**Search Strategies**:
+Search Patterns:
 
 ```go
-// Pattern transformations in performAggressiveClaimSearch
 "MCP enforces X" → [
-    "implementations should must X",
-    "clients servers should X",
+    "implementations must X",
+    "clients should X",
     "security requirements X"
 ]
-
-"MCP never X" → [
-    "must not should not X",
-    "restrictions limitations X",
-    "security considerations X"
-]
 ```
 
-## User Prompt Design
+### Content Migration (`migrate-mcp-content`)
 
-### migrate-mcp-content Prompt
-
-The `migrate-mcp-content` prompt is a user-facing MCP prompt that guides content migration between MCP specification versions.
-
-**Purpose**: Helps the LLM guide users in updating their MCP-related content when specifications change between versions.
-
-**Key Design Decisions**:
-
-1. **Validation-First Approach**: Always validates content against the source specification before suggesting migrations
-2. **Scope Control**: Three update scopes allow control over migration aggressiveness:
-   - `critical_only`: Minimal changes for breaking issues only
-   - `enhancement_focused`: Fixes plus clarity improvements
-   - `comprehensive`: Full review with all enhancements
-3. **Tone Preservation**: Explicitly preserves the original content's voice and style
-4. **Structured Output**: Returns step-by-step migration guidance
-
-**Prompt Template Structure**:
+Workflow:
 
 ```
-1. Validate content against source spec
-2. Identify spec differences between versions
-3. Apply changes based on update_scope
-4. Preserve original tone and style
-5. Provide migration recommendations
+Validate Source Content → Identify Spec Differences → Scope-based Updates → Tone Preservation → Step-by-Step Recommendations
 ```
 
-**Parameters**:
+Update Scopes:
 
-- `current_version` (required): Source MCP spec version
-- `target_version` (required): Target MCP spec version
-- `update_scope` (optional): Migration aggressiveness level
+- **critical_only:** Minimal, breaking changes only
+- **enhancement_focused:** Clarity improvements
+- **comprehensive:** Full review
 
-This design ensures the LLM can provide users with controlled, accurate, specification-compliant migration guidance.
+---
 
 ## System Architecture
 
+### Semantic Validation Engine
+
+Characteristics:
+
+- Vector embeddings for semantic similarity.
+- Specialized MCP domain knowledge.
+- Intelligent semantic fact-checking and contextual reasoning.
+
 ### Core Components
 
-The MCP Fact-Check server consists of several key components:
-
-1. **MCP Server** (`cmd/mcp-factcheck-server/`): Implements the MCP protocol and exposes specs and validation tools, and user prompts
-2. **Vector Database** (`internal/embedding/vectordb.go`): Manages embeddings with fine-grained fallback
-3. **Embedding Generator** (`embedding/generator.go`): OpenAI-based embedding generation
-4. **Validator Package** (`pkg/validator/`): Implements validation related MCP tools
-   - `check_mcp_claim` (content.go) - Comprehensive content validation
-   - `check_mcp_quick_fact` (quick_claim.go) - Quick fact-checking
-   - `validate_code` (code.go) - Code validation (WIP)
-5. **Specification Tools** (`pkg/spec/`): Implements spec-related MCP tools
-   - `list_spec_versions` (list.go) - Lists available MCP versions
-   - `search_spec` (search.go) - Semantic search in specifications
-6. **Prompt Service** (`pkg/prompts/`): MCP user prompts
-   - `migrate-mcp-content`
-7. **Telemetry System** (`pkg/telemetry/`): Clean abstraction for observability
+- **MCP Server:** Exposes tools and prompts (`cmd/server/`).
+- **Vector Database:** Embeddings management (`internal/storage/vectordb.go`).
+- **Embedding Generator:** Runtime embeddings via OpenAI (`internal/embedding/generator.go`).
+- **Validation Tools:** Claims and quick claims validation (`internal/tools/validation/`).
+- **Spec Tools:** Spec listing and search (`internal/tools/list/`, `internal/tools/search/`).
+- **Prompt Service:** Migration prompts (`internal/prompts/migrate/`).
+- **Handlers:** MCP protocol handlers (`pkg/mcp/`).
 
 ### Data Flow
 
-1. **Specification Extraction**: GitHub → `utils/cmd/spec.go` → `data/specs/`
-2. **Embedding Generation**: Specs → `utils/cmd/embed.go` → `data/embeddings/`
-3. **Validation Request**: User → LLM → MCP Tool → Validator → Vector Search → Response
-4. **Metadata Tracking**: Automatic updates to `data/SPEC_METADATA.json` during spec/embed operations
+```
+GitHub Spec Extraction → Chunked JSON → Embedding Generation → Embedded Binary → Runtime Validation → User Response
+```
 
 ### External Dependencies
 
-#### MCP SDK
-
-- **Current Library**: https://github.com/mark3labs/mcp-go - A community Go SDK for Model Context Protocol
-- **Purpose**: Provides the core MCP server implementation, protocol handling, and tool/prompt interfaces
-- **Version**: Latest stable version (see go.mod for current version)
-- **Migration Plan**: Once the official Go SDK at https://github.com/modelcontextprotocol/go-sdk reaches stable status, the plan is to migrate from the community SDK to ensure long-term compatibility and support
-
-#### OpenAI API Key Requirement
-
-- **Current State**: The server requires an OpenAI API key (`OPENAI_API_KEY`) for generating embeddings during runtime search and validation
-- **Purpose**: Used to embed user-provided content for semantic search against pre-generated spec embeddings
-- **Configuration**: Set via environment variable in the MCP client configuration
-
-  **Future Plans**:
-
-  - Support for multiple embedding providers (e.g., Anthropic, Cohere, local models)
-  - Provider-agnostic embedding interface to reduce dependency on a single service
-  - Potential for self-hosted embedding models to eliminate external API requirements
+- **MCP Go SDK**: Currently community-maintained, planned migration to official SDK.
+- **OpenAI API**: Runtime embeddings, future plans for multiple providers.
 
 ### Project Structure
 
-```text
-cmd/
-├── factcheck-curl/         # Test client
-└── mcp-factcheck-server/   # Main MCP server
+Structured with clear separation of concerns:
 
-data/
-├── embeddings/            # Pre-generated embeddings
-│   ├── *-fine.json        # Fine-grained embeddings (~230 char chunks)
-│   └── *.json             # Regular embeddings (~500 char chunks)
-├── specs/                 # Extracted MCP specifications
-└── SPEC_METADATA.json     # Automatic tracking of spec versions
+- **cmd/**: Server and CLI utilities
+- **data/**: Chunked specs and metadata
+- **internal/**: Core logic for vector db, embeddings, integrations (llm, telemetry), tools (spec search/list, validation), user prompts
+- **pkg/**: Public interfaces (prompt and tool handlers, LLM clients, structure logging and telemetry)
+- **utils/**: Maintenance and utility scripts
 
-embedding/
-├── generator.go           # OpenAI embedding generation
-└── types.go               # Embedding types and interfaces
+---
 
-internal/
-├── embedding/
-│   └── vectordb.go        # Vector database with fine-grained fallback
-├── integrations/
-│   └── arizephoenix/      # Phoenix telemetry implementation
-│       ├── config.go      # Phoenix configuration
-│       ├── init.go        # Initialization helpers
-│       ├── middleware.go  # Phoenix middleware
-│       └── provider.go    # Phoenix provider
-└── prompts/
-    ├── factcheck.go       # Fact-checking prompt logic
-    └── templates/         # Internal prompt templates
+## Spec Maintenance and Updates
 
-pkg/
-├── prompts/               # MCP prompt templates
-│   ├── service.go         # Prompt service implementation
-│   └── templates/         # Prompt template files
-├── spec/                  # MCP specification tools
-│   ├── list.go            # list_spec_versions implementation
-│   └── search.go          # search_spec implementation
-├── telemetry/             # Clean telemetry abstractions
-│   ├── builder.go         # Fluent span builder
-│   └── interfaces.go      # Provider, Middleware interfaces
-└── validator/             # Content/code validation
-    ├── claim_expansion.go # Query expansion for better search
-    ├── claim_search.go    # Claim extraction and search enhancement
-    ├── code.go            # validate_code implementation
-    ├── compound_claims.go # Compound claim decomposition
-    ├── content.go         # check_mcp_claim implementation
-    ├── format_workflow.go # Step-by-step workflow formatting
-    ├── internal_formatter.go # Template-based formatting
-    ├── quick_claim.go     # check_mcp_quick_fact implementation
-    └── stability.go       # Content stability checking
-
-utils/
-├── cmd/                   # CLI tools
-│   ├── embed.go           # Embedding generation command
-│   ├── main.go            # Specloader CLI entry point
-│   └── spec.go            # Spec extraction with metadata tracking
-├── metadata/              # Automatic metadata management
-│   ├── metadata.go        # Metadata types and operations
-│   └── github.go          # GitHub commit hash retrieval
-└── specs/                 # Specification processing
-    ├── chunking_v2.go     # Fine-grained chunking strategies
-    └── loader.go          # GitHub spec extraction
-```
-
-## Implementation Details
-
-### Semantic Search Challenge
-
-**Problem Context:**
-
-- Short queries or claims (like "enforces ACLs, rate limits, and provenance") often lack enough context for the embedding model to match them strongly with longer, more detailed spec sections
-- Embeddings of short phrases are often "blurry" or less semantically rich
-- Spec sections might be much longer and include multiple requirements, examples, and context, making their embeddings drift from short-form queries
-
-**Why This Happens:**
-
-1. **Embedding Models Work Best on Paragraphs**: Most embedding models (including OpenAI's text-embedding-ada-002) are trained for paragraph-level similarity, not ultra-short phrases vs. long context
-2. **Vector Distance Is Sensitive**: When you embed "enforces ACLs" and compare to a whole paragraph about security, the resulting similarity may be weak even if both discuss the same topic
-3. **Chunk Size Mismatch**: The spec might be chunked into medium/large sections (500+ chars), but claims are often small atomic statements (20-50 chars)
-
-**Specific Challenges Encountered:**
-
-1. **False Negatives**: The system claimed "rate limit is not mentioned in the spec" when the spec actually states "Both parties SHOULD implement rate limiting"
-2. **Context Loss**: Short claims like "MCP enforces X" couldn't find spec sections saying "implementations should enforce X"
-3. **Compound Claims**: Bullet points with multiple claims (e.g., "enforces ACLs, rate limits, and provenance") needed to be split for accurate validation
-   - **Solution**: Implemented compound claim decomposition that splits "X and Y" into separate subclaims for independent validation
-
-### Chunking Strategy
-
-**Approach**: Create smaller chunks (~230 chars) with overlap during spec preprocessing to solve the semantic search challenge.
-
-**Spec Chunking Implementation:**
-
-```go
-// Chunking strategies defined in utils/specs/chunking_v2.go
-FineGrainedStrategy = ChunkingStrategy{
-    Name:            "fine",
-    ChunkSize:       230,      // Small chunks for spec documents
-    ChunkOverlap:    50,       // Overlap to preserve context
-    SplitBySentence: true,     // Natural sentence breaks
-    SplitByBullet:   true,     // Bullet points as boundaries
-    KeepHeaders:     true,     // Headers stay with content
-}
-```
-
-**Key Decisions for Spec Chunking:**
-
-1. **Chunk Size**: 230 characters (optimized for 2-3 sentence spec chunks)
-2. **Overlap**: 50 characters (preserves context across chunk boundaries)
-3. **Sentence Boundaries**: Respects natural language breaks in specifications
-4. **Bullet Awareness**: Treats spec bullet points as natural chunk boundaries
-5. **Header Preservation**: Keeps spec section headers with their content
-
-**Dual Embedding System**:
-
-- **Regular Embeddings**: Original spec chunks (~500 chars) for backward compatibility
-- **Fine Embeddings**: New fine-grained spec chunks (~230 chars) with `-fine` suffix
-- **Automatic Fallback**: System searches fine embeddings first, falls back to regular
-
-**Why This Matters**: The fine-grained chunking of specifications enables better matching when the LLM processes short claims or questions. A claim like "MCP enforces rate limits" can now match against a small spec chunk that specifically mentions rate limiting, rather than getting lost in a larger paragraph about general security considerations.
-
-### Spec Maintenance and Updates
-
-**Process**: This is performed manually when updating the draft specification or when a new official MCP version is released. All generated embeddings and metadata are committed to the repository in the `data/` directory.
+**Process**: This is performed manually when updating the draft specification or when a new official MCP version is released. The chunked specifications are stored in `data/specs/`, embeddings are generated into `internal/storage/embeddings/`, and metadata is tracked in `data/SPEC_METADATA.json`.
 
 **When to Update**:
 
@@ -365,8 +223,11 @@ FineGrainedStrategy = ChunkingStrategy{
 # This automatically captures the commit hash and updates metadata
 ./bin/specloader spec --version draft
 
-# Step 2: Generate embeddings (both regular and fine-grained)
-# This automatically updates metadata with chunk counts
+# Step 2: Re-chunk for fine-grained embeddings (if needed)
+./bin/specloader rechunk --version draft --strategy fine
+
+# Step 3: Generate embeddings (both regular and fine-grained)
+# This writes to internal/storage/embeddings/ and updates metadata
 ./bin/specloader embed --version draft
 ./bin/specloader embed --version draft-fine
 
@@ -394,21 +255,40 @@ This ensures complete traceability without manual bookkeeping. The metadata file
 - Embedding generation details for each strategy
 - Easy verification of spec freshness
 
-### Content Chunking (Runtime)
+---
 
-**Tool**: Used exclusively by `check_mcp_claim` (NOT by `check_mcp_quick_fact`)
+## Implementation Strategies
 
-**When Applied**: Automatically when content exceeds 2000 characters.
+### Semantic Search Challenge
 
-**How It Works**:
+**Problem Context:**
 
-1. LLM receives large document from user and invokes `check_mcp_claim`
-2. Tool detects content length > 2000 chars and enables chunking
-3. System splits content into manageable paragraphs
-4. Each paragraph is validated independently
-5. Results are aggregated into final report
+- Short queries or claims (like "enforces ACLs, rate limits, and provenance") often lack enough context for the embedding model to match them strongly with longer, more detailed spec sections
+- Embeddings of short phrases are often "blurry" or less semantically rich
+- Spec sections might be much longer and include multiple requirements, examples, and context, making their embeddings drift from short-form queries
 
-**Important**: This is different from spec chunking. Content chunking handles large user inputs at runtime in the `check_mcp_claim` tool, while spec chunking prepares the MCP specifications during preprocessing.
+**Why This Happens:**
+
+1. **Embedding Models Work Best on Paragraphs**: Most embedding models (including OpenAI's text-embedding-ada-002) are trained for paragraph-level similarity, not ultra-short phrases vs. long context
+2. **Vector Distance Is Sensitive**: When you embed "enforces ACLs" and compare to a whole paragraph about security, the resulting similarity may be weak even if both discuss the same topic
+3. **Chunk Size Mismatch**: The spec might be chunked into medium/large sections (500+ chars), but claims are often small atomic statements (20-50 chars)
+
+### Chunking Strategy
+
+**Approach**: Create smaller chunks (~230 chars) with overlap during spec preprocessing to solve the semantic search challenge.
+
+Fine-Grained Spec Chunking:
+
+```go
+ChunkSize: 230 chars
+ChunkOverlap: 50 chars
+SplitBySentence: true
+KeepHeaders: true
+```
+
+- Dual embedding system with automatic fallback (fine → regular).
+
+**Why This Matters**: The fine-grained chunking of specifications enables better matching when the LLM processes short claims or questions. A claim like "MCP enforces rate limits" can now match against a small spec chunk that specifically mentions rate limiting, rather than getting lost in a larger paragraph about general security considerations.
 
 ### Claim Extraction
 
@@ -427,7 +307,7 @@ This ensures complete traceability without manual bookkeeping. The metadata file
 
 1. **Detection**: Identifies claims containing " and " as potential compound claims
 2. **Decomposition**: Splits into subclaims while preserving subject/verb:
-   - "Servers implement validation and timeouts" → 
+   - "Servers implement validation and timeouts" →
      - "Servers implement validation"
      - "Servers implement timeouts"
 3. **Independent Search**: Each subclaim is searched separately:
@@ -444,7 +324,7 @@ Original: "MCP supports request validation and timeouts"
     ↓
 Decompose: ["MCP supports request validation", "MCP supports timeouts"]
     ↓
-Search Each: 
+Search Each:
     - Subclaim 1 → Find validation mentions in spec
     - Subclaim 2 → Find timeout mentions in spec
     ↓
@@ -457,24 +337,28 @@ Aggregate: Both found → Compound claim is ACCURATE
 - More thorough evidence collection
 - Better handling of multi-part requirements
 
-### Template System
+### Runtime Content Chunking
 
-**Internal Template** (not user-facing):
+**When Applied**: Automatically when content exceeds 2000 characters.
 
-- Embedded in `internal_formatter.go`
-- Consistent formatting across all validations
-- Easy to modify without changing logic
-- Supports conditional sections (best practices, modal verbs)
+**How It Works**:
 
-### Error Handling
+1. LLM receives large document from user and invokes `check-mcp-claims`
+2. Tool detects content length > 2000 chars and enables chunking
+3. System splits content into manageable paragraphs
+4. Each paragraph is validated independently
+5. Results are aggregated into final report
 
-**Graceful Degradation**:
+**Important**: This is different from spec chunking. Content chunking handles large user inputs at runtime in the `check-mcp-claims` tool, while spec chunking prepares the MCP specifications during preprocessing.
 
-1. Try fine embeddings → fallback to regular
-2. Try fact-checking → fallback to similarity scoring
-3. Try template formatting → fallback to direct formatting
+### Template & Error Handling
 
-## Trade-offs and Design Decisions
+- Centralized templates for uniform validation output.
+- Graceful fallbacks for embeddings, validation, and formatting.
+
+---
+
+## Trade-offs & Rationale
 
 ### Alternatives Considered
 
@@ -509,53 +393,16 @@ Aggregate: Both found → Compound claim is ACCURATE
 
 ### Key Trade-offs
 
-#### 1. Matching Accuracy
+| Decision                | Pros                                   | Cons                      | Mitigation                  |
+| ----------------------- | -------------------------------------- | ------------------------- | --------------------------- |
+| Fine-Grained Chunking   | Improved short-query matching accuracy | Increased storage         | Acceptable storage increase |
+| Semantic Search         | Rich semantic matching                 | "Blurry" short embeddings | Fine-grained chunking       |
+| Compound Claim Handling | Improved validation accuracy           | Slight complexity         | Clear decomposition logic   |
 
-**Fine-Grained Chunks**:
-
-- ✅ Dramatically improved matching for short queries
-- ✅ Found "rate limiting" mentions that were previously missed
-- ❌ Slightly reduced context per chunk
-- **Mitigation**: 50-char overlap preserves context
-
-#### 2. Performance
-
-**Storage**:
-
-- Regular embeddings: ~500KB per spec version
-- Fine embeddings: ~1.5MB per spec version
-- **Decision**: 3x storage acceptable for accuracy gains
-
-**Search Latency**:
-
-- More chunks to search through
-- **Mitigation**: Still using same top-K (10-15 results)
-- **Reality**: OpenAI API latency dominates, not vector search
-
-#### 3. Explainability
-
-**Benefits**:
-
-- Smaller chunks = more precise references
-- Easier to show exactly which spec section supports/refutes a claim
-- Better alignment between claim size and evidence size
-
-#### 4. Implementation Complexity
-
-**Added Complexity**:
-
-- Dual embedding system
-- Fallback logic
-- Multiple search strategies
-
-**Simplification**:
-
-- Kept original validation flow intact
-- Template-based formatting separates concerns
-- Clear tool separation (comprehensive vs. quick)
+---
 
 ## Conclusion
 
-The fine-grained chunking strategy successfully addresses the semantic search granularity problem while maintaining system simplicity. By creating specialized tools for different use cases and implementing smart search strategies, the system now accurately validates both quick claims and comprehensive content against MCP specifications.
+The enhanced MCP Fact-Check design addresses semantic validation challenges by aligning chunk granularity with query size. This results in accurate, contextually relevant validations and comprehensive user guidance, ensuring robust adherence to MCP specifications.
 
-The key insight: **Match the granularity of the search corpus to the expected query size** - when users ask about specific claims, search against claim-sized chunks.
+### Tool 1: check-mcp-claims

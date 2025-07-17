@@ -3,7 +3,7 @@ package prompts
 import (
 	"context"
 
-	"github.com/carlisia/mcp-factcheck/internal/prompts/migrate"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/prompts/migrate"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/carlisia/mcp-factcheck/internal/storage"
-	"github.com/carlisia/mcp-factcheck/internal/tools/list"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/list"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

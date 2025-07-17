@@ -6,13 +6,13 @@ import (
 	"fmt"
 
 	"github.com/carlisia/mcp-factcheck/internal/storage"
-	"github.com/carlisia/mcp-factcheck/internal/tools"
-	"github.com/carlisia/mcp-factcheck/internal/tools/validation"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/validation"
 	"github.com/carlisia/mcp-factcheck/pkg/llm"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// ClaimsTool creates the MCP tool for check_mcp_claim from the tool definition
+// ClaimsTool creates the Claims MCP tool from the tool definition
 func ClaimsTool() mcp.Tool {
 	def := validation.ClaimsDefinition()
 
@@ -25,7 +25,7 @@ func ClaimsTool() mcp.Tool {
 	return mcp.NewToolWithRawSchema(def.Name, def.Description, schemaBytes)
 }
 
-// HandleClaimsValidation handles the check_mcp_claim MCP tool call
+// HandleClaimsValidation handles the Claims MCP tool call
 func HandleClaimsValidation(ctx context.Context, vectorDB *storage.VectorDB, generator *llm.Client, args any) ([]mcp.Content, error) {
 	// Parse and validate arguments
 	req, err := validation.ParseClaimsArgs(args)
@@ -39,7 +39,7 @@ func HandleClaimsValidation(ctx context.Context, vectorDB *storage.VectorDB, gen
 	}
 
 	searchFunc := func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
-		results, err := vectorDB.Search(version, queryEmbedding, topK)
+		results, err := vectorDB.Search(ctx, version, queryEmbedding, topK)
 		if err != nil {
 			return nil, err
 		}

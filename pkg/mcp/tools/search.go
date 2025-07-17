@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/carlisia/mcp-factcheck/internal/storage"
-	"github.com/carlisia/mcp-factcheck/internal/tools"
-	"github.com/carlisia/mcp-factcheck/internal/tools/search"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/search"
 	"github.com/carlisia/mcp-factcheck/pkg/llm"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -38,7 +38,7 @@ func HandleSearchSpec(ctx context.Context, vectorDB *storage.VectorDB, generator
 	}
 
 	searchFunc := func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
-		results, err := vectorDB.Search(version, queryEmbedding, topK)
+		results, err := vectorDB.Search(ctx, version, queryEmbedding, topK)
 		if err != nil {
 			return nil, err
 		}
