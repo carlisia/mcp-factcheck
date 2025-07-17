@@ -15,21 +15,8 @@ type Compound struct {
 type SubClaim struct {
 	Text           string
 	SearchQueries  []string
-	SearchResults  []SearchResult
 	HasEvidence    bool
 	EvidenceQuotes []string
-}
-
-// SearchResult represents a similarity search result from vector search.
-type SearchResult struct {
-	Content    string         `json:"content"`
-	ChunkID    string         `json:"chunk_id"`
-	Similarity float64        `json:"similarity"`
-	Rank       int            `json:"rank"`
-	Version    string         `json:"version,omitempty"`
-	FilePath   string         `json:"file_path,omitempty"`
-	Section    string         `json:"section,omitempty"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 // Decompose splits a claim into subclaims if it contains conjunctions
@@ -195,3 +182,4 @@ func extractKeyTerms(claim string) []string {
 
 	return terms
 }
+
