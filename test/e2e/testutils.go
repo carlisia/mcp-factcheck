@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding"
@@ -11,6 +12,8 @@ import (
 	"github.com/carlisia/mcp-factcheck/pkg/llm"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupTestEnv initializes a default VectorDB and Generator for use in tests.
@@ -115,8 +118,10 @@ func generateMockEmbedding(text string) []float64 {
 // It fails the test if the error state doesn't match the expected state.
 func assertErr(t *testing.T, err error, wantErr bool) {
 	t.Helper()
-	if (err != nil) != wantErr {
-		t.Fatalf("Error mismatch: got err=%v, wantErr=%v", err, wantErr)
+	if wantErr {
+		require.Error(t, err, "Expected error but got none")
+	} else {
+		require.NoError(t, err, "Expected no error but got: %v", err)
 	}
 }
 
@@ -124,26 +129,23 @@ func assertErr(t *testing.T, err error, wantErr bool) {
 // Use this for tests that expect at least one result.
 func assertNonEmpty(t *testing.T, result []mcp.Content) {
 	t.Helper()
-	if len(result) == 0 {
-		t.Fatalf("Expected non-empty result, got none")
-	}
+	require.NotEmpty(t, result, "Expected non-empty result")
 }
 
 // assertMinContentCount checks that result has at least expected number of items.
 // Use this when the exact count may vary but a minimum is required.
 func assertMinContentCount(t *testing.T, result []mcp.Content, min int) {
 	t.Helper()
-	if len(result) < min {
-		t.Fatalf("Expected at least %d content items, got %d", min, len(result))
-	}
+	assert.GreaterOrEqual(t, len(result), min, 
+		"Expected at least %d content items, got %d", min, len(result))
 }
 
 // assertSuccess checks for success and non-empty content.
 // This is a convenience function for the common case of expecting no error and at least one result.
 func assertSuccess(t *testing.T, err error, result []mcp.Content) {
 	t.Helper()
-	assertErr(t, err, false)
-	assertNonEmpty(t, result)
+	require.NoError(t, err)
+	require.NotEmpty(t, result, "Expected non-empty result")
 }
 
 // assertContainsVersion checks that the result contains a specific version string.
@@ -153,29 +155,43 @@ func assertContainsVersion(t *testing.T, result []mcp.Content, version string) {
 	for _, content := range result {
 		// Check in text content for the version
 		if textContent, ok := content.(*mcp.TextContent); ok {
-			if contains(textContent.Text, version) {
+			if strings.Contains(textContent.Text, version) {
 				return
 			}
 		} else if textContent, ok := content.(mcp.TextContent); ok {
-			if contains(textContent.Text, version) {
+			if strings.Contains(textContent.Text, version) {
 				return
 			}
 		}
 	}
-	t.Fatalf("Expected result to contain version %q", version)
+	require.Fail(t, "Version not found in result", "Expected result to contain version %q", version)
 }
 
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && containsAt(s, substr)
-}
+// Additional testify-based assertion helpers for MCP content
 
-// containsAt checks if string contains substring at any position
-func containsAt(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
+// assertContentContains checks that at least one content item contains the expected text
+func assertContentContains(t *testing.T, result []mcp.Content, text string) {
+	t.Helper()
+	for _, content := range result {
+		if textContent, ok := content.(*mcp.TextContent); ok {
+			if strings.Contains(textContent.Text, text) {
+				return
+			}
+		} else if textContent, ok := content.(mcp.TextContent); ok {
+			if strings.Contains(textContent.Text, text) {
+				return
+			}
 		}
 	}
-	return false
+	require.Fail(t, "Text not found in any content", "Expected content to contain %q", text)
+}
+
+// assertAllTextContent verifies all content items are text content
+func assertAllTextContent(t *testing.T, result []mcp.Content) {
+	t.Helper()
+	for i, content := range result {
+		_, ok1 := content.(*mcp.TextContent)
+		_, ok2 := content.(mcp.TextContent)
+		assert.True(t, ok1 || ok2, "Content item %d is not TextContent", i)
+	}
 }
