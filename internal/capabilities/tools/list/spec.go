@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/internal/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/search"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/validation"
 )
 
 // ListFunc is a function that returns available MCP spec versions
@@ -46,7 +48,10 @@ func FormatResults(versions []string) string {
 		formatter.WithText(fmt.Sprintf("- %s", version))
 	}
 
-	formatter.WithText("You can use these versions with other tools like check_mcp_claim, check_mcp_quick_fact, and search_spec.")
+	formatter.WithText(fmt.Sprintf("You can use these versions with other tools like %s, %s, and %s.",
+		validation.MCPClaimsToolName,
+		validation.MCPQuickClaimToolName,
+		search.SpecDBToolName))
 
 	return formatter.BuildSection()
 }

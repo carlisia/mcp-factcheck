@@ -7,6 +7,8 @@ package tools
 import (
 	"fmt"
 	"strings"
+	
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 )
 
 // ValidationErrors represents multiple validation errors
@@ -31,10 +33,10 @@ func (ve ValidationErrors) Error() string {
 // ValidateSpecVersion validates and normalizes a spec version
 func ValidateSpecVersion(version string) (string, error) {
 	if version == "" {
-		version = Current
+		version = capabilities.Latest
 	}
-	if !IsValidSpecVersion(version) {
-		return version, fmt.Errorf("invalid spec version: %s, must be one of: %v", version, ValidSpecVersions)
+	if !capabilities.IsValidSpecVersion(version) {
+		return version, fmt.Errorf("invalid spec version: %s, must be one of: %v", version, capabilities.ValidSpecVersions)
 	}
 	return version, nil
 }
@@ -61,8 +63,3 @@ func ValidateTopK(topK int, minValue, maxValue int) (int, error) {
 	}
 	return topK, nil
 }
-
-
-
-
-

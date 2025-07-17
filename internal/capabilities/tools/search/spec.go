@@ -1,17 +1,18 @@
 package search
 
 import (
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 	"context"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/internal/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
 // Constants for search request validation
 // These are defined in def.go but documented here for visibility:
 // - defaultTopK = 5    // Default number of results to return
 // - minTopK = 1        // Minimum allowed value for topK
-// - maxTopK = 20       // Maximum allowed value for topK  
+// - maxTopK = 20       // Maximum allowed value for topK
 // - maxQueryLength = 500 // Maximum allowed query length in characters
 
 // SearchRequest represents a semantic search request against MCP specifications.
@@ -91,7 +92,7 @@ func ParseSearchArgs(args any) (*SearchRequest, error) {
 // newDefaultSearchRequest creates a SearchRequest with default values
 func newDefaultSearchRequest() SearchRequest {
 	return SearchRequest{
-		SpecVersion: tools.Current,
+		SpecVersion: capabilities.Latest,
 		TopK:        defaultTopK,
 	}
 }

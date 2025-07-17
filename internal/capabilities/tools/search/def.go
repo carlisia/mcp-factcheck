@@ -1,7 +1,8 @@
 package search
 
 import (
-	"github.com/carlisia/mcp-factcheck/internal/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
 const (
@@ -29,8 +30,8 @@ func SearchSpecDefinition() tools.Definition {
 			"specVersion": map[string]any{
 				"type":        "string",
 				"description": "MCP specification version to search",
-				"enum":        tools.ValidSpecVersions,
-				"default":     tools.Current,
+				"enum":        capabilities.ValidSpecVersions,
+				"default":     capabilities.Latest,
 			},
 			"topK": map[string]any{
 				"type":        "integer",

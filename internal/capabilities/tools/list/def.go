@@ -1,6 +1,6 @@
 package list
 
-import "github.com/carlisia/mcp-factcheck/internal/tools"
+import "github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 
 // SpecVersionsToolName is the name of the list spec versions tool
 const SpecVersionsToolName = "list-spec-versions"

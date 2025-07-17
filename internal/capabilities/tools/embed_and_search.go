@@ -5,14 +5,18 @@ import (
 	"fmt"
 )
 
+// TODO: do we need all these fields and do they need json tags?
 // SearchResult represents a unified search result from the vector database.
 // This is used across all tools that perform search operations.
 type SearchResult struct {
-	Content    string
-	ChunkID    string
-	Similarity float64
-	Version    string
-	Rank       int
+	Content    string         `json:"content"`
+	ChunkID    string         `json:"chunk_id"`
+	Similarity float64        `json:"similarity"`
+	Rank       int            `json:"rank"`
+	Version    string         `json:"version,omitempty"`
+	FilePath   string         `json:"file_path,omitempty"`
+	Section    string         `json:"section,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 // SearchFunc performs vector database search operations.
@@ -62,7 +66,7 @@ func generateEmbedding(ctx context.Context, content string, embedFunc EmbeddingF
 
 	embedding, err := embedFunc(ctx, content)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate embedding: %w", err)
+		return nil, fmt.Errorf("embedding generation failed: %w", err)
 	}
 
 	return embedding, nil
@@ -80,8 +84,9 @@ func performSearch(ctx context.Context, version string, embedding []float64, top
 
 	results, err := searchFunc(version, embedding, topK)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search specifications: %w", err)
+		return nil, fmt.Errorf("specification search failed: %w", err)
 	}
 
 	return results, nil
 }
+
