@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/carlisia/mcp-factcheck/internal/contentprep"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 	"github.com/carlisia/mcp-factcheck/testutil"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -129,7 +129,7 @@ func TestExampleHandler_WithHarness(t *testing.T) {
 			Name: "empty search results",
 			Args: map[string]any{"query": "nonexistent"},
 			SetupMocks: func() (testutil.VectorDB, testutil.EmbeddingGenerator) {
-				return testutil.NewMockVectorDBWithResults([]contentprep.SearchResult{}),
+				return testutil.NewMockVectorDBWithResults([]tools.SearchResult{}),
 					testutil.NewMockEmbeddingGeneratorWithEmbedding([]float64{0.1, 0.2})
 			},
 			WantErr: false,

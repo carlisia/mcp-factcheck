@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/tooldef"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	mcptools "github.com/carlisia/mcp-factcheck/pkg/mcp/tools"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -36,7 +37,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
 			name: "check accurate claim with spec version",
 			args: quickFactArgs{
 				Claim:       "MCP uses JSON-RPC",
-				SpecVersion: tooldef.Current,
+				SpecVersion: capabilities.Latest,
 			},
 			check: assertNonEmpty,
 		},
@@ -61,7 +62,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := validation.HandleCheckMCPQuickFact(ctx, vectorDB, generator, tt.args.toMap())
+			got, err := mcptools.HandleQuickClaimValidation(ctx, vectorDB, generator, tt.args.toMap())
 			assertSuccess(t, err, got)
 			if tt.check != nil {
 				tt.check(t, got)
@@ -75,21 +76,18 @@ func TestValidator_HandleCheckMCPQuickFact_WithInvalidInput(t *testing.T) {
 	vectorDB, generator := setupTestEnv(t)
 
 	tests := []struct {
-		name    string
-		args    any
-		wantErr bool
+		name string
+		args any
 	}{
 		{
 			name: "empty claim",
 			args: map[string]any{
 				"claim": "",
 			},
-			wantErr: true,
 		},
 		{
-			name:    "missing claim field",
-			args:    map[string]any{},
-			wantErr: true,
+			name: "missing claim field",
+			args: map[string]any{},
 		},
 		{
 			name: "invalid spec version",
@@ -97,33 +95,30 @@ func TestValidator_HandleCheckMCPQuickFact_WithInvalidInput(t *testing.T) {
 				"claim":       "MCP uses JSON-RPC",
 				"specVersion": "not-a-real-version",
 			},
-			wantErr: true,
 		},
 		{
-			name:    "invalid arguments type",
-			args:    123,
-			wantErr: true,
+			name: "invalid arguments type",
+			args: 123,
 		},
 		{
 			name: "claim as non-string type",
 			args: map[string]any{
 				"claim": 12345,
 			},
-			wantErr: true,
 		},
 		{
 			name: "nil claim value",
 			args: map[string]any{
 				"claim": nil,
 			},
-			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validation.HandleCheckMCPQuickFact(ctx, vectorDB, generator, tt.args)
-			assertErr(t, err, tt.wantErr)
+			_, err := mcptools.HandleQuickClaimValidation(ctx, vectorDB, generator, tt.args)
+			// All invalid input tests should expect an error
+			assertErr(t, err, true)
 		})
 	}
 }

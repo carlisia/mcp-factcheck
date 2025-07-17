@@ -4,8 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/tooldef"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	mcptools "github.com/carlisia/mcp-factcheck/pkg/mcp/tools"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // checkClaimArgs provides typed arguments for check claim tests
@@ -38,7 +41,7 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 			name: "validate content claim with all parameters",
 			args: checkClaimArgs{
 				Content:     "MCP provides tools and resources for building AI applications",
-				SpecVersion: tooldef.Current,
+				SpecVersion: capabilities.Latest,
 				UseChunking: false,
 			},
 			assert: assertNonEmpty,
@@ -66,7 +69,7 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := validation.HandleCheckMCPClaim(ctx, vectorDB, generator, tt.args.toMap())
+			got, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, tt.args.toMap())
 			// Note: These tests will fail with real API calls using test key
 			assertErr(t, err, false)
 			if tt.assert != nil {
@@ -74,6 +77,57 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestValidator_HandleCheckMCPClaim_DirectTestifyExample shows direct testify usage
+func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
+	ctx := context.Background()
+	vectorDB, generator := setupTestEnv(t)
+
+	t.Run("successful validation with testify", func(t *testing.T) {
+		args := map[string]any{
+			"content":     "MCP uses JSON-RPC 2.0 for communication",
+			"specVersion": capabilities.Latest,
+		}
+		
+		result, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, args)
+		
+		// Using testify directly
+		require.NoError(t, err, "validation should not fail")
+		require.NotNil(t, result, "result should not be nil")
+		assert.NotEmpty(t, result, "should return at least one content item")
+		
+		// Check content type - MCP content items are values, not pointers
+		for i, content := range result {
+			tc, ok := content.(mcp.TextContent)
+			if assert.True(t, ok, "content[%d] should be TextContent", i) {
+				// Log content for debugging
+				t.Logf("Content[%d]: %s", i, tc.Text)
+			}
+		}
+		
+		// Verify content contains expected validation result
+		var allText string
+		for _, content := range result {
+			if tc, ok := content.(mcp.TextContent); ok {
+				allText += tc.Text + "\n"
+			}
+		}
+		assert.Contains(t, allText, "MCP", "validation result should mention MCP")
+	})
+
+	t.Run("error handling with testify", func(t *testing.T) {
+		args := map[string]any{
+			"content": "", // empty content should fail
+		}
+		
+		result, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, args)
+		
+		// Using testify for error assertions
+		require.Error(t, err, "empty content should return error")
+		assert.Contains(t, err.Error(), "content", "error should mention content")
+		assert.Nil(t, result, "result should be nil on error")
+	})
 }
 
 func TestValidator_HandleCheckMCPClaim_WithInvalidInput(t *testing.T) {
@@ -140,7 +194,7 @@ func TestValidator_HandleCheckMCPClaim_WithInvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validation.HandleCheckMCPClaim(ctx, vectorDB, generator, tt.args)
+			_, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, tt.args)
 			assertErr(t, err, tt.wantErr)
 		})
 	}

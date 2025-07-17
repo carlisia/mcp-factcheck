@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/internal/contentprep"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
 // Mock creation helpers for common scenarios
@@ -13,7 +13,7 @@ import (
 // NewMockVectorDBWithError creates a VectorDB that always returns an error
 func NewMockVectorDBWithError(err error) *MockVectorDB {
 	return &MockVectorDB{
-		SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]contentprep.SearchResult, error) {
+		SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
 			return nil, err
 		},
 		ListVersionsFunc: func() ([]string, error) {
@@ -23,9 +23,9 @@ func NewMockVectorDBWithError(err error) *MockVectorDB {
 }
 
 // NewMockVectorDBWithResults creates a VectorDB that returns specific results
-func NewMockVectorDBWithResults(results []contentprep.SearchResult) *MockVectorDB {
+func NewMockVectorDBWithResults(results []tools.SearchResult) *MockVectorDB {
 	return &MockVectorDB{
-		SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]contentprep.SearchResult, error) {
+		SearchFunc: func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
 			// Respect topK limit
 			if topK > 0 && len(results) > topK {
 				return results[:topK], nil
@@ -73,10 +73,10 @@ func NewMockEmbeddingGeneratorSlow() *MockEmbeddingGenerator {
 }
 
 // CreateTestSearchResults creates sample search results for testing
-func CreateTestSearchResults(contents ...string) []contentprep.SearchResult {
-	results := make([]contentprep.SearchResult, len(contents))
+func CreateTestSearchResults(contents ...string) []tools.SearchResult {
+	results := make([]tools.SearchResult, len(contents))
 	for i, content := range contents {
-		results[i] = contentprep.SearchResult{
+		results[i] = tools.SearchResult{
 			Content:    content,
 			ChunkID:    fmt.Sprintf("test-chunk-%d", i),
 			Similarity: 0.9 - float64(i)*0.1, // Decreasing similarity

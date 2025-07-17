@@ -8,14 +8,14 @@ import (
 
 	"github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/storage"
-	"github.com/carlisia/mcp-factcheck/pkg/mcp/handler"
+	mcptools "github.com/carlisia/mcp-factcheck/pkg/mcp/tools"
 )
 
 func TestSpec_HandleListSpecVersions_Success(t *testing.T) {
 	ctx := context.Background()
 	vectorDB, _ := setupTestEnv(t)
 
-	result, err := handler.ListSpecVersions(ctx, vectorDB, nil)
+	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 	assertSuccess(t, err, result)
 	// Should return at least the spec version table header (even if no specs are present)
@@ -38,12 +38,12 @@ func TestSpec_HandleListSpecVersions_WithCustomVersion(t *testing.T) {
 	}
 	vectorDB := createTestVectorDBWithChunks(t, "2025-06-18", chunks)
 
-	result, err := handler.ListSpecVersions(ctx, vectorDB, nil)
+	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 	assertSuccess(t, err, result)
-	// Should have header + at least one version listed
-	assertMinContentCount(t, result, 2)
-	// Verify the specific version is listed
+	// List versions returns a single formatted text content item
+	assertMinContentCount(t, result, 1)
+	// Verify the specific version is listed in the formatted output
 	assertContainsVersion(t, result, "2025-06-18")
 }
 
@@ -54,7 +54,7 @@ func TestSpec_HandleListSpecVersions_EmptyDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 	vectorDB := storage.NewVectorDB(tempDir)
 
-	result, err := handler.ListSpecVersions(ctx, vectorDB, nil)
+	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 	// Should succeed even with no versions
 	assertErr(t, err, false)
@@ -74,7 +74,7 @@ func TestSpec_HandleListSpecVersions_WithInvalidJSON(t *testing.T) {
 	}
 
 	vectorDB := storage.NewVectorDB(tempDir)
-	result, err := handler.ListSpecVersions(ctx, vectorDB, nil)
+	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 	// Should succeed — handler is expected to ignore invalid files
 	assertErr(t, err, false)
@@ -106,13 +106,13 @@ func TestSpec_HandleListSpecVersions_WithNonJSONFiles(t *testing.T) {
 	}
 	vectorDB := createTestVectorDBWithChunks(t, "valid", chunks)
 
-	result, err := handler.ListSpecVersions(ctx, vectorDB, nil)
+	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 	// Should succeed and list only the valid version
 	assertSuccess(t, err, result)
-	// Should have header + the valid version (non-JSON files ignored)
-	assertMinContentCount(t, result, 2)
-	// Verify only the valid JSON version is listed
+	// List versions returns a single formatted text content item
+	assertMinContentCount(t, result, 1)
+	// Verify only the valid JSON version is listed in the formatted output
 	assertContainsVersion(t, result, "valid")
 }
 
@@ -145,7 +145,7 @@ func TestSpec_HandleListSpecVersions_IgnoresArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := handler.ListSpecVersions(ctx, vectorDB, tt.args)
+			result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 			// Should always succeed regardless of args
 			assertSuccess(t, err, result)
