@@ -7,8 +7,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/carlisia/mcp-factcheck/internal/prompts"
-	"github.com/carlisia/mcp-factcheck/internal/prompts/rules"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/rules"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -55,8 +55,8 @@ func init() {
 
 // initValidationSets initializes the validation lookup maps
 func initValidationSets() {
-	// Initialize version set from prompts.ValidSpecVersions
-	for _, v := range prompts.ValidSpecVersions {
+	// Initialize version set from capabilities.ValidSpecVersions
+	for _, v := range capabilities.ValidSpecVersions {
 		validVersionSet[v] = true
 	}
 	
@@ -192,9 +192,9 @@ func isValidScope(scope string) bool {
 func Render(req *MigrateRequest) (*mcp.GetPromptResult, error) {
 	var buf bytes.Buffer
 	data := map[string]string{
-		"currentVersion": req.CurrentVersion,
-		"targetVersion":  req.TargetVersion,
-		"updateScope":    req.UpdateScope,
+		"current_version": req.CurrentVersion,
+		"target_version":  req.TargetVersion,
+		"update_scope":    req.UpdateScope,
 	}
 	
 	if err := migrateTemplate.Execute(&buf, data); err != nil {

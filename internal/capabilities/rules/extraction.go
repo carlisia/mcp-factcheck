@@ -1,9 +1,9 @@
 package rules
 
-// claimExtraction defines how to extract claims from content.
+// ClaimExtraction defines how to extract claims from content.
 // This constant provides detailed rules for parsing and extracting individual
 // claims from compound sentences and lists in MCP-related content.
-const claimExtraction = `- Your output will be considered incorrect if you miss, combine, or summarize any claim or list item, or if you output a claim for only the first & last item in a list but not every item.
+const ClaimExtraction = `- Your output will be considered incorrect if you miss, combine, or summarize any claim or list item, or if you output a claim for only the first & last item in a list but not every item.
 - Identify every claim about MCP, even if phrased as a fragment, list item, or implicit subject.
 - When encountering a clause with a subject & verb followed by a list (e.g., "enforces voice recognition, database integration, and blockchain validation"), create a separate claim for every item in the list by combining the subject & verb with each item.
     - For example:  

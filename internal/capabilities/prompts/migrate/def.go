@@ -1,5 +1,9 @@
 package migrate
 
+import (
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+)
+
 // MCPContentPromptName is the name of the migrate content prompt
 const MCPContentPromptName = "migrate-mcp-content"
 
@@ -27,12 +31,12 @@ func PromptDefinition() Definition {
 		Arguments: []Argument{
 			{
 				Name:        "current_version",
-				Description: "2025-06-18, 2025-03-26, 2024-11-04, draft (current MCP specification version the content is based on)",
+				Description: capabilities.Versions.ForDescription() + " (current MCP specification version the content is based on)",
 				Required:    true,
 			},
 			{
 				Name:        "target_version",
-				Description: "2025-06-18, 2025-03-26, 2024-11-04, draft (target MCP specification version to update content for)",
+				Description: capabilities.Versions.ForDescription() + " (target MCP specification version to update content for)",
 				Required:    true,
 			},
 			{
