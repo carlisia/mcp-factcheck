@@ -174,10 +174,21 @@ func validateClaimsRequest(content string, version string, useChunking bool) (*C
 
 // validateSingleContent validates a single piece of content
 func validateSingleContent(ctx context.Context, content, specVersion string, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
+	// Determine search strategy based on content type
+	var searchStrategy tools.SearchStrategy
+
+	// Check if this is a compound claim
+	if IsCompoundClaim(content) {
+		// Use compound claim search strategy for better coverage
+		searchStrategy = tools.NewCompoundClaimSearchStrategy(20) // Get more results for compound claims
+	} else {
+		searchStrategy = tools.NewDefaultSearchStrategy(tools.DefaultSearchTopK)
+	}
+
 	// Search for relevant spec sections using validation builder
 	searchResults, err := tools.NewValidationBuilder(content, specVersion).
 		WithFunctions(embedFunc, searchFunc).
-		WithSearchTopK(tools.DefaultSearchTopK).
+		WithSearchStrategy(searchStrategy).
 		Search(ctx)
 	if err != nil {
 		return nil, err
@@ -256,10 +267,18 @@ func FormatClaimsResult(result *Result) []string {
 			sections = append(sections, "", claim.Claim)
 			if claim.IsAccurate {
 				sections = append(sections, "✓ Accurate")
+				// Include explanation for accurate claims too
+				if claim.Explanation != "" {
+					sections = append(sections, claim.Explanation)
+				}
 			} else {
 				sections = append(sections, "✗ Inaccurate")
 				if claim.Correction != "" {
 					sections = append(sections, "Correction: "+claim.Correction)
+				}
+				// Include explanation for inaccurate claims
+				if claim.Explanation != "" {
+					sections = append(sections, claim.Explanation)
 				}
 			}
 		}

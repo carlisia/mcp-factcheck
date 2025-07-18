@@ -67,7 +67,7 @@ func (vb *ValidationBuilder) Search(ctx context.Context) ([]SearchResult, error)
 
 	// Use default strategy if not provided
 	if vb.searchStrategy == nil {
-		vb.searchStrategy = &DefaultSearchStrategy{topK: vb.searchTopK}
+		vb.searchStrategy = NewDefaultSearchStrategy(vb.searchTopK)
 	}
 
 	// Perform search

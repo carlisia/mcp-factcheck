@@ -58,10 +58,35 @@ type QuickClaimRequest struct {
 //
 // The aggressive search strategy may make multiple search attempts,
 // so early cancellation can save significant processing time.
+//
+// Compound claim handling:
+//   - If the claim appears to contain multiple statements, the function
+//     will return a result indicating that full validation should be used
+//   - This ensures complex claims get comprehensive analysis
 func QuickClaim(ctx context.Context, req QuickClaimRequest, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
 	// Check for early cancellation - quick claims should fail fast
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("quick claim validation cancelled: %w", err)
+	}
+
+	// Check if this is a compound claim that should use full validation
+	classification := ClassifyClaim(req.Claim)
+	if classification.Type == CompoundClaim {
+		// Return a special result indicating compound claim detected
+		return &Result{
+			IsValid: false,
+			Issues: []string{
+				fmt.Sprintf("Compound claim detected: %s", classification.Suggestion),
+				"This claim contains multiple statements that should be validated separately.",
+				fmt.Sprintf("Detected indicators: %v", classification.Indicators),
+			},
+			Suggestions: []string{
+				"Please use the full validation tool (check_mcp_claim) for comprehensive analysis of compound claims.",
+				"Alternatively, submit each statement as a separate quick claim.",
+			},
+			ParsedClaims: []string{req.Claim},
+			Confidence:   1.0, // We're confident this is a compound claim
+		}, nil
 	}
 
 	// Use aggressive search strategy for quick facts
@@ -183,6 +208,10 @@ func validateWithAggressiveSearch(ctx context.Context, claim, specVersion string
 	// Format the response
 	if factCheckResult.IsAccurate {
 		result.ParsedClaims = []string{fmt.Sprintf("✓ ACCURATE: %s", claim)}
+		// Include explanation for accurate results too
+		if factCheckResult.Explanation != "" {
+			result.Issues = []string{factCheckResult.Explanation}
+		}
 	} else {
 		result.ParsedClaims = []string{fmt.Sprintf("✗ INACCURATE: %s", claim)}
 		result.Issues = []string{factCheckResult.Explanation}
