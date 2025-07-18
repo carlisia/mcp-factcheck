@@ -50,8 +50,15 @@ func init() {
 func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content string, specMatches []tools.SearchResult) (*FactCheckResult, error) {
 	// Build the context from spec matches
 	var specContext strings.Builder
+	// Use more spec sections for compound claims to ensure all subclaims can be validated
+	maxSections := 10
+	if strings.Contains(content, ";") || strings.Contains(content, ",") {
+		// Compound claims need more context
+		maxSections = min(15, len(specMatches))
+	}
+
 	for i, match := range specMatches {
-		if i >= 5 { // Limit to top 5 matches for context
+		if i >= maxSections {
 			break
 		}
 		specContext.WriteString(fmt.Sprintf("--- Section %d (Similarity: %.2f) ---\n%s\n\n",
@@ -131,7 +138,8 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 		CriticalSearchRequirement string
 
 		// Response Format
-		ResponseFormat string
+		CommonResponseRequirements string
+		ResponseFormat             string
 	}{
 		// Content
 		Content:          content,
@@ -178,7 +186,8 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 		CriticalSearchRequirement: rules.CriticalSearchRequirement,
 
 		// Response Format
-		ResponseFormat: rules.ClaimCheckResponseFormat,
+		CommonResponseRequirements: rules.CommonResponseRequirements,
+		ResponseFormat:             rules.ClaimCheckResponseFormat,
 	}
 
 	// Execute template
@@ -222,23 +231,25 @@ func performQuickClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, claim 
 
 	// Prepare template data
 	data := struct {
-		Claim            string
-		SpecContext      string
-		SystemPrompt     string
-		ClaimHeader      string
-		SpecHeader       string
-		ValidationHeader string
-		ValidationRules  string
-		ResponseFormat   string
+		Claim                      string
+		SpecContext                string
+		SystemPrompt               string
+		ClaimHeader                string
+		SpecHeader                 string
+		ValidationHeader           string
+		ValidationRules            string
+		CommonResponseRequirements string
+		ResponseFormat             string
 	}{
-		Claim:            claim,
-		SpecContext:      specContext.String(),
-		SystemPrompt:     rules.QuickClaimSystemPrompt,
-		ClaimHeader:      rules.QuickClaimHeader,
-		SpecHeader:       rules.QuickClaimSpecHeader,
-		ValidationHeader: rules.QuickClaimValidationHeader,
-		ValidationRules:  rules.QuickClaimValidation,
-		ResponseFormat:   rules.QuickClaimResponseFormat,
+		Claim:                      claim,
+		SpecContext:                specContext.String(),
+		SystemPrompt:               rules.QuickClaimSystemPrompt,
+		ClaimHeader:                rules.QuickClaimHeader,
+		SpecHeader:                 rules.QuickClaimSpecHeader,
+		ValidationHeader:           rules.QuickClaimValidationHeader,
+		ValidationRules:            rules.QuickClaimValidation,
+		CommonResponseRequirements: rules.CommonResponseRequirements,
+		ResponseFormat:             rules.QuickClaimResponseFormat,
 	}
 
 	// Execute template
