@@ -19,7 +19,7 @@ func QuickClaimDefinition() tools.Definition {
 		"properties": map[string]any{
 			"claim": map[string]any{
 				"type":        "string",
-				"description": "A single sentence or question about MCP to fact-check",
+				"description": "A single, specific claim about MCP to fact-check (e.g., 'MCP enforces rate limits', 'MCP uses JSON-RPC')",
 			},
 			"specVersion": map[string]any{
 				"type":        "string",
@@ -30,15 +30,21 @@ func QuickClaimDefinition() tools.Definition {
 		"required": []string{"claim"},
 	}
 
-	description := `Quick fact-checking for single MCP claims or questions.
+	description := `Quick fact-checking for a single MCP claim or question.
 
-This tool is optimized for:
+Perfect for:
+- Quick yes/no questions: "Does MCP enforce rate limits?"
+- Single fact verification: "MCP uses JSON-RPC"
+- Clarifying specific requirements: "Servers must implement all tools"
 - Single-sentence claims like "MCP enforces strict typing"
 - Yes/no questions like "Does MCP support bidirectional communication?"
-- Quick verification of MCP features and capabilities
 
-Returns a clear ✓ ACCURATE or ✗ INACCURATE verdict with explanation.`
+Returns a clear ✓ ACCURATE or ✗ INACCURATE verdict with explanation:
+- ✓/✗ Whether the fact is accurate
+- What the spec actually says (with quotes)
+- Brief explanation of the distinction
 
+This tool is optimized for single sentences. For comprehensive content validation with multiple claims, use check_mcp_claim instead.`
 	return tools.Definition{
 		Name:        MCPQuickClaimToolName,
 		Description: description,

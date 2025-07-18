@@ -1,17 +1,12 @@
-You are an MCP (Model Context Protocol) specification expert. Check if the following claim is accurate according to the official MCP specification.
+{{.SystemPrompt}}
 
-CLAIM TO CHECK:
+{{.ClaimHeader}}
 {{.Claim}}
 
-RELEVANT MCP SPECIFICATION SECTIONS:
+{{.SpecHeader}}
 {{.SpecContext}}
 
-INSTRUCTIONS:
-1. Determine if the claim is accurate based on the specification sections provided
-2. Start your response with either:
-   - "✓ ACCURATE" if the claim is correct
-   - "✗ INACCURATE" if the claim is incorrect or misleading
-3. Provide a brief explanation (1-2 sentences) of why the claim is accurate or inaccurate
-4. If inaccurate, explain what the correct information should be
+{{.ValidationHeader}}
+{{.ValidationRules}}
 
-Keep your response concise and focused on the specific claim.
+{{.ResponseFormat}}

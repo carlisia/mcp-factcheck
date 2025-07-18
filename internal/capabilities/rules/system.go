@@ -11,3 +11,6 @@ Key principles:
 - Be strict about facts but flexible about wording
 
 You respond only with valid JSON.`
+
+// QuickClaimSystemPrompt defines the system role for quick claim validation
+const QuickClaimSystemPrompt = `You are a precise MCP specification validator. Your task is to verify claims against the official MCP specification with strict accuracy.`

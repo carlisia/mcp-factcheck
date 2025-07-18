@@ -27,3 +27,15 @@ const AccuracyCheckingShort = `Check each claim against the MCP specification:
 - Distinguish between "MCP provides" vs "implementations SHOULD"
 - Mark unsupported claims as inaccurate
 - Be strict—no assumptions beyond the provided spec`
+
+// QuickClaimValidation provides validation rules specifically for quick fact-checking
+// of single claims. It emphasizes strict evidence-based validation without assumptions.
+const QuickClaimValidation = `- A claim is ACCURATE only if it is explicitly supported by the specification provided
+- A claim is INACCURATE if:
+  * The spec does NOT explicitly state or support it
+  * It contradicts what the spec says
+  * It makes assertions beyond what the spec states
+  * It conflates MCP with other protocols or technologies
+- Be strict: Use ONLY the specification sections provided as evidence
+- Do not rely on assumptions or general knowledge
+- Focus on what the spec explicitly states, not what might be implied`
