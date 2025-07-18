@@ -13,7 +13,7 @@ type anthropicProvider struct {
 // newAnthropicProvider creates a new Anthropic provider
 func newAnthropicProvider(apiKey string) (Provider, error) {
 	if apiKey == "" {
-		return nil, fmt.Errorf("Anthropic API key not provided")
+		return nil, fmt.Errorf("Anthropic API key not provided") //nolint:staticcheck
 	}
 
 	return &anthropicProvider{
@@ -59,4 +59,3 @@ func (p *anthropicProvider) Complete(ctx context.Context, prompt string, opts Co
 		},
 	}
 }
-

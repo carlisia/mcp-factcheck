@@ -13,7 +13,7 @@ type geminiProvider struct {
 // newGeminiProvider creates a new Gemini provider
 func newGeminiProvider(apiKey string) (Provider, error) {
 	if apiKey == "" {
-		return nil, fmt.Errorf("Gemini API key not provided")
+		return nil, fmt.Errorf("Gemini API key not provided") //nolint:staticcheck
 	}
 
 	return &geminiProvider{
@@ -59,4 +59,3 @@ func (p *geminiProvider) Complete(ctx context.Context, prompt string, opts Compl
 		},
 	}
 }
-

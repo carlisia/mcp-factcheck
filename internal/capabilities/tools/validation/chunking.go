@@ -11,16 +11,14 @@ import (
 const (
 	// chunkSearchTopK defines how many spec matches to retrieve per chunk
 	chunkSearchTopK = 5
-	// chunkMatchesShown defines how many matches to show per chunk in results
-	chunkMatchesShown = 3
 )
 
 // ChunkValidationResult represents validation results for a single chunk
 type ChunkValidationResult struct {
-	Chunk        contentprep.Chunk `json:"chunk"`
-	Validation   *Result           `json:"validation,omitempty"`
+	Chunk        contentprep.Chunk    `json:"chunk"`
+	Validation   *Result              `json:"validation,omitempty"`
 	SearchResult []tools.SearchResult `json:"search_results,omitempty"`
-	Error        string            `json:"error,omitempty"`
+	Error        string               `json:"error,omitempty"`
 }
 
 // AggregatedValidationResult contains validation results for all chunks
@@ -35,13 +33,12 @@ type AggregatedValidationResult struct {
 func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
 	// Use contentprep.Split for sophisticated chunking
 	chunkResult := contentprep.Split(req.Content)
-	
+
 	if len(chunkResult.Chunks) == 0 {
 		return nil, fmt.Errorf("no valid chunks found in content")
 	}
 
 	// Validate each chunk
-	var chunkResults []ChunkValidationResult
 	var allClaims []Claim
 	var allParsedClaims []string
 	var allIssues []string
@@ -54,17 +51,16 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 	for _, chunk := range chunkResult.Chunks {
 		// Validate this chunk
 		chunkValidationResult := validateChunk(ctx, chunk, req.SpecVersion, embedFunc, searchFunc, llmFunc)
-		chunkResults = append(chunkResults, chunkValidationResult)
 
 		if chunkValidationResult.Error != "" {
 			continue
 		}
 
 		processedChunks++
-		
+
 		if chunkValidationResult.Validation != nil {
 			result := chunkValidationResult.Validation
-			
+
 			// Aggregate claims
 			if result.FactCheckResult != nil {
 				allClaims = append(allClaims, result.FactCheckResult.Claims...)
@@ -73,7 +69,7 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 				allSuggestions = append(allSuggestions, result.FactCheckResult.Suggestions...)
 				allMissingBestPractices = append(allMissingBestPractices, result.FactCheckResult.MissingBestPractices...)
 			}
-			
+
 			totalConfidence += result.Confidence
 			if result.IsValid {
 				validChunks++
@@ -92,7 +88,7 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 
 	// Add chunk processing information
 	if processedChunks < len(chunkResult.Chunks) {
-		errorSummary := fmt.Sprintf("Warning: %d of %d chunks failed validation", 
+		errorSummary := fmt.Sprintf("Warning: %d of %d chunks failed validation",
 			len(chunkResult.Chunks)-processedChunks, len(chunkResult.Chunks))
 		allIssues = append([]string{errorSummary}, allIssues...)
 	}
@@ -126,15 +122,15 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 }
 
 // validateChunk validates a single chunk of content
-func validateChunk(ctx context.Context, chunk contentprep.Chunk, specVersion string, 
+func validateChunk(ctx context.Context, chunk contentprep.Chunk, specVersion string,
 	embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) ChunkValidationResult {
-	
+
 	// Search for relevant spec sections for this chunk
 	searchResults, err := tools.NewValidationBuilder(chunk.Text, specVersion).
 		WithFunctions(embedFunc, searchFunc).
 		WithSearchTopK(chunkSearchTopK).
 		Search(ctx)
-	
+
 	if err != nil {
 		return ChunkValidationResult{
 			Chunk: chunk,
@@ -168,46 +164,4 @@ func validateChunk(ctx context.Context, chunk contentprep.Chunk, specVersion str
 		Validation:   result,
 		SearchResult: searchResults,
 	}
-}
-
-// formatChunkValidationDetails formats detailed chunk validation results
-// This can be used for debugging or when more detailed output is needed
-func formatChunkValidationDetails(aggregated AggregatedValidationResult) map[string]interface{} {
-	chunkSummaries := make([]map[string]interface{}, 0, len(aggregated.ChunkResults))
-	
-	for _, chunkResult := range aggregated.ChunkResults {
-		summary := map[string]interface{}{
-			"chunk_id":   chunkResult.Chunk.ID,
-			"position":   chunkResult.Chunk.Position,
-			"type":       chunkResult.Chunk.Type,
-			"text_preview": truncateText(chunkResult.Chunk.Text, 100),
-		}
-		
-		if chunkResult.Error != "" {
-			summary["error"] = chunkResult.Error
-		} else if chunkResult.Validation != nil {
-			summary["is_valid"] = chunkResult.Validation.IsValid
-			summary["confidence"] = chunkResult.Validation.Confidence
-			summary["issues_count"] = len(chunkResult.Validation.Issues)
-			summary["parsed_claims_count"] = len(chunkResult.Validation.ParsedClaims)
-		}
-		
-		chunkSummaries = append(chunkSummaries, summary)
-	}
-	
-	return map[string]interface{}{
-		"validation_type": "comprehensive_chunked",
-		"total_chunks":    len(aggregated.ChunkResults),
-		"overall":         aggregated.Overall,
-		"summary":         aggregated.Summary,
-		"spec_version":    aggregated.SpecVersion,
-		"chunk_summaries": chunkSummaries,
-	}
-}
-
-func truncateText(text string, maxLen int) string {
-	if len(text) <= maxLen {
-		return text
-	}
-	return text[:maxLen] + "..."
 }
