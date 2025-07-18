@@ -84,23 +84,101 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 		}
 	}
 
-	// Prepare template data
+	// Prepare template data with all rule constants
 	data := struct {
-		Content                   string
-		SpecContext               string
-		SystemPrompt              string
-		ClaimExtractionRules      string
-		AccuracyCheckingRules     string
-		SpecificationGuidanceNote string
-		CompoundEvidence          map[string]string
+		// Content
+		Content          string
+		SpecContext      string
+		CompoundEvidence map[string]string
+
+		// Headers
+		Header                      string
+		SystemPrompt                string
+		ExtractionRulesHeader       string
+		FactCheckingHeader          string
+		CompoundEvidenceHeader      string
+		UserContentHeader           string
+		SpecificationSectionsHeader string
+		ResponseFormatHeader        string
+
+		// Rules
+		ClaimExtractionRules         string
+		AccuracyCheckingRules        string
+		SpecificationGuidanceNote    string
+		CompoundClaimInstructions    string
+		CompoundEvidenceInstructions string
+		CompoundClaimEvaluation      string
+
+		// Protocol vs Implementation
+		ProtocolVsImplementation      string
+		ImplementationRecommendations string
+		KeyDistinction                string
+		CaseSensitivityNote           string
+
+		// Equivalence Rules
+		ParaphrasingRules     string
+		ConceptualEquivalence string
+		SemanticUnderstanding string
+
+		// Context Understanding
+		ImportantContextUnderstanding   string
+		CriticalExposureRule            string
+		InitializationFlowUnderstanding string
+		PatternRecognition              string
+
+		// Explanation Requirements
+		InaccuracyExplanation     string
+		CriticalSearchRequirement string
+
+		// Response Format
+		ResponseFormat string
 	}{
-		Content:                   content,
-		SpecContext:               specContext.String(),
-		SystemPrompt:              rules.FactCheckSystem,
-		ClaimExtractionRules:      rules.ClaimExtraction,
-		AccuracyCheckingRules:     rules.AccuracyChecking,
-		SpecificationGuidanceNote: rules.SpecificationGuidance,
-		CompoundEvidence:          compoundEvidence,
+		// Content
+		Content:          content,
+		SpecContext:      specContext.String(),
+		CompoundEvidence: compoundEvidence,
+
+		// Headers
+		Header:                      rules.ClaimCheckHeader,
+		SystemPrompt:                rules.FactCheckSystem,
+		ExtractionRulesHeader:       rules.ExtractionRulesHeader,
+		FactCheckingHeader:          rules.FactCheckingRulesHeader,
+		CompoundEvidenceHeader:      rules.CompoundEvidenceHeader,
+		UserContentHeader:           rules.UserContentHeader,
+		SpecificationSectionsHeader: rules.SpecificationSectionsHeader,
+		ResponseFormatHeader:        rules.ResponseFormatHeader,
+
+		// Rules
+		ClaimExtractionRules:         rules.ClaimExtraction,
+		AccuracyCheckingRules:        rules.AccuracyChecking,
+		SpecificationGuidanceNote:    rules.SpecificationGuidance,
+		CompoundClaimInstructions:    rules.CompoundClaimInstructions,
+		CompoundEvidenceInstructions: rules.CompoundEvidenceInstructions,
+		CompoundClaimEvaluation:      rules.CompoundClaimEvaluation,
+
+		// Protocol vs Implementation
+		ProtocolVsImplementation:      rules.ProtocolVsImplementation,
+		ImplementationRecommendations: rules.ImplementationRecommendations,
+		KeyDistinction:                rules.KeyDistinction,
+		CaseSensitivityNote:           rules.CaseSensitivityNote,
+
+		// Equivalence Rules
+		ParaphrasingRules:     rules.ParaphrasingRules,
+		ConceptualEquivalence: rules.ConceptualEquivalence,
+		SemanticUnderstanding: rules.SemanticUnderstanding,
+
+		// Context Understanding
+		ImportantContextUnderstanding:   rules.ImportantContextUnderstanding,
+		CriticalExposureRule:            rules.CriticalExposureRule,
+		InitializationFlowUnderstanding: rules.InitializationFlowUnderstanding,
+		PatternRecognition:              rules.PatternRecognition,
+
+		// Explanation Requirements
+		InaccuracyExplanation:     rules.InaccuracyExplanation,
+		CriticalSearchRequirement: rules.CriticalSearchRequirement,
+
+		// Response Format
+		ResponseFormat: rules.ClaimCheckResponseFormat,
 	}
 
 	// Execute template
@@ -144,11 +222,23 @@ func performQuickClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, claim 
 
 	// Prepare template data
 	data := struct {
-		Claim       string
-		SpecContext string
+		Claim            string
+		SpecContext      string
+		SystemPrompt     string
+		ClaimHeader      string
+		SpecHeader       string
+		ValidationHeader string
+		ValidationRules  string
+		ResponseFormat   string
 	}{
-		Claim:       claim,
-		SpecContext: specContext.String(),
+		Claim:            claim,
+		SpecContext:      specContext.String(),
+		SystemPrompt:     rules.QuickClaimSystemPrompt,
+		ClaimHeader:      rules.QuickClaimHeader,
+		SpecHeader:       rules.QuickClaimSpecHeader,
+		ValidationHeader: rules.QuickClaimValidationHeader,
+		ValidationRules:  rules.QuickClaimValidation,
+		ResponseFormat:   rules.QuickClaimResponseFormat,
 	}
 
 	// Execute template
@@ -243,11 +333,11 @@ func parseQuickFactResponse(response string) (*FactCheckResult, error) {
 
 	// Look for verdict markers
 	response = strings.TrimSpace(response)
-	if strings.HasPrefix(response, "✓") || strings.Contains(response, "ACCURATE") {
-		result.IsAccurate = true
-		result.Confidence = 0.9
-	} else if strings.HasPrefix(response, "✗") || strings.Contains(response, "INACCURATE") {
+	if strings.HasPrefix(response, "✗") || strings.HasPrefix(response, "✗ INACCURATE") {
 		result.IsAccurate = false
+		result.Confidence = 0.9
+	} else if strings.HasPrefix(response, "✓") || strings.HasPrefix(response, "✓ ACCURATE") {
+		result.IsAccurate = true
 		result.Confidence = 0.9
 	} else {
 		// Default to uncertain
