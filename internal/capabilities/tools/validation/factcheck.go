@@ -9,9 +9,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/contentprep"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/rules"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/contentprep"
 )
 
 const (
@@ -86,19 +86,21 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 
 	// Prepare template data
 	data := struct {
-		Content                    string
-		SpecContext                string
-		ClaimExtractionRules       string
-		AccuracyCheckingRules      string
-		SpecificationGuidanceNote  string
-		CompoundEvidence           map[string]string
+		Content                   string
+		SpecContext               string
+		SystemPrompt              string
+		ClaimExtractionRules      string
+		AccuracyCheckingRules     string
+		SpecificationGuidanceNote string
+		CompoundEvidence          map[string]string
 	}{
-		Content:                    content,
-		SpecContext:                specContext.String(),
-		ClaimExtractionRules:       rules.ClaimExtraction,
-		AccuracyCheckingRules:      rules.AccuracyCheckingShort,
-		SpecificationGuidanceNote:  rules.SpecificationGuidance,
-		CompoundEvidence:           compoundEvidence,
+		Content:                   content,
+		SpecContext:               specContext.String(),
+		SystemPrompt:              rules.FactCheckSystem,
+		ClaimExtractionRules:      rules.ClaimExtraction,
+		AccuracyCheckingRules:     rules.AccuracyChecking,
+		SpecificationGuidanceNote: rules.SpecificationGuidance,
+		CompoundEvidence:          compoundEvidence,
 	}
 
 	// Execute template
@@ -286,11 +288,11 @@ func buildCompoundEvidence(compound contentprep.Compound, specMatches []tools.Se
 
 	for i, subClaim := range compound.SubClaims {
 		output = append(output, fmt.Sprintf("\nSubclaim %d: %s", i+1, subClaim.Text))
-		
+
 		// Check if we have evidence for this subclaim in the spec matches
 		hasEvidence := false
 		var evidenceQuotes []string
-		
+
 		// Look for evidence in spec matches
 		for _, match := range specMatches {
 			// Check if the spec content relates to this subclaim
@@ -333,10 +335,10 @@ func buildCompoundEvidence(compound contentprep.Compound, specMatches []tools.Se
 func containsEvidence(specContent, claim string) bool {
 	specLower := strings.ToLower(specContent)
 	claimLower := strings.ToLower(claim)
-	
+
 	// Extract key terms from the claim
 	keyTerms := extractKeyTerms(claimLower)
-	
+
 	// Check if at least 2 key terms appear in the spec content
 	matchCount := 0
 	for _, term := range keyTerms {
@@ -344,7 +346,7 @@ func containsEvidence(specContent, claim string) bool {
 			matchCount++
 		}
 	}
-	
+
 	return matchCount >= 2
 }
 

@@ -1,7 +1,7 @@
 package rules
 
-// factCheckSystem defines the system role for fact-checking operations
-const factCheckSystem = `You are a precise MCP specification validator with strong conceptual understanding. You verify claims against official documentation while recognizing semantic equivalence.
+// FactCheckSystem defines the system role for fact-checking operations
+const FactCheckSystem = `You are a precise MCP specification validator with strong conceptual understanding. You verify claims against official documentation while recognizing semantic equivalence.
 
 Key principles:
 - Focus on CONCEPTUAL ACCURACY - different words can express the same concept

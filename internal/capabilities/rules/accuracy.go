@@ -1,10 +1,10 @@
 package rules
 
-// accuracyChecking defines how to check claims against the MCP specification.
+// AccuracyChecking defines how to check claims against the MCP specification.
 // It provides strict criteria for determining whether claims are supported by
 // the specification, including important distinctions between protocol-level
 // and implementation-level requirements.
-const accuracyChecking = `- A claim is inaccurate if:
+const AccuracyChecking = `- A claim is inaccurate if:
     - The spec does NOT explicitly state that MCP provides, enforces, or implements the claimed feature or behavior.
     - The specification assigns responsibility or permission (e.g., "implementations SHOULD", "servers MAY", or "clients MAY/MUST") but does not state that "MCP" itself provides, enforces, or implements a feature. In this case, mark as inaccurate any claim that assigns that feature directly to MCP.
     - The spec only recommends (e.g., SHOULD, MAY) or suggests an implementation, but does not require or provide it as part of MCP itself.
