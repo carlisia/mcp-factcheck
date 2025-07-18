@@ -1,23 +1,14 @@
 package rules
 
-// AccuracyChecking defines how to check claims against the MCP specification.
-// It provides strict criteria for determining whether claims are supported by
-// the specification, including important distinctions between protocol-level
-// and implementation-level requirements.
-const AccuracyChecking = `- A claim is inaccurate if:
-    - The spec does NOT explicitly state that MCP provides, enforces, or implements the claimed feature or behavior.
-    - The specification assigns responsibility or permission (e.g., "implementations SHOULD", "servers MAY", or "clients MAY/MUST") but does not state that "MCP" itself provides, enforces, or implements a feature. In this case, mark as inaccurate any claim that assigns that feature directly to MCP.
-    - The spec only recommends (e.g., SHOULD, MAY) or suggests an implementation, but does not require or provide it as part of MCP itself.
-    - The spec does NOT mention it.
-    - It contradicts the spec.
-    - It misrepresents MCP's purpose/capabilities.
-- Be strict: If the spec doesn't explicitly support a claim, mark it as inaccurate.
-- Use only the supplied spec sections—no prior knowledge or assumptions.
-- Important distinction: If the specification says "Implementations SHOULD validate message content," but does not say "MCP validates message content," then the claim "MCP validates message content" is inaccurate. The only accurate claim is one that matches the language & subject of the specification exactly.
-- Additionally, check for:
-    - Missing best practices (SHOULD requirements not mentioned)
-    - Ignored advisory language (MAY options not acknowledged)
-    - Incomplete requirements (partial MUST/MUST NOT coverage)`
+// AccuracyChecking defines comprehensive rules for checking claims against the MCP specification.
+// It builds on CommonValidationRules and adds specific guidance for full claim validation.
+var AccuracyChecking = CommonValidationRules + `
+
+ADDITIONAL CHECKS FOR COMPREHENSIVE VALIDATION:
+- Missing best practices (SHOULD requirements not mentioned in content)
+- Ignored advisory language (MAY options not acknowledged)
+- Incomplete requirements (partial MUST/MUST NOT coverage)
+- Check if content uses appropriate modal verbs matching the spec's language strength`
 
 // AccuracyCheckingShort provides a condensed version of accuracy checking rules
 // for use in prompt templates. It summarizes the key principles for validating
@@ -29,13 +20,18 @@ const AccuracyCheckingShort = `Check each claim against the MCP specification:
 - Be strict—no assumptions beyond the provided spec`
 
 // QuickClaimValidation provides validation rules specifically for quick fact-checking
-// of single claims. It emphasizes strict evidence-based validation without assumptions.
-const QuickClaimValidation = `- A claim is ACCURATE only if it is explicitly supported by the specification provided
-- A claim is INACCURATE if:
-  * The spec does NOT explicitly state or support it
-  * It contradicts what the spec says
-  * It makes assertions beyond what the spec states
-  * It conflates MCP with other protocols or technologies
-- Be strict: Use ONLY the specification sections provided as evidence
-- Do not rely on assumptions or general knowledge
-- Focus on what the spec explicitly states, not what might be implied`
+// of single claims. It uses the common rules with additional focus on single claim validation.
+var QuickClaimValidation = CommonValidationRules + `
+
+QUICK CLAIM SPECIFIC GUIDANCE:
+- Focus on validating the single claim provided
+- Provide clear, concise explanations
+- Always quote relevant spec text or note its absence
+- Be definitive in your verdict - either ACCURATE or INACCURATE
+
+EVIDENCE FORMAT EXAMPLES:
+For any claim about X:
+- If spec mentions X: **X**: "quote from spec about X"
+- If spec doesn't mention X: **X**: The specification doesn't mention X
+
+REMEMBER: Always provide the quote or absence statement BEFORE explaining what it means`
