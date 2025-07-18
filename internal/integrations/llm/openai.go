@@ -8,9 +8,13 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
+// Default embedding model for OpenAI
+const defaultEmbeddingModel = openai.LargeEmbedding3
+
 // openAIProvider implements the Provider interface for OpenAI
 type openAIProvider struct {
-	client *openai.Client
+	client         *openai.Client
+	embeddingModel openai.EmbeddingModel
 }
 
 // newOpenAIProvider creates a new OpenAI provider
@@ -21,7 +25,8 @@ func newOpenAIProvider(apiKey string) (Provider, error) {
 
 	client := openai.NewClient(apiKey)
 	return &openAIProvider{
-		client: client,
+		client:         client,
+		embeddingModel: defaultEmbeddingModel,
 	}, nil
 }
 
@@ -29,12 +34,12 @@ func newOpenAIProvider(apiKey string) (Provider, error) {
 func (p *openAIProvider) CreateEmbedding(ctx context.Context, text string) ([]float64, error) {
 	resp, err := p.client.CreateEmbeddings(ctx, openai.EmbeddingRequest{
 		Input: []string{text},
-		Model: openai.AdaEmbeddingV2,
+		Model: p.embeddingModel,
 	})
 	if err != nil {
 		return nil, NewAPIError(OpenAI, "failed to create embedding", err, map[string]any{
 			"input_length": len(text),
-			"model":        openai.AdaEmbeddingV2,
+			"model":        string(p.embeddingModel),
 		})
 	}
 
@@ -148,8 +153,7 @@ func (p *openAIProvider) Complete(ctx context.Context, prompt string, opts Compl
 	return resp.Choices[0].Message.Content, nil
 }
 
-// Model constants matching the OpenAI SDK
-const (
-	GPT4oMini      = openai.GPT4oMini
-	AdaEmbeddingV2 = openai.AdaEmbeddingV2
-)
+// EmbeddingModel returns the embedding model being used
+func (p *openAIProvider) EmbeddingModel() string {
+	return string(p.embeddingModel)
+}

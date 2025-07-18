@@ -88,8 +88,11 @@ func NewWithProvider(cfg llm.Config, telemetry *logger.TelemetryProvider) (*Clie
 
 // CreateEmbedding generates embeddings with telemetry
 func (c *Client) CreateEmbedding(ctx context.Context, text string) ([]float64, error) {
+	// Get the actual embedding model from the internal client
+	embeddingModel := c.internal.EmbeddingModel()
+
 	// Start telemetry span
-	ctx, span := c.telemetry.StartEmbeddingSpan(ctx, "text-embedding-ada-002", len(text))
+	ctx, span := c.telemetry.StartEmbeddingSpan(ctx, embeddingModel, len(text))
 	defer span.End()
 
 	// Set input value
@@ -104,7 +107,7 @@ func (c *Client) CreateEmbedding(ctx context.Context, text string) ([]float64, e
 
 	// Record success metrics
 	logger.SetSpanAttributes(ctx,
-		logger.Attribute("embedding.model_name", "text-embedding-ada-002"),
+		logger.Attribute("embedding.model_name", embeddingModel),
 		logger.Attribute("embedding.dimensions", len(embedding)),
 		logger.Attribute("output.value", fmt.Sprintf("[%d-dimensional embedding]", len(embedding))),
 	)
@@ -205,4 +208,9 @@ func (c *Client) Complete(ctx context.Context, prompt string, opts llm.Completio
 		logger.Attribute("llm.token_count.total", len(prompt)/4+len(response)/4))
 
 	return response, nil
+}
+
+// EmbeddingModel returns the embedding model being used
+func (c *Client) EmbeddingModel() string {
+	return c.internal.EmbeddingModel()
 }

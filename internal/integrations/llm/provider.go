@@ -62,6 +62,9 @@ type Provider interface {
 
 	// Complete performs a standard text completion
 	Complete(ctx context.Context, prompt string, opts CompletionOptions) (string, error)
+
+	// EmbeddingModel returns the embedding model being used
+	EmbeddingModel() string
 }
 
 // CompletionOptions contains options for LLM completion requests

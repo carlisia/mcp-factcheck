@@ -54,6 +54,11 @@ func (c *Client) Complete(ctx context.Context, prompt string, opts CompletionOpt
 	return c.provider.Complete(ctx, prompt, opts)
 }
 
+// EmbeddingModel returns the embedding model being used
+func (c *Client) EmbeddingModel() string {
+	return c.provider.EmbeddingModel()
+}
+
 // GetProviderFromEnv returns the provider type from environment variable
 func GetProviderFromEnv() ProviderType {
 	provider := os.Getenv("LLM_PROVIDER")

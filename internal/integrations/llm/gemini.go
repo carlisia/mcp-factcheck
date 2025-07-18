@@ -59,3 +59,8 @@ func (p *geminiProvider) Complete(ctx context.Context, prompt string, opts Compl
 		},
 	}
 }
+
+// EmbeddingModel returns the embedding model being used
+func (p *geminiProvider) EmbeddingModel() string {
+	return "not-implemented"
+}

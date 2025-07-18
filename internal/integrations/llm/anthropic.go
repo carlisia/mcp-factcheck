@@ -59,3 +59,8 @@ func (p *anthropicProvider) Complete(ctx context.Context, prompt string, opts Co
 		},
 	}
 }
+
+// EmbeddingModel returns the embedding model being used
+func (p *anthropicProvider) EmbeddingModel() string {
+	return "not-implemented"
+}
