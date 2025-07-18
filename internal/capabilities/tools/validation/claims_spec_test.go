@@ -142,7 +142,7 @@ func TestParseClaimsArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := validation.ParseClaimsArgs(tt.args)
-			
+
 			if tt.wantErr {
 				require.Error(t, err, "ParseClaimsArgs() should return error")
 				if tt.errMsg != "" {
@@ -150,10 +150,10 @@ func TestParseClaimsArgs(t *testing.T) {
 				}
 				return
 			}
-			
+
 			require.NoError(t, err, "ParseClaimsArgs() should not return error")
 			require.NotNil(t, got, "ParseClaimsArgs() should return valid request")
-			
+
 			assert.Equal(t, tt.want.Content, got.Content, "Content mismatch")
 			assert.Equal(t, tt.want.SpecVersion, got.SpecVersion, "SpecVersion mismatch")
 			assert.Equal(t, tt.want.UseChunking, got.UseChunking, "UseChunking mismatch")
@@ -300,7 +300,7 @@ func TestClaims(t *testing.T) {
 			}
 
 			result, err := validation.Claims(ctx, *tt.req, tt.embedFunc, tt.searchFunc, tt.llmFunc)
-			
+
 			if tt.wantErr {
 				require.Error(t, err, "Claims() should return error")
 				if tt.errMsg != "" {
@@ -308,9 +308,9 @@ func TestClaims(t *testing.T) {
 				}
 				return
 			}
-			
+
 			require.NoError(t, err, "Claims() should not return error")
-			
+
 			if tt.wantResult && tt.checkResult != nil {
 				assert.NoError(t, tt.checkResult(result), "result check should pass")
 			}
@@ -523,12 +523,12 @@ func mockLLMFunc(accurate bool, confidence float64) validation.LLMCompleteFunc {
 		// Return JSON in the format expected by the template
 		type templateResponse struct {
 			Claims                 []validation.Claim `json:"claims"`
-			MissingBestPractices   []string          `json:"missing_best_practices"`
-			AdvisoryLanguageIssues []string          `json:"advisory_language_issues"`
-			OverallIsAccurate      bool              `json:"overall_is_accurate"`
-			Summary                string            `json:"summary"`
+			MissingBestPractices   []string           `json:"missing_best_practices"`
+			AdvisoryLanguageIssues []string           `json:"advisory_language_issues"`
+			OverallIsAccurate      bool               `json:"overall_is_accurate"`
+			Summary                string             `json:"summary"`
 		}
-		
+
 		claims := []validation.Claim{
 			{
 				Claim:      "Test claim",
@@ -536,12 +536,12 @@ func mockLLMFunc(accurate bool, confidence float64) validation.LLMCompleteFunc {
 				Confidence: confidence,
 			},
 		}
-		
+
 		if !accurate {
 			claims[0].Correction = "Test correction"
 			claims[0].Explanation = "Test inaccuracy"
 		}
-		
+
 		response := templateResponse{
 			Claims:                 claims,
 			MissingBestPractices:   []string{},
@@ -549,7 +549,7 @@ func mockLLMFunc(accurate bool, confidence float64) validation.LLMCompleteFunc {
 			OverallIsAccurate:      accurate,
 			Summary:                "Test summary",
 		}
-		
+
 		// Serialize to JSON as the LLM would return
 		data, _ := json.Marshal(response)
 		return string(data), nil
@@ -561,4 +561,3 @@ func mockLLMFuncError(err error) validation.LLMCompleteFunc {
 		return "", err
 	}
 }
-

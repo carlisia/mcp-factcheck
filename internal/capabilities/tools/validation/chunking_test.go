@@ -16,15 +16,9 @@ import (
 const (
 	// chunkThresholdChars defines the character count that triggers auto-chunking
 	chunkThresholdChars = 2000 // This should match validation.ChunkSizeThreshold
-	
+
 	// testContentRepeatPhrase is a standard phrase used for generating test content
 	testContentRepeatPhrase = "MCP provides tools and resources. "
-	
-	// expectedChunkSize is the actual chunk size used during processing (from contentprep.Split)
-	expectedChunkSize = 800
-	
-	// expectedChunkOverlap is the overlap between chunks for context preservation
-	expectedChunkOverlap = 100
 )
 
 // TestComprehensiveChunking validates that long content is properly chunked and validated
@@ -44,10 +38,10 @@ func TestComprehensiveChunking(t *testing.T) {
 			if !strings.Contains(prompt, "USER CONTENT TO CHECK:") {
 				t.Error("Expected chunk content in prompt")
 			}
-			
+
 			// Return successful validation for each chunk
-			return buildValidationResponse(true, 
-				[]string{fmt.Sprintf("Chunk %d claim validated", callCount)}, 
+			return buildValidationResponse(true,
+				[]string{fmt.Sprintf("Chunk %d claim validated", callCount)},
 				[]string{})
 		},
 	}
@@ -82,17 +76,17 @@ func TestChunkingAutoEnabled(t *testing.T) {
 	// GIVEN: Mock dependencies that track chunking behavior
 	chunkingDetected := false
 	llmCallCount := 0
-	
+
 	config := mockConfig{
 		llmResponseBuilder: func(callCount int, prompt string) string {
 			llmCallCount = callCount
-			
+
 			// Use helper to detect if chunking is active
 			if detectChunkUsage(prompt, callCount, len(longContent)) {
 				chunkingDetected = true
 				t.Logf("Chunking detected on LLM call %d", callCount)
 			}
-			
+
 			return buildValidationResponse(true, []string{}, []string{})
 		},
 	}
@@ -104,10 +98,10 @@ func TestChunkingAutoEnabled(t *testing.T) {
 		"specVersion": "draft",
 		"useChunking": false, // Not explicitly enabled
 	}
-	
+
 	parsedReq, err := validation.ParseClaimsArgs(args)
 	require.NoError(t, err, "Failed to parse args")
-	
+
 	// THEN: Chunking should be auto-enabled by the builder
 	assert.True(t, parsedReq.UseChunking, "Expected chunking to be auto-enabled by builder for long content")
 
@@ -140,7 +134,7 @@ func TestChunkValidationAggregation(t *testing.T) {
 	config := mockConfig{
 		llmResponseBuilder: func(callCount int, prompt string) string {
 			chunkCount = callCount
-			
+
 			// First chunk: INVALID with issues and missing best practices
 			if callCount == 1 {
 				return `{
@@ -155,7 +149,7 @@ func TestChunkValidationAggregation(t *testing.T) {
 					"summary": "Invalid chunk"
 				}`
 			}
-			
+
 			// Subsequent chunks: VALID
 			return `{
 				"claims": [{
@@ -176,11 +170,11 @@ func TestChunkValidationAggregation(t *testing.T) {
 	// 100 repetitions * 27 chars = 2700 chars (exceeds 2000 threshold)
 	// Expected chunks: ~4 (2700 chars / 800 chunk size)
 	content := generateRepeatedContent("Test content for chunking. ", 100)
-	
+
 	// WHEN: Validation is performed with chunking
 	req := validation.ClaimsRequest{
 		Content:     content,
-		SpecVersion: "draft", 
+		SpecVersion: "draft",
 		UseChunking: true,
 	}
 
@@ -198,15 +192,15 @@ func TestChunkValidationAggregation(t *testing.T) {
 	assert.NotEmpty(t, result.FactCheckResult.MissingBestPractices, "Expected missing best practices to be aggregated from chunks")
 
 	// THEN: All claims should be collected
-	assert.GreaterOrEqual(t, len(result.FactCheckResult.Claims), chunkCount, 
+	assert.GreaterOrEqual(t, len(result.FactCheckResult.Claims), chunkCount,
 		"Expected at least %d claims (one per chunk), got %d", chunkCount, len(result.FactCheckResult.Claims))
-	
+
 	// THEN: Issues should be deduplicated
-	assert.False(t, hasDuplicates(result.Issues), 
+	assert.False(t, hasDuplicates(result.Issues),
 		"Expected deduplication of issues, but found duplicates: %v", findDuplicates(result.Issues))
-	
-	// THEN: Parsed claims should be deduplicated  
-	assert.False(t, hasDuplicates(result.ParsedClaims), 
+
+	// THEN: Parsed claims should be deduplicated
+	assert.False(t, hasDuplicates(result.ParsedClaims),
 		"Expected deduplication of parsed claims, but found duplicates: %v", findDuplicates(result.ParsedClaims))
 }
 
@@ -224,17 +218,17 @@ func TestChunkingErrorHandling(t *testing.T) {
 	embedCallCount := 0
 	config := mockConfig{
 		embedErrorOnCall: []int{2, 4}, // Fail on chunks 2 and 4
-		embedError:       nil,          // Use default error message
+		embedError:       nil,         // Use default error message
 		llmResponseBuilder: func(callCount int, prompt string) string {
 			// Return valid response for chunks that process successfully
 			return buildValidationResponse(true, []string{}, []string{})
 		},
 	}
-	
+
 	// Override embed function to count calls and provide detailed error tracking
 	config.embedResult = []float64{0.1}
 	mocks := setupMocksWithConfig(config)
-	
+
 	// Wrap embedFunc to count calls and log when errors occur
 	originalEmbed := mocks.embedFunc
 	mocks.embedFunc = func(ctx context.Context, content string) ([]float64, error) {
@@ -252,7 +246,7 @@ func TestChunkingErrorHandling(t *testing.T) {
 	// Expected chunks: ~7 (5000 chars / 800 chunk size)
 	// Chunks 2 and 4 will fail with embedding errors
 	content := generateRepeatedContent("This is test content for chunking validation. It needs to be long enough to trigger multiple chunks. ", 50)
-	
+
 	// WHEN: Validation is performed with chunking
 	req := validation.ClaimsRequest{
 		Content:     content,
@@ -261,7 +255,7 @@ func TestChunkingErrorHandling(t *testing.T) {
 	}
 
 	result, err := validation.Claims(context.Background(), req, mocks.embedFunc, mocks.searchFunc, mocks.llmFunc)
-	
+
 	// THEN: Should return a result even with chunk errors (no top-level error)
 	require.NoError(t, err, "Validation should not fail at top level")
 	require.NotNil(t, result, "Expected result even with chunk errors")
@@ -310,40 +304,40 @@ func TestChunkingDeduplication(t *testing.T) {
 		},
 	}
 	mocks := setupMocksWithConfig(config)
-	
+
 	// GIVEN: Content that will produce multiple chunks with same validation results
 	// This tests the deduplication logic when chunks have overlapping claims/issues
 	content := generateRepeatedContent("MCP provides authentication. MCP requires TLS. ", 100)
-	
+
 	req := validation.ClaimsRequest{
 		Content:     content,
 		SpecVersion: "draft",
 		UseChunking: true,
 	}
-	
+
 	// WHEN: Validation is performed
 	result, err := validation.Claims(context.Background(), req, mocks.embedFunc, mocks.searchFunc, mocks.llmFunc)
 	require.NoError(t, err, "Validation should not fail")
-	
+
 	// THEN: Parsed claims should be deduplicated
-	assert.False(t, hasDuplicates(result.ParsedClaims), 
+	assert.False(t, hasDuplicates(result.ParsedClaims),
 		"Expected deduplication of parsed claims, found duplicates: %v", findDuplicates(result.ParsedClaims))
-	
+
 	// THEN: Issues should be deduplicated
-	assert.False(t, hasDuplicates(result.Issues), 
+	assert.False(t, hasDuplicates(result.Issues),
 		"Expected deduplication of issues, found duplicates: %v", findDuplicates(result.Issues))
-	
+
 	// THEN: Suggestions should be deduplicated
-	assert.False(t, hasDuplicates(result.Suggestions), 
+	assert.False(t, hasDuplicates(result.Suggestions),
 		"Expected deduplication of suggestions, found duplicates: %v", findDuplicates(result.Suggestions))
-	
+
 	// THEN: Missing best practices should be deduplicated
 	if result.FactCheckResult != nil {
-		assert.False(t, hasDuplicates(result.FactCheckResult.MissingBestPractices), 
-			"Expected deduplication of missing best practices, found duplicates: %v", 
+		assert.False(t, hasDuplicates(result.FactCheckResult.MissingBestPractices),
+			"Expected deduplication of missing best practices, found duplicates: %v",
 			findDuplicates(result.FactCheckResult.MissingBestPractices))
 	}
-	
+
 	// Log the deduplicated counts for verification
 	t.Logf("Deduplicated results - Claims: %d, Issues: %d, Suggestions: %d",
 		len(result.ParsedClaims), len(result.Issues), len(result.Suggestions))
@@ -373,8 +367,8 @@ Implementations should follow security best practices.`,
 			description: "Markdown content should be chunked preserving structure",
 		},
 		{
-			name: "code_heavy_content",
-			content: generateRepeatedContent("```json\n{\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"example\"\n  }\n}\n```\n\nThis shows how to call tools.\n", 50),
+			name:        "code_heavy_content",
+			content:     generateRepeatedContent("```json\n{\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"example\"\n  }\n}\n```\n\nThis shows how to call tools.\n", 50),
 			wantChunks:  2,
 			description: "Code blocks should be handled appropriately in chunks",
 		},
@@ -395,7 +389,7 @@ Implementations should follow security best practices.`,
 		t.Run(tt.name, func(t *testing.T) {
 			// Track number of chunks processed
 			chunkCount := 0
-			
+
 			config := mockConfig{
 				llmResponseBuilder: func(callCount int, prompt string) string {
 					chunkCount = callCount
@@ -415,7 +409,7 @@ Implementations should follow security best practices.`,
 
 			assert.True(t, result.IsValid, "%s: expected valid result", tt.description)
 
-			assert.GreaterOrEqual(t, chunkCount, tt.wantChunks, 
+			assert.GreaterOrEqual(t, chunkCount, tt.wantChunks,
 				"%s: expected at least %d chunks, got %d", tt.description, tt.wantChunks, chunkCount)
 		})
 	}
