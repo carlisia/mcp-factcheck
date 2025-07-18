@@ -28,6 +28,14 @@ NEGATIVE CLAIMS (e.g., "MCP does not X" or "MCP never Y"):
   * The spec doesn't mention MCP forwarding raw model traffic (silence = doesn't do it)
   * The spec only says implementations SHOULD implement rate limiting (recommendation ≠ enforcement)
 
+MIXED CLAIMS (negative + positive assertions):
+- "MCP never X and enforces Y" = "MCP never X" (negative) AND "MCP enforces Y" (positive)
+- These require BOTH parts to be accurate for the overall claim to be ACCURATE
+- If either part is inaccurate, the overall claim is INACCURATE
+- Example: "MCP never forwards raw model traffic and enforces rate limits" is INACCURATE because:
+  * "MCP never forwards raw model traffic" = ACCURATE (spec doesn't mention it)
+  * "MCP enforces rate limits" = INACCURATE (MCP doesn't enforce, only recommends)
+
 EVIDENCE REQUIREMENTS:
 - Use ONLY the specification sections provided as evidence
 - Do not rely on assumptions or general knowledge

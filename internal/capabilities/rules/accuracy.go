@@ -29,6 +29,13 @@ QUICK CLAIM SPECIFIC GUIDANCE:
 - Always quote relevant spec text or note its absence
 - Be definitive in your verdict - either ACCURATE or INACCURATE
 
+VERDICT DETERMINATION:
+- For pure negative claims: "MCP never/doesn't X" → ACCURATE if spec doesn't mention X
+- For compound negative with "or": "MCP never X or Y" → ACCURATE if spec doesn't mention BOTH X and Y
+- For mixed claims with "and": "MCP never X and enforces Y" → ACCURATE only if BOTH parts are accurate
+- If spec mentions something as "SHOULD/MAY/MIGHT", always quote it and explain it's a recommendation, not enforcement
+- When spec mentions rate limiting: Quote "Both parties SHOULD implement rate limiting" if found
+
 EVIDENCE FORMAT EXAMPLES:
 For any claim about X:
 - If spec mentions X: **X**: "quote from spec about X"
