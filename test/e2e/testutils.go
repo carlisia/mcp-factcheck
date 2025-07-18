@@ -136,7 +136,7 @@ func assertNonEmpty(t *testing.T, result []mcp.Content) {
 // Use this when the exact count may vary but a minimum is required.
 func assertMinContentCount(t *testing.T, result []mcp.Content, min int) {
 	t.Helper()
-	assert.GreaterOrEqual(t, len(result), min, 
+	assert.GreaterOrEqual(t, len(result), min,
 		"Expected at least %d content items, got %d", min, len(result))
 }
 
@@ -168,30 +168,3 @@ func assertContainsVersion(t *testing.T, result []mcp.Content, version string) {
 }
 
 // Additional testify-based assertion helpers for MCP content
-
-// assertContentContains checks that at least one content item contains the expected text
-func assertContentContains(t *testing.T, result []mcp.Content, text string) {
-	t.Helper()
-	for _, content := range result {
-		if textContent, ok := content.(*mcp.TextContent); ok {
-			if strings.Contains(textContent.Text, text) {
-				return
-			}
-		} else if textContent, ok := content.(mcp.TextContent); ok {
-			if strings.Contains(textContent.Text, text) {
-				return
-			}
-		}
-	}
-	require.Fail(t, "Text not found in any content", "Expected content to contain %q", text)
-}
-
-// assertAllTextContent verifies all content items are text content
-func assertAllTextContent(t *testing.T, result []mcp.Content) {
-	t.Helper()
-	for i, content := range result {
-		_, ok1 := content.(*mcp.TextContent)
-		_, ok2 := content.(mcp.TextContent)
-		assert.True(t, ok1 || ok2, "Content item %d is not TextContent", i)
-	}
-}

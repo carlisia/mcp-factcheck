@@ -89,9 +89,9 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 	vectorDB, generator := setupTestEnv(t)
 
 	tests := []struct {
-		name            string
-		args            any
-		expectErr       bool
+		name           string
+		args           any
+		expectErr      bool
 		errMsgContains string // optional: check error message contains this
 	}{
 		{
@@ -149,7 +149,7 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 				"query": "test search",
 				"topK":  float64(0),
 			},
-			expectErr:       true,
+			expectErr:      true,
 			errMsgContains: "topK must be at least 1",
 		},
 		{
@@ -158,7 +158,7 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 				"query": "test search",
 				"topK":  float64(100),
 			},
-			expectErr:       true,
+			expectErr:      true,
 			errMsgContains: "topK cannot exceed 20",
 		},
 		{
@@ -167,7 +167,7 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 				"query": "test search",
 				"topK":  float64(-5),
 			},
-			expectErr:       true,
+			expectErr:      true,
 			errMsgContains: "topK must be at least 1",
 		},
 	}

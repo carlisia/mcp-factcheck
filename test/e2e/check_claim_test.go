@@ -89,14 +89,14 @@ func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
 			"content":     "MCP uses JSON-RPC 2.0 for communication",
 			"specVersion": capabilities.Latest,
 		}
-		
+
 		result, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, args)
-		
+
 		// Using testify directly
 		require.NoError(t, err, "validation should not fail")
 		require.NotNil(t, result, "result should not be nil")
 		assert.NotEmpty(t, result, "should return at least one content item")
-		
+
 		// Check content type - MCP content items are values, not pointers
 		for i, content := range result {
 			tc, ok := content.(mcp.TextContent)
@@ -105,7 +105,7 @@ func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
 				t.Logf("Content[%d]: %s", i, tc.Text)
 			}
 		}
-		
+
 		// Verify content contains expected validation result
 		var allText string
 		for _, content := range result {
@@ -120,9 +120,9 @@ func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
 		args := map[string]any{
 			"content": "", // empty content should fail
 		}
-		
+
 		result, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, args)
-		
+
 		// Using testify for error assertions
 		require.Error(t, err, "empty content should return error")
 		assert.Contains(t, err.Error(), "content", "error should mention content")
