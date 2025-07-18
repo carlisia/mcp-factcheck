@@ -12,7 +12,7 @@ const (
 	MaxContentLength = 8000
 
 	// maxSectionLength is the maximum length of a spec section in search results
-	maxSectionLength = 200
+	maxSectionLength = 500
 )
 
 // Claim represents the validation result for a single MCP claim or statement.
