@@ -39,12 +39,18 @@ Perfect for:
 - Single-sentence claims like "MCP enforces strict typing"
 - Yes/no questions like "Does MCP support bidirectional communication?"
 
+NOT suitable for:
+- Claims with semicolons separating multiple statements
+- Claims with multiple "and" conjunctions
+- Comma-separated lists of features/capabilities
+- Complex multi-part claims
+
 Returns a clear ✓ ACCURATE or ✗ INACCURATE verdict with explanation:
 - ✓/✗ Whether the fact is accurate
 - What the spec actually says (with quotes)
 - Brief explanation of the distinction
 
-This tool is optimized for single sentences. For comprehensive content validation with multiple claims, use check_mcp_claim instead.`
+This tool is optimized for single sentences. For comprehensive content validation with multiple claims, use check_mcp_claim instead. If a compound claim is detected, the tool will suggest using check_mcp_claim for proper analysis.`
 	return tools.Definition{
 		Name:        MCPQuickClaimToolName,
 		Description: description,

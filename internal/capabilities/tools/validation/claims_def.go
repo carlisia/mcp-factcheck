@@ -42,10 +42,14 @@ USE THIS TOOL WHEN:
 - Content describes what MCP does, doesn't do, or how it works
 - Documentation, tutorials, or explanations about MCP
 - Bullet points or lists describing MCP features
+- Compound claims with semicolons, multiple conjunctions, or feature lists
+- When quick claim detects compound claims and suggests using this tool
 
 EXAMPLES OF CONTENT TO VALIDATE:
-- "MCP server exposes Resources and Tools..."
-- "Never forwards raw model traffic; enforces ACLs..."
+- Multi-paragraph documentation about MCP
+- Lists of MCP features or capabilities
+- Technical descriptions with multiple claims
+- Content containing semicolon-separated statements
 - Any technical description of MCP functionality
 
 RETURNS:
