@@ -12,8 +12,8 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Provider wraps the OpenTelemetry TracerProvider for Phoenix
@@ -32,7 +32,7 @@ type Middleware struct {
 func Initialize(ctx context.Context, config Config) (*Provider, *Middleware, error) {
 	// Force enable for debugging
 	config.Enabled = true
-	
+
 	if !config.Enabled {
 		// Return no-op implementations
 		return &Provider{config: config}, &Middleware{config: config}, nil
@@ -40,7 +40,7 @@ func Initialize(ctx context.Context, config Config) (*Provider, *Middleware, err
 
 	// Create OTLP HTTP exporter for Phoenix
 	fmt.Fprintf(os.Stderr, "[Phoenix] Initializing with endpoint: %s\n", config.Endpoint)
-	
+
 	client := otlptracehttp.NewClient(
 		otlptracehttp.WithEndpoint(config.Endpoint),
 		otlptracehttp.WithInsecure(), // Phoenix typically runs locally
@@ -51,7 +51,7 @@ func Initialize(ctx context.Context, config Config) (*Provider, *Middleware, err
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating OTLP exporter: %w", err)
 	}
-	
+
 	fmt.Fprintf(os.Stderr, "[Phoenix] OTLP exporter created successfully\n")
 
 	// Create resource with Phoenix-compatible attributes

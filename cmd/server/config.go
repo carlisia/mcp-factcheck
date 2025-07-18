@@ -112,4 +112,3 @@ func detectTelemetryProvider(endpoint string) string {
 
 	return "otlp"
 }
-

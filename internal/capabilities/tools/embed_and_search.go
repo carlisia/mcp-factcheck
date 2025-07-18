@@ -89,4 +89,3 @@ func performSearch(ctx context.Context, version string, embedding []float64, top
 
 	return results, nil
 }
-

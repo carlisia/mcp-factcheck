@@ -182,4 +182,3 @@ func extractKeyTerms(claim string) []string {
 
 	return terms
 }
-

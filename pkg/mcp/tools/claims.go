@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/carlisia/mcp-factcheck/internal/storage"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/validation"
+	"github.com/carlisia/mcp-factcheck/internal/storage"
 	"github.com/carlisia/mcp-factcheck/pkg/llm"
 	"github.com/mark3labs/mcp-go/mcp"
 )

@@ -153,4 +153,3 @@ const (
 	GPT4oMini      = openai.GPT4oMini
 	AdaEmbeddingV2 = openai.AdaEmbeddingV2
 )
-

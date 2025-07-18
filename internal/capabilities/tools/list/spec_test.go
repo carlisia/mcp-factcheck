@@ -13,28 +13,28 @@ import (
 
 const (
 	// Test constants for spec versions
-	specVersionDraft      = "draft"
-	specVersionLatest     = "2025-06-18"  // latest version
-	specVersionMarch2025  = "2025-03-26"
-	specVersionNov2024    = "2024-11-05"
+	specVersionDraft     = "draft"
+	specVersionLatest    = "2025-06-18" // latest version
+	specVersionMarch2025 = "2025-03-26"
+	specVersionNov2024   = "2024-11-05"
 
 	// Tool names used in formatted output
-	toolNameClaims     = "check-mcp-claims"
-	toolNameQuickFact  = "check-mcp-quick-claim"
-	toolNameSearch     = "search-spec"
+	toolNameClaims    = "check-mcp-claims"
+	toolNameQuickFact = "check-mcp-quick-claim"
+	toolNameSearch    = "search-spec"
 )
 
 // List versions tool doesn't need to parse args since it has no parameters
 
 func TestListVersions(t *testing.T) {
 	tests := []struct {
-		name           string
-		listFunc       list.ListFunc
-		cancelContext  bool
-		wantErr        bool
-		errMsg         string
-		wantVersions   []string
-		checkVersions  bool
+		name          string
+		listFunc      list.ListFunc
+		cancelContext bool
+		wantErr       bool
+		errMsg        string
+		wantVersions  []string
+		checkVersions bool
 	}{
 		{
 			name:          "context cancelled",
@@ -137,7 +137,7 @@ func TestFormatResults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			formatted := list.FormatResults(tt.versions)
-			
+
 			for _, phrase := range tt.expectedPhrases {
 				if !strings.Contains(formatted, phrase) {
 					t.Errorf("formatted output missing expected phrase: %q", phrase)
@@ -157,15 +157,15 @@ func TestFormatResults(t *testing.T) {
 func TestFormatResultsConsistency(t *testing.T) {
 	// Test that formatting is consistent
 	versions := []string{specVersionDraft, specVersionLatest, specVersionNov2024}
-	
+
 	// Format multiple times
 	result1 := list.FormatResults(versions)
 	result2 := list.FormatResults(versions)
-	
+
 	if result1 != result2 {
 		t.Error("FormatResults should produce consistent output")
 	}
-	
+
 	// Test that order is preserved
 	for i, version := range versions {
 		expectedLine := "- " + version

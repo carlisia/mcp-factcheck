@@ -196,11 +196,11 @@ func TestParseMigrateArgs(t *testing.T) {
 
 func TestRender(t *testing.T) {
 	tests := []struct {
-		name            string
-		req             *migrate.MigrateRequest
-		wantErr         bool
-		checkContent    []string
-		notWantContent  []string
+		name           string
+		req            *migrate.MigrateRequest
+		wantErr        bool
+		checkContent   []string
+		notWantContent []string
 	}{
 		{
 			name: "basic migration prompt",
@@ -273,7 +273,7 @@ func TestRender(t *testing.T) {
 				// Try direct string conversion as fallback
 				content = fmt.Sprintf("%v", msg.Content)
 			}
-			
+
 			// Debug: print first 200 chars of content if test fails
 			if t.Failed() && content != "" {
 				t.Logf("Content preview: %.200s...", content)
@@ -410,9 +410,9 @@ func TestRenderContentStructure(t *testing.T) {
 
 	// Check that template includes expected sections
 	expectedSections := []string{
-		"current spec version",  // Should mention current version context
-		"target spec version",   // Should mention target version context
-		"update scope",          // Should mention the scope
+		"current spec version", // Should mention current version context
+		"target spec version",  // Should mention target version context
+		"update scope",         // Should mention the scope
 	}
 
 	for _, section := range expectedSections {

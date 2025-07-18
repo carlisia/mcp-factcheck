@@ -7,7 +7,7 @@ package tools
 import (
 	"fmt"
 	"strings"
-	
+
 	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 )
 

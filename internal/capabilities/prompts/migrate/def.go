@@ -47,4 +47,3 @@ func PromptDefinition() Definition {
 		},
 	}
 }
-

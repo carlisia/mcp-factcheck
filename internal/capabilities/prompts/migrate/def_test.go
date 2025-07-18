@@ -12,11 +12,11 @@ const (
 	expectedMigratePromptName = "migrate-mcp-content"
 
 	// Expected spec versions
-	expectedVersionLatest  = "2025-06-18"
-	expectedVersionMarch   = "2025-03-26"
-	expectedVersionNov     = "2024-11-05"
-	expectedVersionDraft   = "draft"
-	
+	expectedVersionLatest = "2025-06-18"
+	expectedVersionMarch  = "2025-03-26"
+	expectedVersionNov    = "2024-11-05"
+	expectedVersionDraft  = "draft"
+
 	// Expected update scopes
 	expectedScopeComprehensive = "comprehensive"
 	expectedScopeCritical      = "critical_only"
@@ -28,9 +28,9 @@ func TestPromptDefinition(t *testing.T) {
 
 	t.Run("basic properties", func(t *testing.T) {
 		tests := []struct {
-			name     string
-			got      any
-			want     any
+			name      string
+			got       any
+			want      any
 			checkFunc func(got, want any) bool
 		}{
 			{
@@ -89,11 +89,11 @@ func TestPromptDefinition(t *testing.T) {
 
 	t.Run("arguments", func(t *testing.T) {
 		tests := []struct {
-			name          string
-			argIndex      int
-			expectedName  string
-			expectedReq   bool
-			checkDesc     []string
+			name         string
+			argIndex     int
+			expectedName string
+			expectedReq  bool
+			checkDesc    []string
 		}{
 			{
 				name:         "current_version argument",
@@ -123,21 +123,21 @@ func TestPromptDefinition(t *testing.T) {
 				if tt.argIndex >= len(def.Arguments) {
 					t.Fatalf("argument index %d out of range", tt.argIndex)
 				}
-				
+
 				arg := def.Arguments[tt.argIndex]
-				
+
 				if arg.Name != tt.expectedName {
 					t.Errorf("argument name = %q, want %q", arg.Name, tt.expectedName)
 				}
-				
+
 				if arg.Required != tt.expectedReq {
 					t.Errorf("argument required = %v, want %v", arg.Required, tt.expectedReq)
 				}
-				
+
 				if arg.Description == "" {
 					t.Error("argument should have a description")
 				}
-				
+
 				for _, phrase := range tt.checkDesc {
 					if !strings.Contains(arg.Description, phrase) {
 						t.Errorf("argument description missing phrase: %q", phrase)
@@ -150,9 +150,9 @@ func TestPromptDefinition(t *testing.T) {
 
 func TestMCPContentPromptNameConstant(t *testing.T) {
 	tests := []struct {
-		name     string
-		got      string
-		want     string
+		name string
+		got  string
+		want string
 	}{
 		{
 			name: "constant matches expected value",

@@ -104,7 +104,7 @@ func isVersionNotFoundError(err error) bool {
 		return false
 	}
 	// Check for our sentinel error or common file not found patterns
-	return errors.Is(err, ErrVersionNotFound) || 
+	return errors.Is(err, ErrVersionNotFound) ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(err.Error(), "no such file")
 }

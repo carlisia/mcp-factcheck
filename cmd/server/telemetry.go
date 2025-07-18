@@ -35,8 +35,8 @@ func setupTelemetry(ctx context.Context, cfg TelemetryConfig, log *zap.Logger) (
 			log.Warn("Failed to initialize Phoenix telemetry, telemetry disabled", zap.Error(err))
 			return nil, nil
 		}
-		
-		log.Info("Phoenix telemetry provider initialized successfully", 
+
+		log.Info("Phoenix telemetry provider initialized successfully",
 			zap.String("provider_type", fmt.Sprintf("%T", phoenixProvider)),
 			zap.String("middleware_type", fmt.Sprintf("%T", phoenixMiddleware)))
 		return phoenixProvider, phoenixMiddleware
@@ -55,4 +55,3 @@ func setupTelemetry(ctx context.Context, cfg TelemetryConfig, log *zap.Logger) (
 		return nil, nil
 	}
 }
-

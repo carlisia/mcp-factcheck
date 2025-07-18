@@ -16,10 +16,10 @@ import (
 type MigrateRequest struct {
 	// CurrentVersion is the MCP version the content is currently based on
 	CurrentVersion string `json:"current_version"`
-	
+
 	// TargetVersion is the MCP version to migrate the content to
 	TargetVersion string `json:"target_version"`
-	
+
 	// UpdateScope controls the type of updates to make
 	// Valid values: "comprehensive" (default), "critical_only", "enhancement_focused"
 	UpdateScope string `json:"update_scope,omitempty"`
@@ -27,7 +27,7 @@ type MigrateRequest struct {
 
 // Update scope constants
 const (
-	scopeComprehensive      = "comprehensive"      // Default scope: all updates including improvements and best practices
+	scopeComprehensive      = "comprehensive"       // Default scope: all updates including improvements and best practices
 	scopeCriticalOnly       = "critical_only"       // Only breaking changes and critical fixes
 	scopeEnhancementFocused = "enhancement_focused" // Focus on improvements and new features
 )
@@ -59,7 +59,7 @@ func initValidationSets() {
 	for _, v := range capabilities.ValidSpecVersions {
 		validVersionSet[v] = true
 	}
-	
+
 	// Initialize scope set
 	for _, s := range validUpdateScopes {
 		validScopeSet[s] = true
@@ -86,14 +86,14 @@ func ParseMigrateArgs(args map[string]string) (*MigrateRequest, error) {
 	if !ok || currentVersion == "" {
 		return nil, fmt.Errorf("required argument missing: current_version")
 	}
-	
+
 	targetVersion, ok := args["target_version"]
 	if !ok || targetVersion == "" {
 		return nil, fmt.Errorf("required argument missing: target_version")
 	}
-	
+
 	updateScope := args["update_scope"]
-	
+
 	// Validate and build request
 	return validateMigrateRequest(currentVersion, targetVersion, updateScope)
 }
@@ -196,11 +196,11 @@ func Render(req *MigrateRequest) (*mcp.GetPromptResult, error) {
 		"target_version":  req.TargetVersion,
 		"update_scope":    req.UpdateScope,
 	}
-	
+
 	if err := migrateTemplate.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
-	
+
 	return &mcp.GetPromptResult{
 		Messages: []mcp.PromptMessage{
 			{

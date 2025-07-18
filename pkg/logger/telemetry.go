@@ -75,7 +75,7 @@ func (t *TelemetryProvider) StartLLMSpan(ctx context.Context, operation string, 
 // StartEmbeddingSpan creates a span for embedding generation
 func (t *TelemetryProvider) StartEmbeddingSpan(ctx context.Context, model string, inputLength int) (context.Context, trace.Span) {
 	estimatedTokens := inputLength / 4 // Rough estimation
-	
+
 	return t.StartSpan(ctx, "embedding.generation",
 		attribute.String("openinference.span.kind", "EMBEDDING"),
 		attribute.String("llm.model_name", model),

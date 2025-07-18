@@ -1,9 +1,9 @@
 package search_test
 
 import (
-	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 	"context"
 	"errors"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 	"strings"
 	"testing"
 

@@ -35,8 +35,8 @@ type specEmbedding struct {
 
 // Store handles storage and retrieval of embeddings from the filesystem.
 type Store struct {
-	dataDir      string
-	useEmbedded  bool
+	dataDir     string
+	useEmbedded bool
 }
 
 // NewStore creates a new vector store with the specified data directory.
@@ -93,7 +93,7 @@ func (s *Store) StoreEmbeddings(version string, chunks []embeddedChunk) error {
 // Search performs similarity search against a spec version
 func (s *Store) Search(version string, queryEmbedding []float64, topK int) ([]SearchResult, error) {
 	var spec specEmbedding
-	
+
 	if s.useEmbedded {
 		// Load from embedded data
 		data, err := LoadEmbeddedEmbeddings(version)
@@ -158,7 +158,7 @@ func (s *Store) ListVersions() ([]string, error) {
 		// Return embedded versions
 		return GetAvailableVersions(), nil
 	}
-	
+
 	// List from filesystem
 	files, err := filepath.Glob(filepath.Join(s.dataDir, "*.json"))
 	if err != nil {

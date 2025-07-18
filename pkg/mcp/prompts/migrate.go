@@ -35,8 +35,7 @@ func HandleMigrateContent(ctx context.Context, args map[string]string) (*mcp.Get
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Render the prompt with the validated request
 	return migrate.Render(req)
 }
-

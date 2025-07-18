@@ -58,11 +58,11 @@ func New(telemetry *logger.TelemetryProvider) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating internal LLM client: %w", err)
 	}
-	
+
 	if telemetry == nil {
 		telemetry = logger.NewNoOpTelemetryProvider()
 	}
-	
+
 	return &Client{
 		internal:  internal,
 		telemetry: telemetry,
@@ -75,11 +75,11 @@ func NewWithProvider(cfg llm.Config, telemetry *logger.TelemetryProvider) (*Clie
 	if err != nil {
 		return nil, fmt.Errorf("creating internal LLM client with provider: %w", err)
 	}
-	
+
 	if telemetry == nil {
 		telemetry = logger.NewNoOpTelemetryProvider()
 	}
-	
+
 	return &Client{
 		internal:  internal,
 		telemetry: telemetry,
@@ -91,24 +91,24 @@ func (c *Client) CreateEmbedding(ctx context.Context, text string) ([]float64, e
 	// Start telemetry span
 	ctx, span := c.telemetry.StartEmbeddingSpan(ctx, "text-embedding-ada-002", len(text))
 	defer span.End()
-	
+
 	// Set input value
 	logger.SetSpanAttributes(ctx, logger.Attribute("input.value", text))
-	
+
 	// Call internal client
 	embedding, err := c.internal.CreateEmbedding(ctx, text)
 	if err != nil {
 		logger.RecordError(ctx, err)
 		return nil, err
 	}
-	
+
 	// Record success metrics
-	logger.SetSpanAttributes(ctx, 
+	logger.SetSpanAttributes(ctx,
 		logger.Attribute("embedding.model_name", "text-embedding-ada-002"),
 		logger.Attribute("embedding.dimensions", len(embedding)),
 		logger.Attribute("output.value", fmt.Sprintf("[%d-dimensional embedding]", len(embedding))),
 	)
-	
+
 	return embedding, nil
 }
 
@@ -117,17 +117,17 @@ func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.Compl
 	// Start telemetry span
 	ctx, span := c.telemetry.StartLLMSpan(ctx, "chat", opts.Model)
 	defer span.End()
-	
+
 	// Estimate input tokens (rough approximation)
 	estimatedInputTokens := len(prompt) / 4
-	
+
 	// Set input value
 	logger.SetSpanAttributes(ctx,
 		logger.Attribute("input.value", prompt),
 		logger.Attribute("llm.token_count.prompt", estimatedInputTokens),
 		logger.Attribute("llm.invocation_parameters", fmt.Sprintf(`{"model":"%s","temperature":%f,"max_tokens":%d}`, opts.Model, opts.Temperature, opts.MaxTokens)),
 	)
-	
+
 	// Build messages array for OpenInference
 	messages := []map[string]string{
 		{"role": "user", "content": prompt},
@@ -142,14 +142,14 @@ func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.Compl
 	} else {
 		logger.SetSpanAttributes(ctx, logger.Attribute("llm.input_messages", string(messagesJSON)))
 	}
-	
+
 	// Call internal client
 	err := c.internal.CompleteJSON(ctx, prompt, opts, result)
 	if err != nil {
 		logger.RecordError(ctx, err)
 		return err
 	}
-	
+
 	// Estimate output tokens and set output
 	if resultJSON, err := json.Marshal(result); err != nil {
 		logger.SetSpanAttributes(ctx,
@@ -162,9 +162,9 @@ func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.Compl
 		logger.SetSpanAttributes(ctx,
 			logger.Attribute("output.value", string(resultJSON)),
 			logger.Attribute("llm.token_count.completion", estimatedOutputTokens),
-			logger.Attribute("llm.token_count.total", estimatedInputTokens + estimatedOutputTokens),
+			logger.Attribute("llm.token_count.total", estimatedInputTokens+estimatedOutputTokens),
 		)
-		
+
 		// Set output messages
 		outputMessages := []map[string]string{
 			{"role": "assistant", "content": string(resultJSON)},
@@ -175,7 +175,7 @@ func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.Compl
 			logger.SetSpanAttributes(ctx, logger.Attribute("llm.output_messages", string(outputMessagesJSON)))
 		}
 	}
-	
+
 	return nil
 }
 
@@ -184,12 +184,12 @@ func (c *Client) Complete(ctx context.Context, prompt string, opts llm.Completio
 	// Start telemetry span
 	ctx, span := c.telemetry.StartLLMSpan(ctx, "completion", opts.Model)
 	defer span.End()
-	
+
 	// Set prompt as input value
-	logger.SetSpanAttributes(ctx, 
+	logger.SetSpanAttributes(ctx,
 		logger.Attribute("input.value", prompt),
 		logger.Attribute("llm.token_count.prompt", len(prompt)/4)) // rough estimate
-	
+
 	// Call internal client
 	response, err := c.internal.Complete(ctx, prompt, opts)
 	if err != nil {
@@ -197,12 +197,12 @@ func (c *Client) Complete(ctx context.Context, prompt string, opts llm.Completio
 		logger.SetSpanAttributes(ctx, logger.Attribute("error", err.Error()))
 		return "", err
 	}
-	
+
 	// Set output attributes
-	logger.SetSpanAttributes(ctx, 
+	logger.SetSpanAttributes(ctx,
 		logger.Attribute("output.value", response),
 		logger.Attribute("llm.token_count.completion", len(response)/4), // rough estimate
-		logger.Attribute("llm.token_count.total", len(prompt)/4 + len(response)/4))
-	
+		logger.Attribute("llm.token_count.total", len(prompt)/4+len(response)/4))
+
 	return response, nil
 }

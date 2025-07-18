@@ -17,9 +17,9 @@ func TestListSpecVersionsDefinition(t *testing.T) {
 
 	t.Run("basic properties", func(t *testing.T) {
 		tests := []struct {
-			name     string
-			got      any
-			want     any
+			name      string
+			got       any
+			want      any
 			checkFunc func(got, want any) bool
 		}{
 			{
@@ -108,9 +108,9 @@ func TestListSpecVersionsDefinition(t *testing.T) {
 
 func TestListToolNameConstant(t *testing.T) {
 	tests := []struct {
-		name     string
-		got      string
-		want     string
+		name string
+		got  string
+		want string
 	}{
 		{
 			name: "constant matches expected value",
@@ -156,4 +156,3 @@ func TestDefinitionStructure(t *testing.T) {
 		}
 	})
 }
-

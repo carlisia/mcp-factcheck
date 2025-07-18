@@ -33,7 +33,7 @@ func NewWithProvider(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating provider: %w", err)
 	}
-	
+
 	return &Client{
 		provider: provider,
 	}, nil
@@ -60,10 +60,10 @@ func GetProviderFromEnv() ProviderType {
 	if provider == "" {
 		return OpenAI // Default to OpenAI
 	}
-	
+
 	if IsValidProvider(provider) {
 		return ProviderType(provider)
 	}
-	
+
 	return OpenAI // Default to OpenAI if invalid
 }

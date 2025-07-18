@@ -30,9 +30,9 @@ func DefaultConfig() Config {
 // This is called by pkg/logger to set up Phoenix telemetry
 func Setup(ctx context.Context) (Config, error) {
 	config := DefaultConfig()
-	
+
 	// Any Phoenix-specific initialization can go here
 	// For now, we just return the config
-	
+
 	return config, nil
 }

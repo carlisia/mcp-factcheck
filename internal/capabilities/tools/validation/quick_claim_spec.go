@@ -1,9 +1,9 @@
 package validation
 
 import (
-	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 	"context"
 	"fmt"
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )

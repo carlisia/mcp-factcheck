@@ -18,9 +18,9 @@ func TestSearchSpecDefinition(t *testing.T) {
 
 	t.Run("basic properties", func(t *testing.T) {
 		tests := []struct {
-			name     string
-			got      any
-			want     any
+			name      string
+			got       any
+			want      any
 			checkFunc func(got, want any) bool
 		}{
 			{
@@ -116,7 +116,7 @@ func TestSearchSpecDefinition(t *testing.T) {
 	if specVersionProp["default"] != capabilities.Latest {
 		t.Errorf("specVersion default should be capabilities.Latest, got %v", specVersionProp["default"])
 	}
-	
+
 	// Check enum values
 	enumValues, ok := specVersionProp["enum"].([]string)
 	if !ok {
@@ -156,9 +156,9 @@ func TestSearchSpecDefinition(t *testing.T) {
 
 func TestSearchToolNameConstant(t *testing.T) {
 	tests := []struct {
-		name     string
-		got      string
-		want     string
+		name string
+		got  string
+		want string
 	}{
 		{
 			name: "constant matches expected value",
@@ -175,4 +175,3 @@ func TestSearchToolNameConstant(t *testing.T) {
 		})
 	}
 }
-

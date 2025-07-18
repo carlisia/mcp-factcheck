@@ -100,4 +100,3 @@ func LoadChunksFromJSON(filePath string) ([]string, error) {
 
 	return data.Chunks, nil
 }
-

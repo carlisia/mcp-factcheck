@@ -19,11 +19,11 @@ func TestVectorDB_Search_Context(t *testing.T) {
 	_ = logger.Initialize(true)
 
 	db := storage.NewVectorDBFromEmbeddedData()
-	
+
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	
+
 	_, err := db.Search(ctx, "test-version", []float64{0.1, 0.2}, 5)
 	// Since our implementation doesn't check context yet, this won't error
 	// but the test ensures the method signature is correct

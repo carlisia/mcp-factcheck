@@ -23,4 +23,3 @@ func (f *PromptHandlerSpec) migrateContentHandlerSpec() func(context.Context, ma
 		return prompts.HandleMigrateContent(ctx, args)
 	}
 }
-

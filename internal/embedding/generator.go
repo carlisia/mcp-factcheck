@@ -24,7 +24,6 @@ type SpecEmbedding struct {
 	Count   int             `json:"count"`
 }
 
-
 // ProcessSpec generates embeddings for all chunks in a spec version.
 // It takes a function that can generate embeddings and applies it to all chunks.
 func ProcessSpec(ctx context.Context, version string, chunks []string, generateEmbedding func(context.Context, string) ([]float64, error)) (*SpecEmbedding, error) {

@@ -29,7 +29,6 @@ func providerStrings() []string {
 	return result
 }
 
-
 func main() {
 	// Initialize structured logging with Zap
 	if err := logger.Initialize(logger.IsDevMode()); err != nil {

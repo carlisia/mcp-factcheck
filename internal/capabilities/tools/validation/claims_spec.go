@@ -238,17 +238,17 @@ func buildCorrectedVersion(original string, claims []Claim) string {
 // FormatClaimsResult formats validation results for claims
 func FormatClaimsResult(result *Result) []string {
 	var sections []string
-	
+
 	// Header
 	if result.IsValid {
 		sections = append(sections, "✅ Content is ACCURATE")
 	} else {
 		sections = append(sections, "❌ Content is INACCURATE")
 	}
-	
+
 	// Confidence
 	sections = append(sections, fmt.Sprintf("Confidence: %d%%", int(result.Confidence*100)))
-	
+
 	// Individual claims from FactCheckResult
 	if result.FactCheckResult != nil && len(result.FactCheckResult.Claims) > 0 {
 		sections = append(sections, "", "Claims:")
@@ -264,7 +264,7 @@ func FormatClaimsResult(result *Result) []string {
 			}
 		}
 	}
-	
+
 	// Inaccuracies
 	if result.FactCheckResult != nil && len(result.FactCheckResult.Inaccuracies) > 0 {
 		sections = append(sections, "", "Inaccuracies Found:")
@@ -272,7 +272,7 @@ func FormatClaimsResult(result *Result) []string {
 			sections = append(sections, "• "+inaccuracy)
 		}
 	}
-	
+
 	// Missing best practices
 	if result.FactCheckResult != nil && len(result.FactCheckResult.MissingBestPractices) > 0 {
 		sections = append(sections, "", "Missing Best Practices:")
@@ -280,7 +280,7 @@ func FormatClaimsResult(result *Result) []string {
 			sections = append(sections, "• "+practice)
 		}
 	}
-	
+
 	// Suggestions
 	if len(result.Suggestions) > 0 && (result.FactCheckResult == nil || len(result.FactCheckResult.MissingBestPractices) == 0) {
 		sections = append(sections, "", "Suggestions:")
@@ -288,11 +288,11 @@ func FormatClaimsResult(result *Result) []string {
 			sections = append(sections, "• "+suggestion)
 		}
 	}
-	
+
 	// Corrected version
 	if result.CorrectedVersion != "" {
 		sections = append(sections, "", "Corrected Version:", result.CorrectedVersion)
 	}
-	
+
 	return sections
 }

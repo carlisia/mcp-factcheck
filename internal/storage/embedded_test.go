@@ -17,13 +17,13 @@ func TestEmbeddedEmbeddings(t *testing.T) {
 		{"2025-06-18 regular", "2025-06-18", false},
 		{"2025-03-26 regular", "2025-03-26", false},
 		{"2024-11-05 regular", "2024-11-05", false},
-		
+
 		// Fine-grained embeddings
 		{"draft fine", "draft-fine", false},
 		{"2025-06-18 fine", "2025-06-18-fine", false},
 		{"2025-03-26 fine", "2025-03-26-fine", false},
 		{"2024-11-05 fine", "2024-11-05-fine", false},
-		
+
 		// Non-existent version
 		{"non-existent", "non-existent", true},
 	}
@@ -49,12 +49,12 @@ func TestEmbeddedEmbeddings(t *testing.T) {
 
 func TestGetAvailableVersions(t *testing.T) {
 	versions := storage.GetAvailableVersions()
-	
+
 	// Should have 8 versions (4 regular + 4 fine)
 	if len(versions) != 8 {
 		t.Errorf("expected 8 versions, got %d", len(versions))
 	}
-	
+
 	// Check that both regular and fine versions exist
 	expectedVersions := map[string]bool{
 		"draft":           false,
@@ -66,7 +66,7 @@ func TestGetAvailableVersions(t *testing.T) {
 		"2024-11-05":      false,
 		"2024-11-05-fine": false,
 	}
-	
+
 	for _, v := range versions {
 		if _, exists := expectedVersions[v]; exists {
 			expectedVersions[v] = true
@@ -74,7 +74,7 @@ func TestGetAvailableVersions(t *testing.T) {
 			t.Errorf("unexpected version: %s", v)
 		}
 	}
-	
+
 	// Verify all expected versions were found
 	for v, found := range expectedVersions {
 		if !found {
