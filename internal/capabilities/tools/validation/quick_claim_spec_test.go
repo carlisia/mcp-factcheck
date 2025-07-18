@@ -263,3 +263,105 @@ The claim is wrong. MCP should be described as using JSON-RPC, not REST.`,
 		})
 	}
 }
+
+func TestQuickClaim_CompoundClaimDetection(t *testing.T) {
+	tests := []struct {
+		name                string
+		claim               string
+		shouldBeCompound    bool
+		expectedIssuePrefix string
+	}{
+		{
+			name:                "semicolon compound claim",
+			claim:               "MCP Never forwards raw model traffic; enforces ACLs, rate limits, and provenance",
+			shouldBeCompound:    true,
+			expectedIssuePrefix: "Compound claim detected:",
+		},
+		{
+			name:             "simple single claim",
+			claim:            "MCP uses JSON-RPC 2.0",
+			shouldBeCompound: false,
+		},
+		{
+			name:                "multiple conjunctions",
+			claim:               "MCP provides tools and resources and enables authentication and supports prompts",
+			shouldBeCompound:    true,
+			expectedIssuePrefix: "Compound claim detected:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Mock dependencies
+			mockEmbed := func(ctx context.Context, content string) ([]float64, error) {
+				return []float64{0.1, 0.2, 0.3}, nil
+			}
+
+			mockSearch := func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
+				return []tools.SearchResult{
+					{Content: "MCP uses JSON-RPC 2.0", Similarity: 0.9},
+				}, nil
+			}
+
+			mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+				return "✓ ACCURATE\nThe claim is correct.", nil
+			}
+
+			// Create request
+			req := validation.QuickClaimRequest{
+				Claim:       tt.claim,
+				SpecVersion: capabilities.Latest,
+			}
+
+			// Execute
+			result, err := validation.QuickClaim(context.Background(), req, mockEmbed, mockSearch, mockLLM)
+
+			// Assert
+			require.NoError(t, err, "QuickClaim should not return error")
+			require.NotNil(t, result, "Result should not be nil")
+
+			if tt.shouldBeCompound {
+				// Check that compound claim was detected
+				assert.False(t, result.IsValid, "Compound claims should return IsValid=false")
+				assert.Equal(t, 1.0, result.Confidence, "Should be confident about compound detection")
+
+				// Check issues contain compound claim message
+				require.NotEmpty(t, result.Issues, "Should have issues for compound claim")
+				assert.Contains(t, result.Issues[0], tt.expectedIssuePrefix)
+
+				// Check suggestions
+				require.NotEmpty(t, result.Suggestions, "Should have suggestions for compound claim")
+				assert.Contains(t, result.Suggestions[0], "check_mcp_claim")
+			} else {
+				// For single claims, it should process normally
+				// The mock returns ACCURATE, so IsValid should be true
+				assert.True(t, result.IsValid, "Single claims should be processed normally")
+			}
+		})
+	}
+}
+
+func TestQuickClaim_CompoundClaimIndicators(t *testing.T) {
+	// Test that specific indicators are detected
+	req := validation.QuickClaimRequest{
+		Claim:       "MCP enforces authentication, authorization, rate limiting, and access control",
+		SpecVersion: capabilities.Latest,
+	}
+
+	result, err := validation.QuickClaim(
+		context.Background(),
+		req,
+		mockEmbedFunc([]float64{0.1, 0.2}),
+		mockSearchFunc(1),
+		func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+			return "✓ ACCURATE", nil
+		},
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Should detect as compound due to comma-separated list
+	assert.False(t, result.IsValid)
+	assert.Contains(t, result.Issues[2], "comma-separated feature list")
+}

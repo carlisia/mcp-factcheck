@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/carlisia/mcp-factcheck/internal/capabilities"
@@ -128,6 +129,97 @@ func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
 		assert.Contains(t, err.Error(), "content", "error should mention content")
 		assert.Nil(t, result, "result should be nil on error")
 	})
+}
+
+func TestValidator_HandleCheckMCPClaim_CompoundClaimRegression(t *testing.T) {
+	ctx := context.Background()
+	vectorDB, generator := setupTestEnv(t)
+
+	tests := []struct {
+		name                   string
+		args                   checkClaimArgs
+		expectRateLimitMention bool
+		expectInaccurate       bool
+		description            string
+	}{
+		{
+			name: "compound claim with rate limits enforcement",
+			args: checkClaimArgs{
+				Content:     "MCP never forwards raw model traffic; enforces ACLs, rate limits, and provenance",
+				SpecVersion: "2025-06-18",
+			},
+			expectRateLimitMention: true,
+			expectInaccurate:       true, // Should be inaccurate because MCP doesn't enforce these
+			description:            "Should find and mention that rate limiting is a SHOULD recommendation, not enforcement",
+		},
+		{
+			name: "accurate negative claim about rate limits",
+			args: checkClaimArgs{
+				Content:     "MCP does not enforce rate limits",
+				SpecVersion: "2025-06-18",
+			},
+			expectRateLimitMention: true,
+			expectInaccurate:       false, // This is accurate - MCP doesn't enforce, it's a SHOULD
+			description:            "Should correctly identify that MCP not enforcing rate limits is accurate",
+		},
+		{
+			name: "compound claim with comma-separated list",
+			args: checkClaimArgs{
+				Content:     "MCP enforces authentication, authorization, rate limiting, and access control",
+				SpecVersion: "2025-06-18",
+			},
+			expectRateLimitMention: true,
+			expectInaccurate:       true, // MCP doesn't enforce these
+			description:            "Should properly parse comma-separated list and find rate limiting spec",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, tc.args.toMap())
+			require.NoError(t, err)
+			require.NotEmpty(t, result)
+
+			// Extract all text content
+			var allText string
+			for _, content := range result {
+				if textContent, ok := content.(mcp.TextContent); ok {
+					allText += textContent.Text + "\n"
+				}
+			}
+
+			// Log for debugging
+			t.Logf("Full result text:\n%s", allText)
+
+			// Check if result mentions rate limiting appropriately
+			if tc.expectRateLimitMention {
+				assert.Contains(t, strings.ToLower(allText), "rate limit",
+					"Result should mention rate limiting for: %s", tc.description)
+
+				// Should explain it's a SHOULD recommendation
+				foundShouldExplanation := strings.Contains(strings.ToLower(allText), "should implement") ||
+					strings.Contains(strings.ToLower(allText), "should recommendation") ||
+					strings.Contains(strings.ToLower(allText), "parties should")
+
+				assert.True(t, foundShouldExplanation,
+					"Result should explain rate limiting is a SHOULD recommendation, not enforcement")
+			}
+
+			// Check accuracy assessment - be careful about substring matching
+			if tc.expectInaccurate {
+				// Check for "INACCURATE" but not as a substring of another word
+				assert.Regexp(t, `\bINACCURATE\b|❌.*INACCURATE`, allText,
+					"Should be marked as inaccurate: %s", tc.description)
+			} else {
+				// Check for "ACCURATE" but ensure it's not part of "INACCURATE"
+				assert.Regexp(t, `\bACCURATE\b|✅.*ACCURATE`, allText,
+					"Should be marked as accurate: %s", tc.description)
+				// Also ensure it doesn't contain standalone INACCURATE
+				assert.NotRegexp(t, `\bINACCURATE\b|❌.*INACCURATE`, allText,
+					"Should not be marked as inaccurate: %s", tc.description)
+			}
+		})
+	}
 }
 
 func TestValidator_HandleCheckMCPClaim_WithInvalidInput(t *testing.T) {
