@@ -22,6 +22,11 @@ func setupTestEnv(t *testing.T) (*storage.VectorDB, *llm.Client) {
 	return createTestVectorDB(t), createTestRuntimeService(t)
 }
 
+// SetupTestEnv is the exported version for use by other test packages
+func SetupTestEnv(t *testing.T) (*storage.VectorDB, *llm.Client) {
+	return setupTestEnv(t)
+}
+
 // defaultMetadata creates a default metadata map with the given section.
 // This is useful for creating consistent test data.
 func defaultMetadata(section string) map[string]any {
@@ -57,6 +62,22 @@ func createTestVectorDB(t *testing.T) *storage.VectorDB {
 			Content:   "MCP query interface allows flexible searching",
 			Embedding: generateMockEmbedding("MCP query interface"),
 			Metadata:  defaultMetadata("query"),
+		},
+		{
+			ID:        "chunk4",
+			Version:   defaultVersion,
+			Section:   "progress-notifications",
+			Content:   "Both parties SHOULD implement rate limiting to prevent flooding",
+			Embedding: generateMockEmbedding("rate limiting SHOULD implement"),
+			Metadata:  defaultMetadata("progress-notifications"),
+		},
+		{
+			ID:        "chunk5",
+			Version:   defaultVersion,
+			Section:   "security",
+			Content:   "Clients SHOULD implement rate limiting for requests",
+			Embedding: generateMockEmbedding("rate limiting clients SHOULD"),
+			Metadata:  defaultMetadata("security"),
 		},
 	}
 	return createTestVectorDBWithChunks(t, defaultVersion, defaultChunks)
