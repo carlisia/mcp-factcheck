@@ -121,7 +121,7 @@ type MCPClient struct {
 }
 
 func NewMCPClient(serverCmd, dataDir string, timeout time.Duration) (*MCPClient, error) {
-	cmd := exec.Command(serverCmd, "--data-dir", dataDir)
+	cmd := exec.Command(serverCmd)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
