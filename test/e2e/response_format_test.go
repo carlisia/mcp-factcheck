@@ -15,6 +15,7 @@ import (
 
 // TestQuickClaimResponseFormat verifies that quick claim responses follow the required format
 func TestQuickClaimResponseFormat(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := e2e.SetupTestEnv(t)
 
@@ -78,6 +79,7 @@ func TestQuickClaimResponseFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			args := map[string]any{
 				"claim":       tc.claim,
 				"specVersion": capabilities.Latest,
@@ -107,6 +109,7 @@ func TestQuickClaimResponseFormat(t *testing.T) {
 			// Run format checks
 			for _, check := range tc.formatChecks {
 				t.Run(check.name, func(t *testing.T) {
+					t.Parallel()
 					assert.True(t, check.check(allText),
 						"Format check failed: %s\nResponse was:\n%s", check.name, allText)
 				})
@@ -117,6 +120,7 @@ func TestQuickClaimResponseFormat(t *testing.T) {
 
 // TestClaimValidationResponseFormat verifies that full claim validation follows the format
 func TestClaimValidationResponseFormat(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := e2e.SetupTestEnv(t)
 
@@ -148,6 +152,7 @@ func TestClaimValidationResponseFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			args := map[string]any{
 				"content":     tc.content,
 				"specVersion": capabilities.Latest,
@@ -170,6 +175,7 @@ func TestClaimValidationResponseFormat(t *testing.T) {
 			// Run format checks
 			for _, check := range tc.formatChecks {
 				t.Run(check.name, func(t *testing.T) {
+					t.Parallel()
 					assert.True(t, check.check(allText),
 						"Format check failed: %s", check.name)
 				})

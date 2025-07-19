@@ -13,6 +13,7 @@ import (
 )
 
 func TestNegativeClaimValidation(t *testing.T) {
+	t.Parallel()
 	// Setup test environment with real embeddings
 	vectorDB, llmClient := setupTestEnv(t)
 
@@ -71,6 +72,7 @@ func TestNegativeClaimValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 
 			var result *validation.Result

@@ -30,6 +30,7 @@ func (c checkClaimArgs) toMap() map[string]any {
 }
 
 func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -70,6 +71,7 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, tt.args.toMap())
 			// Note: These tests will fail with real API calls using test key
 			assertErr(t, err, false)
@@ -82,6 +84,7 @@ func TestValidator_HandleCheckMCPClaim_WithValidInput(t *testing.T) {
 
 // TestValidator_HandleCheckMCPClaim_DirectTestifyExample shows direct testify usage
 func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -132,6 +135,7 @@ func TestValidator_HandleCheckMCPClaim_DirectTestifyExample(t *testing.T) {
 }
 
 func TestValidator_HandleCheckMCPClaim_CompoundClaimRegression(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -223,6 +227,7 @@ func TestValidator_HandleCheckMCPClaim_CompoundClaimRegression(t *testing.T) {
 }
 
 func TestValidator_HandleCheckMCPClaim_WithInvalidInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -286,6 +291,7 @@ func TestValidator_HandleCheckMCPClaim_WithInvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := mcptools.HandleClaimsValidation(ctx, vectorDB, generator, tt.args)
 			assertErr(t, err, tt.wantErr)
 		})

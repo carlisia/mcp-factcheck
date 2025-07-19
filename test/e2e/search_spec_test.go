@@ -30,6 +30,7 @@ func (s searchArgs) toMap() map[string]any {
 }
 
 func TestSpec_SearchSpec_WithValidQuery(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -73,6 +74,7 @@ func TestSpec_SearchSpec_WithValidQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := mcptools.HandleSearchSpec(ctx, vectorDB, generator, tt.args.toMap())
 			// Note: These tests will fail with real API calls using test key
 			// In a real e2e test, you'd use a valid API key or mock the external service
@@ -85,6 +87,7 @@ func TestSpec_SearchSpec_WithValidQuery(t *testing.T) {
 }
 
 func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -174,6 +177,7 @@ func TestSpec_HandleSearchSpec_WithInvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := mcptools.HandleSearchSpec(ctx, vectorDB, generator, tt.args)
 			assertErr(t, err, tt.expectErr)
 			if tt.expectErr && tt.errMsgContains != "" && err != nil {

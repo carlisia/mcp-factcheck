@@ -26,6 +26,7 @@ func (q quickFactArgs) toMap() map[string]any {
 }
 
 func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -63,6 +64,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := mcptools.HandleQuickClaimValidation(ctx, vectorDB, generator, tt.args.toMap())
 			assertSuccess(t, err, got)
 			if tt.check != nil {
@@ -73,6 +75,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithValidInput(t *testing.T) {
 }
 
 func TestValidator_HandleCheckMCPQuickFact_NegativeClaimRegression(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -113,6 +116,7 @@ func TestValidator_HandleCheckMCPQuickFact_NegativeClaimRegression(t *testing.T)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := mcptools.HandleQuickClaimValidation(ctx, vectorDB, generator, tc.args.toMap())
 			assertErr(t, err, false)
 			assertNonEmpty(t, result)
@@ -143,6 +147,7 @@ func TestValidator_HandleCheckMCPQuickFact_NegativeClaimRegression(t *testing.T)
 }
 
 func TestValidator_HandleCheckMCPQuickFact_WithInvalidInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, generator := setupTestEnv(t)
 
@@ -187,6 +192,7 @@ func TestValidator_HandleCheckMCPQuickFact_WithInvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := mcptools.HandleQuickClaimValidation(ctx, vectorDB, generator, tt.args)
 			// All invalid input tests should expect an error
 			assertErr(t, err, true)

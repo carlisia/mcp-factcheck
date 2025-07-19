@@ -13,6 +13,7 @@ import (
 )
 
 func TestSpec_HandleListSpecVersions_Success(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, _ := setupTestEnv(t)
 
@@ -24,6 +25,7 @@ func TestSpec_HandleListSpecVersions_Success(t *testing.T) {
 }
 
 func TestSpec_HandleListSpecVersions_WithCustomVersion(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	// Create a VectorDB with a test embedding file
@@ -67,6 +69,7 @@ func TestSpec_HandleListSpecVersions_WithCustomVersion(t *testing.T) {
 }
 
 func TestSpec_HandleListSpecVersions_EmptyDirectory(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	// Create an empty VectorDB (no versions)
@@ -82,6 +85,7 @@ func TestSpec_HandleListSpecVersions_EmptyDirectory(t *testing.T) {
 }
 
 func TestSpec_HandleListSpecVersions_WithInvalidJSON(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tempDir := t.TempDir()
 
@@ -102,6 +106,7 @@ func TestSpec_HandleListSpecVersions_WithInvalidJSON(t *testing.T) {
 }
 
 func TestSpec_HandleListSpecVersions_WithNonJSONFiles(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tempDir := t.TempDir()
 
@@ -151,6 +156,7 @@ func TestSpec_HandleListSpecVersions_WithNonJSONFiles(t *testing.T) {
 }
 
 func TestSpec_HandleListSpecVersions_IgnoresArgs(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	vectorDB, _ := setupTestEnv(t)
 
@@ -179,6 +185,7 @@ func TestSpec_HandleListSpecVersions_IgnoresArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
 			// Should always succeed regardless of args

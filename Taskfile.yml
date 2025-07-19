@@ -160,13 +160,13 @@ tasks:
   test:
     desc: Run unit tests
     cmds:
-      - go test -v ./cmd/... ./internal/... ./pkg/... ./utils/...
+      - go test -v -shuffle=on ./cmd/... ./internal/... ./pkg/... ./utils/...
 
   # Run tests and generate HTML coverage report
   test:coverage:
     desc: Run tests with coverage report
     cmds:
-      - go test -v -coverprofile=coverage.out ./cmd/... ./internal/... ./pkg/... ./utils/...
+      - go test -v -shuffle=on -coverprofile=coverage.out ./cmd/... ./internal/... ./pkg/... ./utils/...
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report generated: coverage.html"'
 
@@ -176,10 +176,10 @@ tasks:
   #   export OPENAI_API_KEY=sk-...
   #   task test:e2e
   test:e2e:
-    desc: Run end-to-end tests
+    desc: Run end-to-end tests (parallel with random order)
     deps: [build]
     cmds:
-      - go test -v ./test/e2e/...
+      - go test -v -shuffle=on ./test/e2e/...
 
   # Run all tests including both unit and e2e tests
   # Note: e2e tests require OPENAI_API_KEY to be set
