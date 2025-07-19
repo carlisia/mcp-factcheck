@@ -6,6 +6,8 @@ import (
 
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/contentprep"
+	"github.com/carlisia/mcp-factcheck/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
@@ -38,8 +40,22 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 		return nil, fmt.Errorf("no valid chunks found in content")
 	}
 
+	// Check if concurrent processing is enabled
+	useConcurrent := true
+	if val, ok := ctx.Value(ContextKeyUseConcurrent).(bool); ok {
+		useConcurrent = val
+	}
+
 	// Use batch validation for better performance
-	batchResults, err := validateChunksBatch(ctx, chunkResult.Chunks, req.SpecVersion, embedFunc, searchFunc, llmFunc)
+	var batchResults []ChunkValidationResult
+	var err error
+
+	if useConcurrent {
+		batchResults, err = validateChunksBatchConcurrent(ctx, chunkResult.Chunks, req.SpecVersion, embedFunc, searchFunc, llmFunc)
+	} else {
+		batchResults, err = validateChunksBatch(ctx, chunkResult.Chunks, req.SpecVersion, embedFunc, searchFunc, llmFunc)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("batch validation failed: %w", err)
 	}
@@ -69,7 +85,11 @@ func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVe
 		// Use batch embedding for better performance
 		batchEmbeddings, err := batchEmbedFunc(ctx, chunkTexts)
 		if err != nil {
-			// If batch fails, fall back to sequential
+			// Log batch embedding failure and fall back to sequential
+			logger.Get().Debug("Batch embedding failed; falling back to sequential embedding",
+				zap.Error(err),
+				zap.Int("chunk_count", len(chunks)),
+			)
 			hasBatch = false
 		} else {
 			embeddings = batchEmbeddings
@@ -78,11 +98,24 @@ func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVe
 
 	// If batch not available or failed, use sequential embedding
 	if !hasBatch || len(chunks) == 1 {
-		// Fall back to sequential embedding, but don't fail early
+		// Fall back to sequential embedding with context cancellation checks.
+		// Each chunk embedding continues independently; errors do not halt subsequent chunk embeddings.
 		for i, text := range chunkTexts {
+			// Check context cancellation at each iteration
+			if ctx.Err() != nil {
+				embeddingErrors[i] = fmt.Errorf("embedding cancelled for chunk ID %s (index %d): %v", chunks[i].ID, i, ctx.Err())
+				logger.Get().Debug("Context cancelled during embedding",
+					zap.String("chunk_id", chunks[i].ID),
+					zap.Int("index", i),
+					zap.Error(ctx.Err()),
+				)
+				continue
+			}
+
 			embedding, err := embedFunc(ctx, text)
 			if err != nil {
-				embeddingErrors[i] = fmt.Errorf("failed to embed chunk %d: %w", i, err)
+				// Include chunk ID for better debugging
+				embeddingErrors[i] = fmt.Errorf("failed to embed chunk ID %s (index %d): %w", chunks[i].ID, i, err)
 				// Continue processing other chunks
 				continue
 			}
@@ -106,7 +139,7 @@ func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVe
 		if embeddings[i] == nil || len(embeddings[i]) == 0 {
 			results[i] = ChunkValidationResult{
 				Chunk: chunk,
-				Error: "no embedding available for chunk",
+				Error: fmt.Sprintf("no embedding available for chunk ID %s (index %d)", chunk.ID, i),
 			}
 			continue
 		}
@@ -127,7 +160,7 @@ func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVe
 		if err != nil {
 			results[i] = ChunkValidationResult{
 				Chunk: chunk,
-				Error: fmt.Sprintf("failed to search specifications: %v", err),
+				Error: fmt.Errorf("failed to search specifications for chunk ID %s: %w", chunk.ID, err).Error(),
 			}
 			continue
 		}
@@ -137,7 +170,7 @@ func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVe
 		if err != nil {
 			results[i] = ChunkValidationResult{
 				Chunk: chunk,
-				Error: fmt.Sprintf("validation failed: %v", err),
+				Error: fmt.Errorf("validation failed for chunk ID %s: %w", chunk.ID, err).Error(),
 			}
 			continue
 		}
@@ -165,6 +198,8 @@ func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVe
 }
 
 // aggregateChunkResults combines results from multiple chunk validations into a single result
+// It aggregates claims, issues, suggestions, and calculates overall validation status
+// based on the principle that ALL chunks must be valid for the overall content to be valid
 func aggregateChunkResults(batchResults []ChunkValidationResult, originalContent, specVersion string, totalChunks int) (*Result, error) {
 	var allClaims []Claim
 	var allParsedClaims []string
@@ -202,12 +237,14 @@ func aggregateChunkResults(batchResults []ChunkValidationResult, originalContent
 	}
 
 	// Calculate overall results
+	// Average confidence across all processed chunks
 	avgConfidence := 0.0
 	if processedChunks > 0 {
 		avgConfidence = totalConfidence / float64(processedChunks)
 	}
 
 	// Overall is valid only if ALL chunks are valid
+	// This ensures no invalid claims slip through
 	isValid := validChunks == totalChunks && processedChunks > 0
 
 	// Add chunk processing information

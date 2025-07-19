@@ -484,7 +484,7 @@ The prompt guides through a 6-step migration workflow:
 
    - Uses search_spec tool to compare versions
    - Lists relevant terminology and concept changes
-   - Highlights changes in requirements (MUST/SHOULD/MAY)
+   - Highlights changes in requirements (MUST/SHOULD/MAY/MIGHT)
 
 3. **Step 3:** Identify Update Requirements
 
