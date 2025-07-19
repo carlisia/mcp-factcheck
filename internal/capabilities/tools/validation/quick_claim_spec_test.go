@@ -74,7 +74,7 @@ While it's ACCURATE that MCP can use HTTP transport, it doesn't require REST end
 				}, nil
 			}
 
-			mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+			mockLLM := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 				// Return the test's expected LLM response
 				return tt.llmResponse, nil
 			}
@@ -131,7 +131,7 @@ func TestQuickClaim_ParsedClaimsFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+			mockLLM := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 				if tt.isAccurate {
 					return "✓ ACCURATE\nThe claim is correct.", nil
 				}
@@ -168,7 +168,7 @@ func TestQuickClaim_BugFix_InaccurateContainingAccurate(t *testing.T) {
 	llmResponse := `✗ INACCURATE  
 The claim that MCP is the same as REST is incorrect because MCP is a distinct protocol with specific features such as the use of JSON-RPC for message encoding and an emphasis on OAuth 2.1 roles, which are not inherent to REST. While both MCP and REST may utilize HTTP, they serve different purposes and implement different architectural principles.`
 
-	mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+	mockLLM := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 		return llmResponse, nil
 	}
 
@@ -228,7 +228,7 @@ The claim is wrong. MCP should be described as using JSON-RPC, not REST.`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+			mockLLM := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 				return tt.llmResponse, nil
 			}
 
@@ -303,7 +303,7 @@ func TestQuickClaim_CompoundClaimDetection(t *testing.T) {
 				}, nil
 			}
 
-			mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+			mockLLM := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 				return "✓ ACCURATE\nThe claim is correct.", nil
 			}
 
@@ -353,7 +353,7 @@ func TestQuickClaim_CompoundClaimIndicators(t *testing.T) {
 		req,
 		mockEmbedFunc([]float64{0.1, 0.2}),
 		mockSearchFunc(1),
-		func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+		func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 			return "✓ ACCURATE", nil
 		},
 	)

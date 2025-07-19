@@ -38,7 +38,134 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 		return nil, fmt.Errorf("no valid chunks found in content")
 	}
 
-	// Validate each chunk
+	// Use batch validation for better performance
+	batchResults, err := validateChunksBatch(ctx, chunkResult.Chunks, req.SpecVersion, embedFunc, searchFunc, llmFunc)
+	if err != nil {
+		return nil, fmt.Errorf("batch validation failed: %w", err)
+	}
+
+	// Aggregate and return results
+	return aggregateChunkResults(batchResults, req.Content, req.SpecVersion, len(chunkResult.Chunks))
+}
+
+// validateChunksBatch validates multiple chunks and attempts to use batch embedding if available
+func validateChunksBatch(ctx context.Context, chunks []contentprep.Chunk, specVersion string,
+	embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) ([]ChunkValidationResult, error) {
+
+	// Extract text from all chunks for batch embedding
+	chunkTexts := make([]string, len(chunks))
+	for i, chunk := range chunks {
+		chunkTexts[i] = chunk.Text
+	}
+
+	// Generate embeddings for all chunks
+	// Check if batch embedding is available in context
+	embeddings := make([][]float64, len(chunks))
+	embeddingErrors := make([]error, len(chunks))
+
+	// Try to get batch embed function from context
+	batchEmbedFunc, hasBatch := ctx.Value(tools.ContextKeyBatchEmbedFunc).(tools.BatchEmbeddingFunc)
+	if hasBatch && len(chunks) > 1 {
+		// Use batch embedding for better performance
+		batchEmbeddings, err := batchEmbedFunc(ctx, chunkTexts)
+		if err != nil {
+			// If batch fails, fall back to sequential
+			hasBatch = false
+		} else {
+			embeddings = batchEmbeddings
+		}
+	}
+
+	// If batch not available or failed, use sequential embedding
+	if !hasBatch || len(chunks) == 1 {
+		// Fall back to sequential embedding, but don't fail early
+		for i, text := range chunkTexts {
+			embedding, err := embedFunc(ctx, text)
+			if err != nil {
+				embeddingErrors[i] = fmt.Errorf("failed to embed chunk %d: %w", i, err)
+				// Continue processing other chunks
+				continue
+			}
+			embeddings[i] = embedding
+		}
+	}
+
+	// Validate each chunk with its embedding
+	results := make([]ChunkValidationResult, len(chunks))
+	for i, chunk := range chunks {
+		// Check if this chunk had an embedding error
+		if embeddingErrors[i] != nil {
+			results[i] = ChunkValidationResult{
+				Chunk: chunk,
+				Error: embeddingErrors[i].Error(),
+			}
+			continue
+		}
+
+		// Skip chunks without embeddings
+		if embeddings[i] == nil || len(embeddings[i]) == 0 {
+			results[i] = ChunkValidationResult{
+				Chunk: chunk,
+				Error: "no embedding available for chunk",
+			}
+			continue
+		}
+
+		// Search for relevant spec sections
+		var searchResults []tools.SearchResult
+		var err error
+
+		// Check if this chunk contains negative claims that need special search
+		if isNegativeClaim(chunk.Text) {
+			// Use enhanced search for negative claims
+			searchResults, err = searchForNegativeClaim(ctx, chunk.Text, specVersion, embedFunc, searchFunc)
+		} else {
+			// Use the pre-computed embedding for regular search
+			searchResults, err = searchFunc(specVersion, embeddings[i], chunkSearchTopK)
+		}
+
+		if err != nil {
+			results[i] = ChunkValidationResult{
+				Chunk: chunk,
+				Error: fmt.Sprintf("failed to search specifications: %v", err),
+			}
+			continue
+		}
+
+		// Perform fact-checking on this chunk
+		factCheckResult, err := performClaimCheck(ctx, llmFunc, chunk.Text, searchResults)
+		if err != nil {
+			results[i] = ChunkValidationResult{
+				Chunk: chunk,
+				Error: fmt.Sprintf("validation failed: %v", err),
+			}
+			continue
+		}
+
+		// Build validation result for this chunk
+		result := &Result{
+			IsValid:          factCheckResult.IsAccurate,
+			Confidence:       factCheckResult.Confidence,
+			ParsedClaims:     factCheckResult.ParsedClaims,
+			Issues:           factCheckResult.Inaccuracies,
+			Suggestions:      factCheckResult.Suggestions,
+			CorrectedVersion: factCheckResult.CorrectedVersion,
+			SpecVersion:      specVersion,
+			FactCheckResult:  factCheckResult,
+		}
+
+		results[i] = ChunkValidationResult{
+			Chunk:        chunk,
+			Validation:   result,
+			SearchResult: searchResults,
+		}
+	}
+
+	return results, nil
+}
+
+// aggregateChunkResults combines results from multiple chunk validations into a single result
+func aggregateChunkResults(batchResults []ChunkValidationResult, originalContent, specVersion string, totalChunks int) (*Result, error) {
 	var allClaims []Claim
 	var allParsedClaims []string
 	var allIssues []string
@@ -48,10 +175,7 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 	var validChunks int
 	var processedChunks int
 
-	for _, chunk := range chunkResult.Chunks {
-		// Validate this chunk
-		chunkValidationResult := validateChunk(ctx, chunk, req.SpecVersion, embedFunc, searchFunc, llmFunc)
-
+	for _, chunkValidationResult := range batchResults {
 		if chunkValidationResult.Error != "" {
 			continue
 		}
@@ -84,19 +208,19 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 	}
 
 	// Overall is valid only if ALL chunks are valid
-	isValid := validChunks == len(chunkResult.Chunks) && processedChunks > 0
+	isValid := validChunks == totalChunks && processedChunks > 0
 
 	// Add chunk processing information
-	if processedChunks < len(chunkResult.Chunks) {
+	if processedChunks < totalChunks {
 		errorSummary := fmt.Sprintf("Warning: %d of %d chunks failed validation",
-			len(chunkResult.Chunks)-processedChunks, len(chunkResult.Chunks))
+			totalChunks-processedChunks, totalChunks)
 		allIssues = append([]string{errorSummary}, allIssues...)
 	}
 
 	// Create corrected version if needed
 	correctedVersion := ""
 	if !isValid && len(allClaims) > 0 {
-		correctedVersion = buildCorrectedVersion(req.Content, allClaims)
+		correctedVersion = buildCorrectedVersion(originalContent, allClaims)
 	}
 
 	// Build final result
@@ -107,7 +231,7 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 		Issues:           deduplicate(allIssues),
 		Suggestions:      deduplicate(allSuggestions),
 		CorrectedVersion: correctedVersion,
-		SpecVersion:      req.SpecVersion,
+		SpecVersion:      specVersion,
 		FactCheckResult: &FactCheckResult{
 			IsAccurate:           isValid,
 			Confidence:           avgConfidence,
@@ -119,49 +243,4 @@ func validateWithChunkingComprehensive(ctx context.Context, req ClaimsRequest, e
 			Claims:               allClaims,
 		},
 	}, nil
-}
-
-// validateChunk validates a single chunk of content
-func validateChunk(ctx context.Context, chunk contentprep.Chunk, specVersion string,
-	embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) ChunkValidationResult {
-
-	// Search for relevant spec sections for this chunk
-	searchResults, err := tools.NewValidationBuilder(chunk.Text, specVersion).
-		WithFunctions(embedFunc, searchFunc).
-		WithSearchTopK(chunkSearchTopK).
-		Search(ctx)
-
-	if err != nil {
-		return ChunkValidationResult{
-			Chunk: chunk,
-			Error: fmt.Sprintf("failed to search specifications: %v", err),
-		}
-	}
-
-	// Perform fact-checking on this chunk
-	factCheckResult, err := performClaimCheck(ctx, llmFunc, chunk.Text, searchResults)
-	if err != nil {
-		return ChunkValidationResult{
-			Chunk: chunk,
-			Error: fmt.Sprintf("validation failed: %v", err),
-		}
-	}
-
-	// Build validation result for this chunk
-	result := &Result{
-		IsValid:          factCheckResult.IsAccurate,
-		Confidence:       factCheckResult.Confidence,
-		ParsedClaims:     factCheckResult.ParsedClaims,
-		Issues:           factCheckResult.Inaccuracies,
-		Suggestions:      factCheckResult.Suggestions,
-		CorrectedVersion: factCheckResult.CorrectedVersion,
-		SpecVersion:      specVersion,
-		FactCheckResult:  factCheckResult,
-	}
-
-	return ChunkValidationResult{
-		Chunk:        chunk,
-		Validation:   result,
-		SearchResult: searchResults,
-	}
 }

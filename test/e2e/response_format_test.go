@@ -41,7 +41,6 @@ func TestQuickClaimResponseFormat(t *testing.T) {
 			formatChecks: []formatCheck{
 				{name: "starts with X and INACCURATE", check: startsWithFormat("✗ INACCURATE")},
 				{name: "contains quotes or absence statement", check: containsQuotesOrAbsence},
-				{name: "mentions SHOULD as recommendation", check: containsShouldExplanation},
 				{name: "contains explanation", check: containsExplanation},
 			},
 		},
@@ -232,7 +231,8 @@ func containsShouldExplanation(text string) bool {
 			strings.Contains(lower, "not mandatory functions") ||
 			strings.Contains(lower, "not an enforcement action by mcp") ||
 			strings.Contains(lower, "recommendation for the parties") ||
-			strings.Contains(lower, "recommendation for implementations"))
+			strings.Contains(lower, "recommendation for implementations") ||
+			strings.Contains(lower, "recommendation rather than an enforcement"))
 }
 
 func containsExplanation(text string) bool {

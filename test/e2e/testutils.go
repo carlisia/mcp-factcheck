@@ -1,13 +1,10 @@
 package e2e
 
 import (
-	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/carlisia/mcp-factcheck/internal/embedding"
 	"github.com/carlisia/mcp-factcheck/internal/storage"
 	"github.com/carlisia/mcp-factcheck/pkg/llm"
 	"github.com/carlisia/mcp-factcheck/pkg/logger"
@@ -16,96 +13,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestEnv initializes a default VectorDB and Generator for use in tests.
-// It returns mock-backed, isolated instances with default content.
+// setupTestEnv initializes a real VectorDB and Generator for use in tests.
+// It uses the actual embeddings from the embeddings directory.
 func setupTestEnv(t *testing.T) (*storage.VectorDB, *llm.Client) {
-	return createTestVectorDB(t), createTestRuntimeService(t)
+	// Use the real embeddings directory - adjust path based on where test runs
+	embeddingsDir := "../../internal/storage/embeddings"
+	if _, err := os.Stat(embeddingsDir); os.IsNotExist(err) {
+		// Try from project root if running from there
+		embeddingsDir = "./internal/storage/embeddings"
+		if _, err := os.Stat(embeddingsDir); os.IsNotExist(err) {
+			t.Fatalf("Embeddings directory does not exist. Run 'task generate:embeddings' from project root first.")
+		}
+	}
+
+	vectorDB := storage.NewVectorDB(embeddingsDir)
+	return vectorDB, createTestRuntimeService(t)
 }
 
 // SetupTestEnv is the exported version for use by other test packages
 func SetupTestEnv(t *testing.T) (*storage.VectorDB, *llm.Client) {
 	return setupTestEnv(t)
-}
-
-// defaultMetadata creates a default metadata map with the given section.
-// This is useful for creating consistent test data.
-func defaultMetadata(section string) map[string]any {
-	return map[string]any{"section": section}
-}
-
-// createTestVectorDB creates a temporary vector database for testing with default chunks.
-// It sets up a basic test environment with protocol and overview sections.
-func createTestVectorDB(t *testing.T) *storage.VectorDB {
-	// Use the default spec version to match what handlers expect
-	defaultVersion := "2025-06-18"
-	defaultChunks := []embedding.EmbeddedChunk{
-		{
-			ID:        "chunk1",
-			Version:   defaultVersion,
-			Section:   "protocol",
-			Content:   "MCP uses JSON-RPC 2.0 for communication",
-			Embedding: generateMockEmbedding("MCP uses JSON-RPC 2.0"),
-			Metadata:  defaultMetadata("protocol"),
-		},
-		{
-			ID:        "chunk2",
-			Version:   defaultVersion,
-			Section:   "overview",
-			Content:   "The Model Context Protocol enables seamless integration",
-			Embedding: generateMockEmbedding("Model Context Protocol"),
-			Metadata:  defaultMetadata("overview"),
-		},
-		{
-			ID:        "chunk3",
-			Version:   defaultVersion,
-			Section:   "query",
-			Content:   "MCP query interface allows flexible searching",
-			Embedding: generateMockEmbedding("MCP query interface"),
-			Metadata:  defaultMetadata("query"),
-		},
-		{
-			ID:        "chunk4",
-			Version:   defaultVersion,
-			Section:   "progress-notifications",
-			Content:   "Both parties SHOULD implement rate limiting to prevent flooding",
-			Embedding: generateMockEmbedding("rate limiting SHOULD implement"),
-			Metadata:  defaultMetadata("progress-notifications"),
-		},
-		{
-			ID:        "chunk5",
-			Version:   defaultVersion,
-			Section:   "security",
-			Content:   "Clients SHOULD implement rate limiting for requests",
-			Embedding: generateMockEmbedding("rate limiting clients SHOULD"),
-			Metadata:  defaultMetadata("security"),
-		},
-	}
-	return createTestVectorDBWithChunks(t, defaultVersion, defaultChunks)
-}
-
-// createTestVectorDBWithChunks creates a test vector database with custom chunks.
-// This allows tests to specify custom content and versions for specific test scenarios.
-func createTestVectorDBWithChunks(t *testing.T, version string, chunks []embedding.EmbeddedChunk) *storage.VectorDB {
-	t.Helper()
-	tempDir := t.TempDir()
-
-	data := embedding.SpecEmbedding{
-		Version: version,
-		Chunks:  chunks,
-		Count:   len(chunks),
-	}
-
-	testData, err := json.Marshal(data)
-	if err != nil {
-		t.Fatalf("Failed to marshal test embeddings: %v", err)
-	}
-
-	path := filepath.Join(tempDir, version+".json")
-	if err := os.WriteFile(path, testData, 0644); err != nil {
-		t.Fatalf("Failed to write embedding file: %v", err)
-	}
-
-	return storage.NewVectorDB(tempDir)
 }
 
 // createTestRuntimeService creates a test embedding generator.
@@ -122,17 +49,6 @@ func createTestRuntimeService(t *testing.T) *llm.Client {
 		t.Fatalf("Failed to create runtime service: %v", err)
 	}
 	return gen
-}
-
-// generateMockEmbedding creates a deterministic mock embedding based on text length.
-// The embedding is consistent for the same input text, making tests predictable.
-func generateMockEmbedding(text string) []float64 {
-	emb := make([]float64, 1536)
-	scale := float64(len(text))
-	for i := range emb {
-		emb[i] = scale / float64(i+1) // explicit float conversion for clarity
-	}
-	return emb
 }
 
 // assertErr checks if error matches expectation.

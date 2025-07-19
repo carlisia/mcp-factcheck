@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,18 +26,36 @@ func TestSpec_HandleListSpecVersions_Success(t *testing.T) {
 func TestSpec_HandleListSpecVersions_WithCustomVersion(t *testing.T) {
 	ctx := context.Background()
 
-	// Create a VectorDB with a custom spec version
-	chunks := []embedding.EmbeddedChunk{
-		{
-			ID:        "custom-test",
-			Version:   "2025-06-18",
-			Section:   "test",
-			Content:   "Test content for custom version",
-			Embedding: generateMockEmbedding("custom"),
-			Metadata:  defaultMetadata("test"),
+	// Create a VectorDB with a test embedding file
+	tempDir := t.TempDir()
+
+	// Create minimal valid embedding data
+	data := embedding.SpecEmbedding{
+		Version: "2025-06-18",
+		Chunks: []embedding.EmbeddedChunk{
+			{
+				ID:        "custom-test",
+				Version:   "2025-06-18",
+				Section:   "test",
+				Content:   "Test content for custom version",
+				Embedding: make([]float64, 1536), // OpenAI embedding size
+				Metadata:  map[string]any{"section": "test"},
+			},
 		},
+		Count: 1,
 	}
-	vectorDB := createTestVectorDBWithChunks(t, "2025-06-18", chunks)
+
+	testData, err := json.Marshal(data)
+	if err != nil {
+		t.Fatalf("Failed to marshal test embeddings: %v", err)
+	}
+
+	path := filepath.Join(tempDir, "2025-06-18.json")
+	if err := os.WriteFile(path, testData, 0644); err != nil {
+		t.Fatalf("Failed to write embedding file: %v", err)
+	}
+
+	vectorDB := storage.NewVectorDB(tempDir)
 
 	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 
@@ -94,17 +113,32 @@ func TestSpec_HandleListSpecVersions_WithNonJSONFiles(t *testing.T) {
 	}
 
 	// Also write a valid JSON file to ensure it's found
-	chunks := []embedding.EmbeddedChunk{
-		{
-			ID:        "test",
-			Version:   "valid",
-			Section:   "test",
-			Content:   "Test",
-			Embedding: generateMockEmbedding("test"),
-			Metadata:  defaultMetadata("test"),
+	data := embedding.SpecEmbedding{
+		Version: "valid",
+		Chunks: []embedding.EmbeddedChunk{
+			{
+				ID:        "test",
+				Version:   "valid",
+				Section:   "test",
+				Content:   "Test",
+				Embedding: make([]float64, 1536),
+				Metadata:  map[string]any{"section": "test"},
+			},
 		},
+		Count: 1,
 	}
-	vectorDB := createTestVectorDBWithChunks(t, "valid", chunks)
+
+	testData, err := json.Marshal(data)
+	if err != nil {
+		t.Fatalf("Failed to marshal test embeddings: %v", err)
+	}
+
+	path := filepath.Join(tempDir, "valid.json")
+	if err := os.WriteFile(path, testData, 0644); err != nil {
+		t.Fatalf("Failed to write embedding file: %v", err)
+	}
+
+	vectorDB := storage.NewVectorDB(tempDir)
 
 	result, err := mcptools.HandleListSpecVersions(ctx, vectorDB)
 

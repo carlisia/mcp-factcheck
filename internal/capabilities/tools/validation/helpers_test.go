@@ -81,7 +81,7 @@ func setupMocksWithConfig(config mockConfig) mockDependencies {
 			}, nil
 		},
 
-		llmFunc: func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+		llmFunc: func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 			llmCallCount++
 
 			if config.llmError != nil {

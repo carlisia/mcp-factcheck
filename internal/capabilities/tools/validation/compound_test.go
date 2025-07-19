@@ -28,7 +28,7 @@ func TestCompoundEvidence(t *testing.T) {
 	}
 
 	// Mock LLM function that returns template response with compound evidence
-	mockLLM := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+	mockLLM := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 		// Verify that compound evidence is in the prompt
 		assert.Contains(t, prompt, "Compound Claim:", "Expected compound evidence in prompt but not found")
 		assert.Contains(t, prompt, "authentication", "Expected authentication subclaim in compound evidence")

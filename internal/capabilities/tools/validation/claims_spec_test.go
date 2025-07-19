@@ -519,7 +519,7 @@ func mockSearchFuncError(err error) tools.SearchFunc {
 }
 
 func mockLLMFunc(accurate bool, confidence float64) validation.LLMCompleteFunc {
-	return func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+	return func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 		// Return JSON in the format expected by the template
 		type templateResponse struct {
 			Claims                 []validation.Claim `json:"claims"`
@@ -557,7 +557,7 @@ func mockLLMFunc(accurate bool, confidence float64) validation.LLMCompleteFunc {
 }
 
 func mockLLMFuncError(err error) validation.LLMCompleteFunc {
-	return func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+	return func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 		return "", err
 	}
 }
