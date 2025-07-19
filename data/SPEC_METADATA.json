@@ -1,85 +1,85 @@
 {
   "specs": {
-    "draft": {
-      "extracted_date": "2025-06-26T00:00:00Z",
-      "source_commit": "unknown",
-      "source_repo": "modelcontextprotocol/specification",
-      "source_branch": "main",
+    "2024-11-05": {
+      "release_date": "2024-11-05",
+      "extracted_date": "2025-07-19T02:22:12Z",
+      "source_commit": "db349f740fad5a1cf44e248f07c9245064ff10ac",
+      "source_repo": "modelcontextprotocol/modelcontextprotocol",
+      "source_tag": "2024-11-05",
       "extractor_version": "1.0.0",
       "embeddings": {
-        "regular": {
-          "generated_date": "2025-06-26T00:00:00Z",
-          "chunk_count": 0,
-          "strategy": "regular"
-        },
         "fine": {
-          "generated_date": "2025-06-26T00:00:00Z",
-          "chunk_count": 0,
+          "generated_date": "2025-07-19T02:22:35Z",
+          "chunk_count": 1275,
           "strategy": "fine"
-        }
-      }
-    },
-    "2025-06-18": {
-      "release_date": "2025-06-18",
-      "extracted_date": "2025-06-18T00:00:00Z",
-      "source_commit": "unknown",
-      "source_repo": "modelcontextprotocol/specification",
-      "source_tag": "v2025-06-18",
-      "extractor_version": "1.0.0",
-      "embeddings": {
-        "regular": {
-          "generated_date": "2025-06-18T00:00:00Z",
-          "chunk_count": 0,
-          "strategy": "regular"
         },
-        "fine": {
-          "generated_date": "2025-06-18T00:00:00Z",
-          "chunk_count": 0,
-          "strategy": "fine"
+        "regular": {
+          "generated_date": "2025-07-19T02:22:21Z",
+          "chunk_count": 712,
+          "strategy": "regular"
         }
       }
     },
     "2025-03-26": {
       "release_date": "2025-03-26",
-      "extracted_date": "2025-03-26T00:00:00Z",
-      "source_commit": "unknown",
-      "source_repo": "modelcontextprotocol/specification",
-      "source_tag": "v2025-03-26",
+      "extracted_date": "2025-07-19T02:21:36Z",
+      "source_commit": "9236eb1cbfa02c17ab45c83a7bdbe55c450070be",
+      "source_repo": "modelcontextprotocol/modelcontextprotocol",
+      "source_tag": "2025-03-26",
       "extractor_version": "1.0.0",
       "embeddings": {
-        "regular": {
-          "generated_date": "2025-03-26T00:00:00Z",
-          "chunk_count": 0,
-          "strategy": "regular"
-        },
         "fine": {
-          "generated_date": "2025-03-26T00:00:00Z",
-          "chunk_count": 0,
+          "generated_date": "2025-07-19T02:22:05Z",
+          "chunk_count": 1661,
           "strategy": "fine"
+        },
+        "regular": {
+          "generated_date": "2025-07-19T02:21:48Z",
+          "chunk_count": 972,
+          "strategy": "regular"
         }
       }
     },
-    "2024-11-05": {
-      "release_date": "2024-11-05",
-      "extracted_date": "2024-11-05T00:00:00Z",
-      "source_commit": "unknown",
-      "source_repo": "modelcontextprotocol/specification",
-      "source_tag": "v2024-11-05",
+    "2025-06-18": {
+      "release_date": "2025-06-18",
+      "extracted_date": "2025-07-19T02:20:13Z",
+      "source_commit": "f5ccad944fdf2b7d9cc70cf817f66ca5a8aa03a4",
+      "source_repo": "modelcontextprotocol/modelcontextprotocol",
+      "source_tag": "2025-06-18",
       "extractor_version": "1.0.0",
       "embeddings": {
-        "regular": {
-          "generated_date": "2024-11-05T00:00:00Z",
-          "chunk_count": 0,
-          "strategy": "regular"
-        },
         "fine": {
-          "generated_date": "2024-11-05T00:00:00Z",
-          "chunk_count": 0,
+          "generated_date": "2025-07-19T02:21:30Z",
+          "chunk_count": 2224,
           "strategy": "fine"
+        },
+        "regular": {
+          "generated_date": "2025-07-19T02:20:54Z",
+          "chunk_count": 1440,
+          "strategy": "regular"
+        }
+      }
+    },
+    "draft": {
+      "extracted_date": "2025-07-19T02:19:23Z",
+      "source_commit": "e8703dca6ac33a5d9ada21522586928c9d2a9efd",
+      "source_repo": "modelcontextprotocol/modelcontextprotocol",
+      "source_branch": "main",
+      "extractor_version": "1.0.0",
+      "embeddings": {
+        "fine": {
+          "generated_date": "2025-07-19T02:20:06Z",
+          "chunk_count": 2233,
+          "strategy": "fine"
+        },
+        "regular": {
+          "generated_date": "2025-07-19T02:19:39Z",
+          "chunk_count": 1443,
+          "strategy": "regular"
         }
       }
     }
   },
   "metadata_version": "1.0.0",
-  "last_updated": "2025-01-15T00:00:00Z"
+  "last_updated": "2025-07-19T02:22:35Z"
 }

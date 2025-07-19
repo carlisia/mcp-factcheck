@@ -10,7 +10,7 @@ import (
 
 // Default models for OpenAI
 const (
-	defaultEmbeddingModel  = openai.LargeEmbedding3
+	defaultEmbeddingModel  = openai.SmallEmbedding3
 	defaultCompletionModel = openai.GPT4oMini
 )
 
