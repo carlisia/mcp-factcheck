@@ -50,38 +50,53 @@ func (s *AggressiveSearchStrategy) Search(ctx context.Context, content string, v
 
 func (s *AggressiveSearchStrategy) searchWithAlternatives(ctx context.Context, content, version string, embedFunc EmbeddingFunc, searchFunc SearchFunc) ([]SearchResult, error) {
 	var allResults []SearchResult
+	var allQueries []string
 
 	// Special handling for "enforces" queries
 	if strings.Contains(strings.ToLower(content), "enforces") {
 		// When looking for enforcement, also search for recommendations
 		alternatives := s.generateEnforcementAlternatives(content)
-		for _, query := range alternatives {
-			results, err := EmbedAndSearch(ctx, query, version, s.FallbackTopK, embedFunc, searchFunc)
-			if err != nil {
-				continue
-			}
-			allResults = append(allResults, results...)
-		}
+		allQueries = append(allQueries, alternatives...)
 	}
 
 	// Extract key terms from the content
 	keyTerms := s.extractKeyTerms(content)
-	if len(keyTerms) == 0 {
+	if len(keyTerms) > 0 {
+		// Add expanded queries
+		allQueries = append(allQueries,
+			fmt.Sprintf("MCP %s specification", strings.Join(keyTerms, " ")),
+			fmt.Sprintf("Model Context Protocol %s", strings.Join(keyTerms, " ")),
+		)
+	}
+
+	if len(allQueries) == 0 {
 		return allResults, nil
 	}
 
-	// Try searching with expanded queries
-	expandedQueries := []string{
-		fmt.Sprintf("MCP %s specification", strings.Join(keyTerms, " ")),
-		fmt.Sprintf("Model Context Protocol %s", strings.Join(keyTerms, " ")),
+	// Try to use batch embedding if available
+	if batchEmbedFunc, hasBatch := ctx.Value(ContextKeyBatchEmbedFunc).(BatchEmbeddingFunc); hasBatch && len(allQueries) > 1 {
+		// Generate all embeddings at once
+		embeddings, err := batchEmbedFunc(ctx, allQueries)
+		if err == nil {
+			// Search with each embedding
+			for _, embedding := range embeddings {
+				results, err := searchFunc(version, embedding, s.FallbackTopK)
+				if err != nil {
+					continue
+				}
+				allResults = append(allResults, results...)
+			}
+			return allResults, nil
+		}
+		// Fall back to sequential if batch fails
 	}
 
-	for _, query := range expandedQueries {
+	// Sequential fallback
+	for _, query := range allQueries {
 		results, err := EmbedAndSearch(ctx, query, version, s.FallbackTopK, embedFunc, searchFunc)
 		if err != nil {
 			continue
 		}
-
 		allResults = append(allResults, results...)
 	}
 
@@ -206,7 +221,59 @@ func (s *CompoundClaimSearchStrategy) Search(ctx context.Context, content string
 	var allResults []SearchResult
 	resultMap := make(map[string]SearchResult) // Deduplicate by content
 
-	// First, search with the full content to get general context
+	// Break down compound claims
+	subclaims := s.extractSubclaims(content)
+
+	// Filter out very short subclaims
+	var validSubclaims []string
+	validSubclaims = append(validSubclaims, content) // Include full content
+	for _, subclaim := range subclaims {
+		if len(strings.TrimSpace(subclaim)) >= 5 {
+			validSubclaims = append(validSubclaims, subclaim)
+		}
+	}
+
+	// Try to use batch embedding if available
+	if batchEmbedFunc, hasBatch := ctx.Value(ContextKeyBatchEmbedFunc).(BatchEmbeddingFunc); hasBatch && len(validSubclaims) > 1 {
+		// Generate all embeddings at once
+		embeddings, err := batchEmbedFunc(ctx, validSubclaims)
+		if err == nil {
+			// Search with each embedding
+			for i, embedding := range embeddings {
+				// Use full topK for the full content, less for subclaims
+				searchTopK := 5
+				if i == 0 { // First item is the full content
+					searchTopK = s.topK
+				}
+
+				results, err := searchFunc(version, embedding, searchTopK)
+				if err != nil {
+					continue
+				}
+
+				// Add results, deduplicating
+				for _, result := range results {
+					if _, exists := resultMap[result.Content]; !exists {
+						resultMap[result.Content] = result
+					}
+				}
+			}
+
+			// Convert map to slice and return
+			for _, result := range resultMap {
+				allResults = append(allResults, result)
+			}
+			sortSearchResults(allResults)
+			if len(allResults) > s.topK {
+				return allResults[:s.topK], nil
+			}
+			return allResults, nil
+		}
+		// Fall back to sequential if batch fails
+	}
+
+	// Sequential fallback
+	// First, search with the full content
 	fullResults, err := EmbedAndSearch(ctx, content, version, s.topK, embedFunc, searchFunc)
 	if err != nil {
 		return nil, err
@@ -216,9 +283,6 @@ func (s *CompoundClaimSearchStrategy) Search(ctx context.Context, content string
 	for _, result := range fullResults {
 		resultMap[result.Content] = result
 	}
-
-	// Break down compound claims
-	subclaims := s.extractSubclaims(content)
 
 	// Search for each subclaim separately
 	for _, subclaim := range subclaims {

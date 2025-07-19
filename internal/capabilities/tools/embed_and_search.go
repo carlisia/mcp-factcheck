@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"sort"
 )
 
 // TODO: do we need all these fields and do they need json tags?
@@ -26,6 +27,24 @@ type SearchFunc func(version string, queryEmbedding []float64, topK int) ([]Sear
 // EmbeddingFunc converts text content into vector embeddings for semantic similarity matching.
 // This is used across multiple tools for search and validation operations.
 type EmbeddingFunc func(ctx context.Context, content string) ([]float64, error)
+
+// BatchEmbeddingFunc converts multiple text contents into vector embeddings in a single call.
+// This provides better performance when processing multiple texts.
+type BatchEmbeddingFunc func(ctx context.Context, contents []string) ([][]float64, error)
+
+// EmbeddingProvider provides both single and batch embedding capabilities
+type EmbeddingProvider interface {
+	// Embed generates embedding for a single text
+	Embed(ctx context.Context, content string) ([]float64, error)
+	// EmbedBatch generates embeddings for multiple texts
+	EmbedBatch(ctx context.Context, contents []string) ([][]float64, error)
+}
+
+// contextKey is a type for context keys to avoid collisions
+type contextKey string
+
+// ContextKeyBatchEmbedFunc is the context key for batch embedding function
+const ContextKeyBatchEmbedFunc contextKey = "batchEmbedFunc"
 
 // EmbedAndSearch combines embedding generation and search into a single operation.
 // This is the standard pattern used across all tools that need to search specifications.
@@ -88,4 +107,11 @@ func performSearch(ctx context.Context, version string, embedding []float64, top
 	}
 
 	return results, nil
+}
+
+// SortSearchResultsBySimilarity sorts search results by similarity in descending order
+func SortSearchResultsBySimilarity(results []SearchResult) {
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Similarity > results[j].Similarity
+	})
 }
