@@ -3,8 +3,8 @@ package validation
 import (
 	"context"
 	"fmt"
-	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 
+	"github.com/carlisia/mcp-factcheck/internal/capabilities"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 )
 
@@ -176,52 +176,11 @@ func validateQuickClaimRequest(claim string, version string) (*QuickClaimRequest
 //  3. This two-tier approach ensures quick claims get enough context while
 //     maintaining fast response times even for edge cases
 func validateWithAggressiveSearch(ctx context.Context, claim, specVersion string, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
-	// Use aggressive search strategy with fallback
-	aggressiveStrategy := &tools.AggressiveSearchStrategy{
-		PrimaryTopK:  quickSearchTopK,
-		FallbackTopK: fallbackTopK,
-	}
-
-	searchResults, err := tools.NewValidationBuilder(claim, specVersion).
-		WithFunctions(embedFunc, searchFunc).
-		WithSearchStrategy(aggressiveStrategy).
-		Search(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Perform quick fact-check
-	factCheckResult, err := performQuickClaimCheck(ctx, llmFunc, claim, searchResults)
-	if err != nil {
-		// Provide more context about the failure type
-		return nil, fmt.Errorf("failed quick fact-check (LLM error): %w", err)
-	}
-
-	// Build validation result
-	result := &Result{
-		IsValid:         factCheckResult.IsAccurate,
-		Confidence:      factCheckResult.Confidence,
-		SpecVersion:     specVersion,
-		FactCheckResult: factCheckResult,
-	}
-
-	// Format the response
-	if factCheckResult.IsAccurate {
-		result.ParsedClaims = []string{fmt.Sprintf("✓ ACCURATE: %s", claim)}
-		// Include explanation for accurate results too
-		if factCheckResult.Explanation != "" {
-			result.Issues = []string{factCheckResult.Explanation}
-		}
-	} else {
-		result.ParsedClaims = []string{fmt.Sprintf("✗ INACCURATE: %s", claim)}
-		result.Issues = []string{factCheckResult.Explanation}
-		if len(factCheckResult.Corrections) > 0 {
-			result.Suggestions = factCheckResult.Corrections
-			result.CorrectedVersion = factCheckResult.Corrections[0]
-		}
-	}
-
-	return result, nil
+	// Use validation builder with quick claim configuration
+	return NewValidationBuilder(claim, specVersion).
+		WithFunctions(embedFunc, searchFunc, llmFunc).
+		AsQuickClaim().
+		Execute(ctx)
 }
 
 // FormatQuickClaimResult formats validation results for quick claims

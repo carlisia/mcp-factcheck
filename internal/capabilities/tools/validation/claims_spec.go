@@ -174,45 +174,16 @@ func validateClaimsRequest(content string, version string, useChunking bool) (*C
 
 // validateSingleContent validates a single piece of content
 func validateSingleContent(ctx context.Context, content, specVersion string, embedFunc tools.EmbeddingFunc, searchFunc tools.SearchFunc, llmFunc LLMCompleteFunc) (*Result, error) {
-	// Determine search strategy based on content type
-	var searchStrategy tools.SearchStrategy
+	// Use validation builder for standard validation
+	builder := NewValidationBuilder(content, specVersion).
+		WithFunctions(embedFunc, searchFunc, llmFunc)
 
-	// Check if this is a compound claim
+	// Add compound claim strategy if needed
 	if IsCompoundClaim(content) {
-		// Use compound claim search strategy for better coverage
-		searchStrategy = tools.NewCompoundClaimSearchStrategy(20) // Get more results for compound claims
-	} else {
-		searchStrategy = tools.NewDefaultSearchStrategy(tools.DefaultSearchTopK)
+		builder = builder.WithSearchStrategy(&StandardSearchStrategy{TopK: 20})
 	}
 
-	// Search for relevant spec sections using validation builder
-	searchResults, err := tools.NewValidationBuilder(content, specVersion).
-		WithFunctions(embedFunc, searchFunc).
-		WithSearchStrategy(searchStrategy).
-		Search(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Perform fact-checking
-	factCheckResult, err := performClaimCheck(ctx, llmFunc, content, searchResults)
-	if err != nil {
-		return nil, fmt.Errorf("validation failed: %w", err)
-	}
-
-	// Build validation result
-	result := &Result{
-		IsValid:          factCheckResult.IsAccurate,
-		Confidence:       factCheckResult.Confidence,
-		ParsedClaims:     factCheckResult.ParsedClaims,
-		Issues:           factCheckResult.Inaccuracies,
-		Suggestions:      factCheckResult.Suggestions,
-		CorrectedVersion: factCheckResult.CorrectedVersion,
-		SpecVersion:      specVersion,
-		FactCheckResult:  factCheckResult,
-	}
-
-	return result, nil
+	return builder.Execute(ctx)
 }
 
 // validateWithChunking validates content by splitting it into chunks
