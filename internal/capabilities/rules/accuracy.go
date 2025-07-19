@@ -30,7 +30,9 @@ QUICK CLAIM SPECIFIC GUIDANCE:
 - Be definitive in your verdict - either ACCURATE or INACCURATE
 
 VERDICT DETERMINATION:
-- For pure negative claims: "MCP never/doesn't X" → ACCURATE if spec doesn't mention X
+- For pure negative claims: "MCP never/doesn't X" → ACCURATE if:
+  * Spec doesn't mention X at all, OR
+  * Spec only mentions implementations SHOULD/MAY/MIGHT do X (recommendation ≠ enforcement)
 - For compound negative with "or": "MCP never X or Y" → ACCURATE if spec doesn't mention BOTH X and Y
 - For mixed claims with "and": "MCP never X and enforces Y" → ACCURATE only if BOTH parts are accurate
 - If spec mentions something as "SHOULD/MAY/MIGHT", always quote it and explain it's a recommendation, not enforcement
