@@ -34,6 +34,19 @@ func (p *geminiProvider) CreateEmbedding(ctx context.Context, text string) ([]fl
 	}
 }
 
+// CreateEmbeddingsBatch generates embeddings for multiple texts
+func (p *geminiProvider) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	// Stub implementation
+	return nil, &APIError{
+		Provider: Gemini,
+		Message:  "Gemini provider not yet implemented",
+		Err:      fmt.Errorf("not implemented"),
+		Context: map[string]any{
+			"method": "CreateEmbeddingsBatch",
+		},
+	}
+}
+
 // CompleteJSON performs completion and unmarshals the response
 func (p *geminiProvider) CompleteJSON(ctx context.Context, prompt string, opts CompletionOptions, result any) error {
 	// Stub implementation
@@ -62,5 +75,10 @@ func (p *geminiProvider) Complete(ctx context.Context, prompt string, opts Compl
 
 // EmbeddingModel returns the embedding model being used
 func (p *geminiProvider) EmbeddingModel() string {
+	return "not-implemented"
+}
+
+// CompletionModel returns the completion model being used
+func (p *geminiProvider) CompletionModel() string {
 	return "not-implemented"
 }

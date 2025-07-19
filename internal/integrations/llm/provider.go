@@ -57,6 +57,9 @@ type Provider interface {
 	// CreateEmbedding generates embeddings for the given text
 	CreateEmbedding(ctx context.Context, text string) ([]float64, error)
 
+	// CreateEmbeddingsBatch generates embeddings for multiple texts in a single API call
+	CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float64, error)
+
 	// CompleteJSON performs completion and unmarshals the response into result
 	CompleteJSON(ctx context.Context, prompt string, opts CompletionOptions, result any) error
 
@@ -65,11 +68,13 @@ type Provider interface {
 
 	// EmbeddingModel returns the embedding model being used
 	EmbeddingModel() string
+
+	// CompletionModel returns the completion model being used
+	CompletionModel() string
 }
 
 // CompletionOptions contains options for LLM completion requests
 type CompletionOptions struct {
-	Model        string
 	Temperature  float32
 	MaxTokens    int
 	SystemPrompt string

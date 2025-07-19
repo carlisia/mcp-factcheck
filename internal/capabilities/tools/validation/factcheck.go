@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	FactCheckModel       = "gpt-4o-mini"
 	FactCheckTemperature = 0.0
 	FactCheckMaxTokens   = 2500
 )
@@ -197,7 +196,7 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 	}
 
 	// Call LLM
-	response, err := llmFunc(ctx, FactCheckModel, prompt.String(), FactCheckTemperature, FactCheckMaxTokens)
+	response, err := llmFunc(ctx, prompt.String(), FactCheckTemperature, FactCheckMaxTokens)
 	if err != nil {
 		return nil, fmt.Errorf("LLM fact-check failed: %w", err)
 	}
@@ -259,7 +258,7 @@ func performQuickClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, claim 
 	}
 
 	// Call LLM
-	response, err := llmFunc(ctx, FactCheckModel, prompt.String(), FactCheckTemperature, 1000)
+	response, err := llmFunc(ctx, prompt.String(), FactCheckTemperature, 1000)
 	if err != nil {
 		return nil, fmt.Errorf("LLM quick fact-check failed: %w", err)
 	}

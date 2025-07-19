@@ -115,10 +115,57 @@ func (c *Client) CreateEmbedding(ctx context.Context, text string) ([]float64, e
 	return embedding, nil
 }
 
+// CreateEmbeddingsBatch generates embeddings for multiple texts with telemetry
+func (c *Client) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	// Get the actual embedding model from the internal client
+	embeddingModel := c.internal.EmbeddingModel()
+
+	// Calculate total input length
+	totalLength := 0
+	for _, text := range texts {
+		totalLength += len(text)
+	}
+
+	// Start telemetry span
+	ctx, span := c.telemetry.StartEmbeddingSpan(ctx, embeddingModel, totalLength)
+	defer span.End()
+
+	// Set batch info
+	logger.SetSpanAttributes(ctx,
+		logger.Attribute("batch.size", len(texts)),
+		logger.Attribute("batch.total_length", totalLength),
+	)
+
+	// Call internal client
+	embeddings, err := c.internal.CreateEmbeddingsBatch(ctx, texts)
+	if err != nil {
+		logger.RecordError(ctx, err)
+		return nil, err
+	}
+
+	// Record success metrics
+	dimensions := 0
+	if len(embeddings) > 0 {
+		dimensions = len(embeddings[0])
+	}
+
+	logger.SetSpanAttributes(ctx,
+		logger.Attribute("embedding.model_name", embeddingModel),
+		logger.Attribute("embedding.dimensions", dimensions),
+		logger.Attribute("batch.embeddings_generated", len(embeddings)),
+		logger.Attribute("output.value", fmt.Sprintf("[%d embeddings, %d-dimensional]", len(embeddings), dimensions)),
+	)
+
+	return embeddings, nil
+}
+
 // CompleteJSON sends a chat completion request with telemetry
 func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.CompletionOptions, result any) error {
+	// Get the completion model from the internal client
+	completionModel := c.internal.CompletionModel()
+
 	// Start telemetry span
-	ctx, span := c.telemetry.StartLLMSpan(ctx, "chat", opts.Model)
+	ctx, span := c.telemetry.StartLLMSpan(ctx, "chat", completionModel)
 	defer span.End()
 
 	// Estimate input tokens (rough approximation)
@@ -128,7 +175,7 @@ func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.Compl
 	logger.SetSpanAttributes(ctx,
 		logger.Attribute("input.value", prompt),
 		logger.Attribute("llm.token_count.prompt", estimatedInputTokens),
-		logger.Attribute("llm.invocation_parameters", fmt.Sprintf(`{"model":"%s","temperature":%f,"max_tokens":%d}`, opts.Model, opts.Temperature, opts.MaxTokens)),
+		logger.Attribute("llm.invocation_parameters", fmt.Sprintf(`{"model":"%s","temperature":%f,"max_tokens":%d}`, completionModel, opts.Temperature, opts.MaxTokens)),
 	)
 
 	// Build messages array for OpenInference
@@ -184,8 +231,11 @@ func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts llm.Compl
 
 // Complete generates a plain text completion with telemetry
 func (c *Client) Complete(ctx context.Context, prompt string, opts llm.CompletionOptions) (string, error) {
+	// Get the completion model from the internal client
+	completionModel := c.internal.CompletionModel()
+
 	// Start telemetry span
-	ctx, span := c.telemetry.StartLLMSpan(ctx, "completion", opts.Model)
+	ctx, span := c.telemetry.StartLLMSpan(ctx, "completion", completionModel)
 	defer span.End()
 
 	// Set prompt as input value
@@ -213,4 +263,9 @@ func (c *Client) Complete(ctx context.Context, prompt string, opts llm.Completio
 // EmbeddingModel returns the embedding model being used
 func (c *Client) EmbeddingModel() string {
 	return c.internal.EmbeddingModel()
+}
+
+// CompletionModel returns the completion model being used
+func (c *Client) CompletionModel() string {
+	return c.internal.CompletionModel()
 }

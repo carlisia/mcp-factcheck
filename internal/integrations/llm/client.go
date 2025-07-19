@@ -44,6 +44,11 @@ func (c *Client) CreateEmbedding(ctx context.Context, text string) ([]float64, e
 	return c.provider.CreateEmbedding(ctx, text)
 }
 
+// CreateEmbeddingsBatch generates embeddings for multiple texts in a single API call
+func (c *Client) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	return c.provider.CreateEmbeddingsBatch(ctx, texts)
+}
+
 // CompleteJSON sends a chat completion request expecting a JSON response
 func (c *Client) CompleteJSON(ctx context.Context, prompt string, opts CompletionOptions, result any) error {
 	return c.provider.CompleteJSON(ctx, prompt, opts, result)
@@ -57,6 +62,11 @@ func (c *Client) Complete(ctx context.Context, prompt string, opts CompletionOpt
 // EmbeddingModel returns the embedding model being used
 func (c *Client) EmbeddingModel() string {
 	return c.provider.EmbeddingModel()
+}
+
+// CompletionModel returns the completion model being used
+func (c *Client) CompletionModel() string {
+	return c.provider.CompletionModel()
 }
 
 // GetProviderFromEnv returns the provider type from environment variable

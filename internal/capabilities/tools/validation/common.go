@@ -69,7 +69,7 @@ type Result struct {
 }
 
 // LLMCompleteFunc performs LLM completion operations
-type LLMCompleteFunc func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error)
+type LLMCompleteFunc func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error)
 
 // ValidateContentLength validates content length and trims whitespace
 func ValidateContentLength(content string, fieldName string, maxLength int) (string, error) {

@@ -34,6 +34,19 @@ func (p *anthropicProvider) CreateEmbedding(ctx context.Context, text string) ([
 	}
 }
 
+// CreateEmbeddingsBatch generates embeddings for multiple texts
+func (p *anthropicProvider) CreateEmbeddingsBatch(ctx context.Context, texts []string) ([][]float64, error) {
+	// Stub implementation
+	return nil, &APIError{
+		Provider: Anthropic,
+		Message:  "Anthropic provider not yet implemented",
+		Err:      fmt.Errorf("not implemented"),
+		Context: map[string]any{
+			"method": "CreateEmbeddingsBatch",
+		},
+	}
+}
+
 // CompleteJSON performs completion and unmarshals the response
 func (p *anthropicProvider) CompleteJSON(ctx context.Context, prompt string, opts CompletionOptions, result any) error {
 	// Stub implementation
@@ -62,5 +75,10 @@ func (p *anthropicProvider) Complete(ctx context.Context, prompt string, opts Co
 
 // EmbeddingModel returns the embedding model being used
 func (p *anthropicProvider) EmbeddingModel() string {
+	return "not-implemented"
+}
+
+// CompletionModel returns the completion model being used
+func (p *anthropicProvider) CompletionModel() string {
 	return "not-implemented"
 }
