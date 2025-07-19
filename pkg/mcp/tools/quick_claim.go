@@ -58,9 +58,8 @@ func HandleQuickClaimValidation(ctx context.Context, vectorDB *storage.VectorDB,
 		return validateResults, nil
 	}
 
-	llmFunc := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+	llmFunc := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 		opts := llm.CompletionOptions{
-			Model:       model,
 			Temperature: float32(temperature),
 			MaxTokens:   maxTokens,
 		}

@@ -35,11 +35,33 @@ func loadSpecFromLocal(specDir string) ([]string, error) {
 
 // loadSpecFromMCPRepo loads markdown files from the MCP repository using GitHub API
 func loadSpecFromMCPRepo(ctx context.Context, repoPath string) ([]string, error) {
+	// Debug: check all environment variables
+	fmt.Println("Checking for GitHub authentication...")
+
+	// Try multiple common environment variable names
+	tokenVars := []string{"GITHUB_TOKEN", "GH_TOKEN", "GITHUB_ACCESS_TOKEN"}
+	var token string
+	for _, varName := range tokenVars {
+		if val := os.Getenv(varName); val != "" {
+			token = val
+			fmt.Printf("Found token in %s\n", varName)
+			break
+		}
+	}
+
 	// Create GitHub client
 	var client *github.Client
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+	if token != "" {
+		// Debug: log that we're using a token
+		tokenPreview := token
+		if len(token) > 4 {
+			tokenPreview = token[:4] + "..."
+		}
+		fmt.Printf("Using GitHub token: %s\n", tokenPreview)
 		client = github.NewClient(nil).WithAuthToken(token)
 	} else {
+		fmt.Println("No GitHub token found in any of:", tokenVars)
+		fmt.Println("Using unauthenticated client (subject to lower rate limits)")
 		client = github.NewClient(nil)
 	}
 

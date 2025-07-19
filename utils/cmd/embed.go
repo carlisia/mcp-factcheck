@@ -63,8 +63,10 @@ func runEmbed(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create LLM client: %w", err)
 	}
 
-	// Generate embeddings
-	specEmbedding, err := embedding.ProcessSpec(context.Background(), embedVersion, chunks, client.CreateEmbedding)
+	// Generate embeddings using batch processing
+	// OpenAI recommends batch sizes up to 2048 for embeddings
+	const batchSize = 100 // Conservative batch size
+	specEmbedding, err := embedding.ProcessSpecBatch(context.Background(), embedVersion, chunks, batchSize, client.CreateEmbeddingsBatch)
 	if err != nil {
 		return fmt.Errorf("failed to generate embeddings: %w", err)
 	}

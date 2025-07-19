@@ -75,6 +75,12 @@ func (m *SpecMetadata) Save() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	return m.saveInternal()
+}
+
+// saveInternal performs the actual save without locking
+// This should only be called when the mutex is already held
+func (m *SpecMetadata) saveInternal() error {
 	// Update last_updated timestamp
 	m.LastUpdated = time.Now().UTC().Format(time.RFC3339)
 
@@ -126,7 +132,7 @@ func (m *SpecMetadata) UpdateSpecExtraction(version, commit, repo, branchOrTag s
 		}
 	}
 
-	return m.Save()
+	return m.saveInternal()
 }
 
 // UpdateEmbeddingGeneration updates metadata after embedding generation
@@ -152,7 +158,7 @@ func (m *SpecMetadata) UpdateEmbeddingGeneration(version, strategy string, chunk
 		Strategy:      strategy,
 	}
 
-	return m.Save()
+	return m.saveInternal()
 }
 
 // GetLatestCommit returns the source commit for a given version

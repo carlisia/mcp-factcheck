@@ -38,6 +38,11 @@ func HandleClaimsValidation(ctx context.Context, vectorDB *storage.VectorDB, gen
 		return generator.CreateEmbedding(ctx, content)
 	}
 
+	// Create batch embedding function for better performance
+	batchEmbedFunc := func(ctx context.Context, contents []string) ([][]float64, error) {
+		return generator.CreateEmbeddingsBatch(ctx, contents)
+	}
+
 	searchFunc := func(version string, queryEmbedding []float64, topK int) ([]tools.SearchResult, error) {
 		results, err := vectorDB.Search(ctx, version, queryEmbedding, topK)
 		if err != nil {
@@ -57,16 +62,18 @@ func HandleClaimsValidation(ctx context.Context, vectorDB *storage.VectorDB, gen
 		return validateResults, nil
 	}
 
-	llmFunc := func(ctx context.Context, model string, prompt string, temperature float64, maxTokens int) (string, error) {
+	llmFunc := func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
 		opts := llm.CompletionOptions{
-			Model:       model,
 			Temperature: float32(temperature),
 			MaxTokens:   maxTokens,
 		}
 		return generator.Complete(ctx, prompt, opts)
 	}
 
-	// Perform validation
+	// Add batch embedding function to context for optimal performance
+	ctx = context.WithValue(ctx, tools.ContextKeyBatchEmbedFunc, tools.BatchEmbeddingFunc(batchEmbedFunc))
+
+	// Perform validation - it will use batch embedding for chunks automatically
 	result, err := validation.Claims(ctx, *req, embedFunc, searchFunc, llmFunc)
 	if err != nil {
 		return nil, fmt.Errorf("claims validation failed: %w", err)

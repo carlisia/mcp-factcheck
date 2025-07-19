@@ -19,7 +19,7 @@ vars:
   LDFLAGS: -s -w
 
   # Default spec version
-  DEFAULT_SPEC_VERSION: draft
+  DRAFT_SPEC_VERSION: draft
 
 env:
   CGO_ENABLED: "0"
@@ -235,13 +235,16 @@ tasks:
   #   task extract:spec -- 2025-06-18      # extracts specific version
   #   task extract:spec -- 2024-11-05      # extracts older version
   extract:spec:
-    desc: Extract MCP specification from GitHub
+    desc: Extract an MCP specification from GitHub. Default is Draft.
     deps: [build:loader]
     vars:
-      VERSION: "{{.CLI_ARGS | default .DEFAULT_SPEC_VERSION}}"
+      VERSION: "{{.CLI_ARGS | default .DRAFT_SPEC_VERSION}}"
     cmds:
       - "{{.BIN_DIR}}/{{.LOADER_BINARY}} spec --version {{.VERSION}}"
       - 'echo "Extracted spec version {{.VERSION}}"'
+      - 'echo "Extracting fine-grained spec chunks..."'
+      - "{{.BIN_DIR}}/{{.LOADER_BINARY}} rechunk --version {{.VERSION}} --output {{.SPECS_DIR}}/{{.VERSION}}-spec-fine.json"
+      - 'echo "Extracted fine-grained spec version {{.VERSION}}"'
 
   # Generate vector embeddings for a spec version
   # Examples:
@@ -250,13 +253,16 @@ tasks:
   #   task generate:embeddings -- 2025-06-18  # generates for specific version
   # Note: Requires OPENAI_API_KEY environment variable to be set
   generate:embeddings:
-    desc: Generate embeddings for a spec version
+    desc: Generate embeddings for a spec version. Default is Draft.
     deps: [build:loader]
     vars:
-      VERSION: "{{.CLI_ARGS | default .DEFAULT_SPEC_VERSION}}"
+      VERSION: "{{.CLI_ARGS | default .DRAFT_SPEC_VERSION}}"
     cmds:
       - "{{.BIN_DIR}}/{{.LOADER_BINARY}} embed --version {{.VERSION}}"
       - 'echo "Generated embeddings for version {{.VERSION}}"'
+      - 'echo "Generating fine-grained embeddings..."'
+      - "{{.BIN_DIR}}/{{.LOADER_BINARY}} embed --version {{.VERSION}}-fine"
+      - 'echo "Generated fine-grained embeddings for version {{.VERSION}}"'
 
   # Extract and generate embeddings for all supported spec versions
   # This task runs automatically for all versions: draft, 2025-06-18, 2025-03-26, 2024-11-05
@@ -264,16 +270,23 @@ tasks:
   # Example:
   #   export OPENAI_API_KEY=sk-...
   #   task setup
-  setup:
-    desc: Initial setup - extract specs and generate embeddings for all versions
+  setupallspecs:
+    desc: Initial setup - extract specs and generate embeddings for all versions (regular and fine-grained)
     deps: [build:loader]
     cmds:
       - mkdir -p {{.SPECS_DIR}} {{.EMBEDDINGS_DIR}}
       - for: [draft, "2025-06-18", "2025-03-26", "2024-11-05"]
         cmd: |
           echo "Processing version {{.ITEM}}..."
+          echo "  Extracting regular spec chunks..."
           {{.BIN_DIR}}/{{.LOADER_BINARY}} spec --version {{.ITEM}}
+          echo "  Extracting fine-grained spec chunks..."
+          {{.BIN_DIR}}/{{.LOADER_BINARY}} rechunk --version {{.ITEM}} --output {{.SPECS_DIR}}/{{.ITEM}}-spec-fine.json
+          echo "  Generating regular embeddings..."
           {{.BIN_DIR}}/{{.LOADER_BINARY}} embed --version {{.ITEM}}
+          echo "  Generating fine-grained embeddings..."
+          {{.BIN_DIR}}/{{.LOADER_BINARY}} embed --version {{.ITEM}}-fine
+      - echo "Completed setup for all spec versions with regular and fine-grained chunks"
 
   # Show which spec versions have embeddings available
   list:versions:

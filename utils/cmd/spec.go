@@ -24,11 +24,13 @@ var specCmd = &cobra.Command{
 var (
 	specVersion    string
 	specOutputPath string
+	githubToken    string
 )
 
 func init() {
 	specCmd.Flags().StringVar(&specVersion, "version", "", "MCP spec version to extract (required)")
 	specCmd.Flags().StringVar(&specOutputPath, "output", "", "Output path for spec JSON file (default: ./data/specs/{version}-spec.json)")
+	specCmd.Flags().StringVar(&githubToken, "github-token", "", "GitHub token for authentication (optional, can also use GITHUB_TOKEN env var)")
 
 	if err := specCmd.MarkFlagRequired("version"); err != nil {
 		// This is a programming error, panic is appropriate
@@ -37,6 +39,14 @@ func init() {
 }
 
 func runSpec(cmd *cobra.Command, args []string) error {
+	// If github-token flag is provided, set it as environment variable
+	if githubToken != "" {
+		if err := os.Setenv("GITHUB_TOKEN", githubToken); err != nil {
+			return fmt.Errorf("failed to set GITHUB_TOKEN environment variable: %w", err)
+		}
+		log.Println("Using GitHub token from --github-token flag")
+	}
+
 	// Validate version
 	if !capabilities.IsValidSpecVersion(specVersion) {
 		return fmt.Errorf("invalid spec version: %s. Valid versions: %v", specVersion, capabilities.ValidSpecVersions)
