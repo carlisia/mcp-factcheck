@@ -1,39 +1,28 @@
 {
-  "$schema": "https://modelcontextprotocol.io/schemas/registry/server.schema.json",
-  "name": "mcp-factcheck",
-  "namespace": "io.github.carlisia.mcp-factcheck",
-  "description": "An MCP Server for validating code or content against the official Model Context Protocol (MCP) specification to ensure technical accuracy and prevent misinformation. Features semantic search with OpenAI embeddings, AI-powered validation, compound claim decomposition, and support for multiple spec versions.",
-  "homepage": "https://github.com/carlisia/mcp-factcheck",
-  "license": "MIT",
-  "sourceCode": "https://github.com/carlisia/mcp-factcheck",
-  "documentation": "https://github.com/carlisia/mcp-factcheck#readme",
-  "deployment": {
-    "type": "hybrid",
-    "package": {
-      "type": "docker",
-      "uri": "ghcr.io/carlisia/mcp-factcheck:latest"
-    },
-    "remote": {
-      "type": "stdio",
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "OPENAI_API_KEY",
-        "ghcr.io/carlisia/mcp-factcheck:latest"
-      ],
-      "env": {
-        "OPENAI_API_KEY": {
-          "required": true,
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.carlisia/mcp-factcheck",
+  "description": "An MCP server that validates content against MCP specification using semantic search and AI",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/carlisia/mcp-factcheck",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "oci",
+      "registryBaseUrl": "https://ghcr.io",
+      "identifier": "carlisia/mcp-factcheck",
+      "version": "v1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "OPENAI_API_KEY",
+          "isRequired": true,
           "description": "OpenAI API key for embedding generation and content validation"
         }
-      }
+      ]
     }
-  },
-  "vendor": {
-    "name": "Carlisia Campos",
-    "url": "https://github.com/carlisia"
-  }
+  ]
 }

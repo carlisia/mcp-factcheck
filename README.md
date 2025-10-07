@@ -34,18 +34,12 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
    - Uses aggressive search strategies for accuracy
    - Perfect for "Does MCP support X?" questions
 
-3. **`validate_code`** - Validates code implementations against MCP patterns (⚠️ WIP)
-
-   - Detects MCP protocol usage patterns
-   - Validates against specification requirements (not yet implemented)
-   - Supports multiple programming languages
-
-4. **`search_spec`** - Searches MCP specifications using semantic similarity
+3. **`search_spec`** - Searches MCP specifications using semantic similarity
 
    - Returns most relevant specification sections
    - Supports all specification versions
 
-5. **`list_spec_versions`** - Lists available MCP specification versions
+4. **`list_spec_versions`** - Lists available MCP specification versions
    - Shows version dates and descriptions
    - Indicates which version is current
 

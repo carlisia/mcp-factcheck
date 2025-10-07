@@ -221,7 +221,6 @@ tasks:
   # Examples:
   #   task run:curl -- tools/list
   #   task run:curl -- tools/call search_spec '{"query":"initialization"}'
-  #   task run:curl -- tools/call validate_code '{"code":"import mcp from \"@modelcontextprotocol/sdk\""}'
   run:curl:
     desc: Run factcheck-curl to test the server
     deps: [build:client]

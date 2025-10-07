@@ -11,7 +11,6 @@
 | Prompt templates system                                                  | ✅ Completed   |
 | Pre-generated embeddings for all spec versions                           | ✅ Completed   |
 | Code pattern detection (basic)                                           | ✅ Completed   |
-| Tool: validate_code (pattern detection completed, schema validation WIP) | ⚠️ In Progress |
 | User prompt: Content migration between spec versions                     | ✅ Completed   |
 | Test client/CLI tool (factcheck-curl)                                    | ✅ Completed   |
 | Spec extraction utilities (specloader)                                   | ✅ Completed   |
@@ -29,7 +28,6 @@
 | Compound claim decomposition for improved accuracy                       | ✅ Completed   |
 | User prompt: Spec diff to compare curr vs draft (topic-based or full)    | ❌ Planned     |
 | Support for validating partial/incomplete content                        | ✅ Completed   |
-| Schema-based code validation                                             | ❌ Planned     |
 | Migrate to official Go MCP SDK (modelcontextprotocol/go-sdk)             | ❌ Planned     |
 
 ---
