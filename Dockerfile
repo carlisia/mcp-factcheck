@@ -35,8 +35,9 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/mfc .
 
-# Copy data directory if it exists
+# Copy data directory and embeddings
 COPY --from=builder /app/data ./data
+COPY --from=builder /app/internal/storage/embeddings ./internal/storage/embeddings
 
 # Change ownership
 RUN chown -R mcp:mcp /app
