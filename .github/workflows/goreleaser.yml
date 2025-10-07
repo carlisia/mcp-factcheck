@@ -43,8 +43,7 @@ jobs:
 
       - name: Install MCP Publisher
         run: |
-          curl -L -o mcp-publisher.tar.gz https://github.com/modelcontextprotocol/publisher/releases/latest/download/mcp-publisher-linux-x64.tar.gz
-          tar -xzf mcp-publisher.tar.gz
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.2.3/mcp-publisher_1.2.3_linux_amd64.tar.gz" | tar xz
           chmod +x mcp-publisher
           sudo mv mcp-publisher /usr/local/bin/
 
