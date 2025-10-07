@@ -129,6 +129,22 @@ tasks:
     cmds:
       - golangci-lint run --fix ./...
 
+  # Lint markdown files
+  lint:md:
+    desc: Lint markdown files
+    cmds:
+      - markdownlint '**/*.md' --ignore node_modules --ignore bin --ignore vendor
+    preconditions:
+      - sh: command -v markdownlint
+        msg: "markdownlint is not installed. Install it with: npm install -g markdownlint-cli"
+
+  # Run all linters (Go and Markdown)
+  lint:all:
+    desc: Run all linters (Go and Markdown)
+    cmds:
+      - task: lint
+      - task: lint:md
+
   # Format all Go code according to gofmt standards
   fmt:
     desc: Format Go code
@@ -293,6 +309,142 @@ tasks:
     desc: List available MCP spec versions in embeddings
     cmds:
       - 'ls -la {{.EMBEDDINGS_DIR}}/*.json 2>/dev/null | awk -F"/" "{print \$NF}" | sed "s/.json//" || echo "No embeddings found. Run ''task setup'' first."'
+
+  # ============================================================================
+  # RELEASE TASKS
+  # ============================================================================
+
+  # Test release process locally without publishing
+  release:test:
+    desc: Test release locally with GoReleaser (doesn't publish)
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish
+    preconditions:
+      - sh: command -v goreleaser
+        msg: "goreleaser is not installed. See https://goreleaser.com/install/ for installation instructions"
+
+  # Create a new release and push tag
+  release:
+    desc: Create a new release (tags and pushes to trigger GitHub release)
+    vars:
+      CURRENT_VERSION:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo "v0.0.0"
+    cmds:
+      - echo "Current version{{":"}} {{.CURRENT_VERSION}}"
+      - |
+        read -p "Enter new version (e.g., v0.1.0): " VERSION
+        if [ -z "$VERSION" ]; then
+          echo "Version required"
+          exit 1
+        fi
+        git tag -a $VERSION -m "Release $VERSION"
+        git push origin $VERSION
+        echo "Pushed tag $VERSION. GitHub Actions will create the release."
+
+  # Tag a version without pushing (for manual control)
+  tag:
+    desc: Tag a new version without pushing
+    vars:
+      CURRENT_VERSION:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo "v0.0.0"
+    cmds:
+      - echo "Current version{{":"}} {{.CURRENT_VERSION}}"
+      - |
+        read -p "Enter new version (e.g., v0.1.0): " VERSION
+        if [ -z "$VERSION" ]; then
+          echo "Version required"
+          exit 1
+        fi
+        git tag -a $VERSION -m "Release $VERSION"
+        echo "Tagged $VERSION. Run 'git push origin $VERSION' to trigger release."
+
+  # ============================================================================
+  # BENCHMARKING & PROFILING TASKS
+  # ============================================================================
+
+  # Run benchmarks
+  bench:
+    desc: Run all benchmarks
+    cmds:
+      - go test -bench=. -benchmem ./...
+
+  # Run specific benchmark with custom settings
+  bench:validation:
+    desc: Run validation benchmarks
+    cmds:
+      - go test -bench=BenchmarkChunkValidation -benchtime=10x ./internal/capabilities/tools/validation
+
+  # Generate CPU profile
+  profile:cpu:
+    desc: Generate CPU profile for the server
+    cmds:
+      - mkdir -p profiles
+      - go test -cpuprofile=profiles/cpu.prof -bench=. ./internal/capabilities/tools/validation
+      - echo "CPU profile saved to profiles/cpu.prof"
+      - echo "View with{{":"}} go tool pprof -http=:8080 profiles/cpu.prof"
+
+  # Generate memory profile
+  profile:mem:
+    desc: Generate memory profile for the server
+    cmds:
+      - mkdir -p profiles
+      - go test -memprofile=profiles/mem.prof -bench=. ./internal/capabilities/tools/validation
+      - echo "Memory profile saved to profiles/mem.prof"
+      - echo "View with{{":"}} go tool pprof -http=:8080 profiles/mem.prof"
+
+  # ============================================================================
+  # DOCKER TASKS
+  # ============================================================================
+
+  # Build Docker image locally
+  docker:build:
+    desc: Build Docker image
+    vars:
+      VERSION:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+    cmds:
+      - docker build -t mfc:{{.VERSION}} -t mfc:latest .
+      - echo "Built Docker image mfc{{":"}}{{.VERSION}}"
+
+  # Run Docker container
+  docker:run:
+    desc: Run Docker container
+    cmds:
+      - docker run --rm -e OPENAI_API_KEY=${OPENAI_API_KEY} mfc:latest
+
+  # ============================================================================
+  # UTILITY TASKS
+  # ============================================================================
+
+  # Generate mocks for testing
+  mocks:
+    desc: Generate mocks for interfaces
+    cmds:
+      - go generate ./...
+      - echo "Mocks generated"
+
+  # Update all dependencies to latest versions
+  deps:update:
+    desc: Update all dependencies to latest versions
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+      - echo "Dependencies updated to latest versions"
+
+  # Check for dependency vulnerabilities
+  vuln:
+    desc: Check for known vulnerabilities in dependencies
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  # Show binary size breakdown
+  size:
+    desc: Show binary size breakdown
+    deps: [build:server]
+    cmds:
+      - go tool nm -size {{.BIN_DIR}}/{{.SERVER_BINARY}} | head -20
+      - echo ""
+      - echo "Total size{{":"}} $(ls -lh {{.BIN_DIR}}/{{.SERVER_BINARY}} | awk '{print $5}')"
 
   # ============================================================================
   # MAINTENANCE TASKS

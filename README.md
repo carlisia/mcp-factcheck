@@ -71,37 +71,17 @@ The MCP Fact-Check MCP Server helps ensure technical accuracy when coding or wri
 
 ## Installation
 
-### Client Integration
+The MCP Fact-Check server is available through the [Model Context Protocol registry](https://github.com/modelcontextprotocol/servers). Install it directly from your MCP client:
 
-1. Build the server:
+**For Claude Desktop and other MCP clients:**
 
-```bash
-go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
-```
+- Search for "mcp-factcheck" in your client's server marketplace
+- Click install
+- Provide your OpenAI API key when prompted
 
-2. Configure your MCP client
+That's it! The server will be automatically configured and ready to use.
 
-**For Claude Desktop App:**
-
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-Example configuration:
-
-```json
-{
-  "mcpServers": {
-    "mcp-factcheck": {
-      "command": "/path/to/bin/mcp-factcheck-server",
-      "args": ["--data-dir", "/path/to/data/embeddings"],
-      "env": {
-        "OPENAI_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+> **For developers:** If you need to build from source or contribute to the project, see [INSTALL.md](INSTALL.md) for development setup instructions.
 
 ### Observability
 
@@ -161,7 +141,7 @@ Phoenix is specifically designed for AI/ML observability and provides a much mor
 
 ```bash
 # Build all components
-go build -o bin/mcp-factcheck-server ./cmd/mcp-factcheck-server
+go build -o bin/mfc ./cmd/server
 go build -o bin/specloader ./utils/cmd
 
 # Run tests
@@ -204,17 +184,17 @@ Test the server using the included test client:
 go build -o bin/factcheck-curl ./cmd/factcheck-curl
 
 # Test tools
-./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings tools/list
-./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings tools/call validate_content '{"content":"MCP is a protocol"}'
+./bin/factcheck-curl --cmd ./bin/mfc --data-dir ./data/embeddings tools/list
+./bin/factcheck-curl --cmd ./bin/mfc --data-dir ./data/embeddings tools/call validate_content '{"content":"MCP is a protocol"}'
 
 # Test prompts
-./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/list
+./bin/factcheck-curl --cmd ./bin/mfc --data-dir ./data/embeddings prompts/list
 
 # Get migration prompt with minimal parameters
-./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{"current_version":"2024-11-05","target_version":"draft"}'
+./bin/factcheck-curl --cmd ./bin/mfc --data-dir ./data/embeddings prompts/get migrate-mcp-content '{"current_version":"2024-11-05","target_version":"draft"}'
 
 # Get migration prompt with all parameters
-./bin/factcheck-curl --cmd ./bin/mcp-factcheck-server --data-dir ./data/embeddings prompts/get migrate-mcp-content '{
+./bin/factcheck-curl --cmd ./bin/mfc --data-dir ./data/embeddings prompts/get migrate-mcp-content '{
   "current_version": "2024-11-05",
   "target_version": "2025-06-18",
   "update_scope": "critical_only"
