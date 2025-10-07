@@ -28,3 +28,4 @@ dist/
 
 # Embedding files - generated, included in Docker image
 data/embeddings/*.json
+internal/storage/embeddings/

@@ -1,0 +1,281 @@
+# golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+  
+  # Include test files
+  tests: true
+  
+  # List of build tags to use
+  build-tags:
+    - integration
+  
+  # Which directories to skip
+  skip-dirs:
+    - vendor
+    - third_party
+    - testdata
+    - examples
+    - generated
+  
+  # Which files to skip
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.gen\\.go$"
+    - "mock_.*\\.go$"
+
+linters:
+  enable-all: false
+  enable:
+    # Default linters
+    - errcheck      # Checking for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detects ineffectual assignments
+    - staticcheck   # Static analysis
+    - typecheck     # Type-checking
+    - unused        # Checks for unused code
+    
+    # Additional useful linters
+    - bodyclose     # Checks HTTP response body is closed
+    - dogsled       # Checks assignments with too many blank identifiers
+    - dupl          # Code clone detection
+    - exportloopref # Checks for pointers to enclosing loop variables
+    - gci           # Controls Go package import order
+    - gocognit      # Cognitive complexity
+    - goconst       # Finds repeated strings
+    - gocritic      # Opinionated Go source code linter
+    - gocyclo       # Cyclomatic complexity
+    - godot         # Check if comments end in period
+    - godox         # Detects TODO/FIXME comments
+    - gofmt         # Checks formatting
+    - goimports     # Checks imports
+    - gomnd         # Detects magic numbers
+    - goprintffuncname # Checks Printf-like functions are named with 'f'
+    - gosec         # Security problems
+    - lll           # Long lines
+    - misspell      # Finds misspelled English words
+    - nakedret      # Finds naked returns
+    - noctx         # Finds HTTP requests without context.Context
+    - nolintlint    # Reports ill-formed or insufficient nolint directives
+    - prealloc      # Finds slice declarations that could be preallocated
+    - revive        # Fast, configurable, extensible linter
+    - rowserrcheck  # Checks if sql.Rows.Err is checked
+    - sqlclosecheck # Checks sql.Rows and sql.Stmt are closed
+    - stylecheck    # Stylecheck
+    - tparallel     # Detects inappropriate usage of t.Parallel()
+    - unconvert     # Unnecessary type conversions
+    - unparam       # Unused function parameters
+    - whitespace    # Detects leading and trailing whitespace
+    
+    # Go 1.22+ specific
+    - copyloopvar   # Detects loop variable issues (Go 1.22+)
+    - intrange      # Finds integer range loop issues
+    
+    # Dependency management
+    - depguard      # Checks if package imports are allowed
+    - gomodguard    # Allow/block module versions
+
+  disable:
+    - deadcode      # Deprecated
+    - structcheck   # Deprecated
+    - varcheck      # Deprecated
+    - ifshort       # Deprecated
+    - golint        # Deprecated
+    - maligned      # Deprecated
+    - scopelint     # Deprecated
+    - exhaustivestruct # Too strict
+    - exhaustive    # Too strict for general use
+    - wsl           # Too opinionated about whitespace
+    - nlreturn      # Too opinionated about newlines
+    - gochecknoglobals # We use globals sparingly
+    - gochecknoinits   # Init functions are sometimes necessary
+
+linters-settings:
+  # Error checking
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - (io.Closer).Close
+      - (io.ReadCloser).Close
+  
+  # Cognitive complexity
+  gocognit:
+    min-complexity: 30
+  
+  # Cyclomatic complexity
+  gocyclo:
+    min-complexity: 15
+  
+  # Duplicate code detection
+  dupl:
+    threshold: 150
+  
+  # Import ordering
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/carlisia/mcp-factcheck)
+    section-separators:
+      - newline
+  
+  # Magic numbers
+  gomnd:
+    settings:
+      mnd:
+        checks:
+          - argument
+          - case
+          - condition
+          - operation
+          - return
+          - assign
+        ignored-numbers:
+          - '0'
+          - '1'
+          - '2'
+          - '10'
+          - '100'
+        ignored-functions:
+          - 'make'
+          - 'len'
+          - 'cap'
+  
+  # Line length
+  lll:
+    line-length: 120
+    tab-width: 4
+  
+  # Misspell
+  misspell:
+    locale: US
+  
+  # Naked returns
+  nakedret:
+    max-func-lines: 30
+  
+  # Preallocation
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: true
+  
+  # Revive
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+  
+  # Unparam
+  unparam:
+    check-exported: false
+  
+  # Whitespace
+  whitespace:
+    multi-if: true
+    multi-func: true
+  
+  # Godox (TODO/FIXME detection)
+  godox:
+    keywords:
+      - TODO
+      - FIXME
+      - HACK
+      - BUG
+      - OPTIMIZE
+      - XXX
+  
+  # Depguard - control allowed imports
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: "github.com/pkg/errors"
+            desc: "Use stdlib errors with fmt.Errorf and errors.New"
+          - pkg: "io/ioutil"
+            desc: "Use io or os package instead (deprecated in Go 1.16+)"
+  
+  # Gomodguard - control module versions
+  gomodguard:
+    blocked:
+      modules:
+        - github.com/golang/protobuf:
+            recommendations:
+              - google.golang.org/protobuf
+            reason: "Use google.golang.org/protobuf for new code"
+
+issues:
+  # Exclude some linters from running on tests files
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - gomnd
+        - lll
+        - godox
+    
+    - path: test/
+      linters:
+        - dupl
+        - gomnd
+        - godox
+    
+    # Exclude some specific issues
+    - text: "Using the variable on range scope .* in function literal"
+      linters:
+        - scopelint
+    
+    # Exclude TODO/FIXME in test files
+    - path: _test\.go
+      text: "TODO|FIXME"
+      linters:
+        - godox
+  
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+  
+  # Maximum count of issues with the same text
+  max-same-issues: 3
+  
+  # Show only new issues created after git revision
+  # new-from-rev: HEAD~1
+  
+  # Fix found issues (if it's supported by the linter)
+  fix: false
+
+output:
+  # Output format
+  formats:
+    - format: colored-line-number
+  
+  # Print lines of code with issue
+  print-issued-lines: true
+  
+  # Print linter name in the end of issue text
+  print-linter-name: true
+  
+  # Make output unique by line
+  uniq-by-line: true
+  
+  # Sort results
+  sort-results: true
