@@ -22,6 +22,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o mfc ./cmd/server
 # Final stage
 FROM alpine:latest
 
+# Add MCP server label
+LABEL io.modelcontextprotocol.server.name="io.github.carlisia/mcp-factcheck"
+
 # Install ca-certificates for HTTPS
 RUN apk --no-cache add ca-certificates
 
