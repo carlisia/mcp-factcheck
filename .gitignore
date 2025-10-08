@@ -26,3 +26,5 @@ go.work
 # GoReleaser
 dist/
 
+mfc
+server
