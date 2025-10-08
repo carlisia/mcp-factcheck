@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/carlisia/mcp-factcheck/internal/capabilities"
+	"github.com/carlisia/mcp-factcheck/internal/security"
 )
 
 // ValidationErrors represents multiple validation errors
@@ -41,7 +42,7 @@ func ValidateSpecVersion(version string) (string, error) {
 	return version, nil
 }
 
-// ValidateContentLength validates content length and trims whitespace
+// ValidateContentLength validates content length, trims whitespace, and checks for injection attacks
 func ValidateContentLength(content string, fieldName string, maxLength int) (string, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -50,6 +51,13 @@ func ValidateContentLength(content string, fieldName string, maxLength int) (str
 	if maxLength > 0 && len(content) > maxLength {
 		return content, fmt.Errorf("%s length exceeds maximum of %d characters", fieldName, maxLength)
 	}
+
+	detector := security.NewInjectionDetector()
+	result := detector.Detect(content)
+	if result.IsInjection {
+		return "", fmt.Errorf("%s contains invalid patterns: %s", fieldName, result.Reason)
+	}
+
 	return content, nil
 }
 

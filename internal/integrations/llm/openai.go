@@ -136,15 +136,14 @@ func (p *openAIProvider) CompleteJSON(ctx context.Context, prompt string, opts C
 
 	content := resp.Choices[0].Message.Content
 	if err := json.Unmarshal([]byte(content), result); err != nil {
-		// Include a portion of the content in error for debugging
 		preview := content
 		if len(preview) > 100 {
 			preview = preview[:100] + "..."
 		}
 		return NewAPIError(OpenAI, "failed to parse JSON response", err, map[string]any{
 			"response_preview": preview,
-			"prompt":           prompt,
 			"model":            p.completionModel,
+			"prompt_length":    len(prompt),
 		})
 	}
 

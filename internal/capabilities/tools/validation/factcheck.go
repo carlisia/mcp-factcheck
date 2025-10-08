@@ -12,6 +12,7 @@ import (
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/rules"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/contentprep"
+	"github.com/carlisia/mcp-factcheck/internal/security"
 )
 
 const (
@@ -90,6 +91,9 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 		}
 	}
 
+	// Sanitize user content before embedding in prompt
+	sanitizedContent := security.SanitizeForPrompt(content)
+
 	// Prepare template data with all rule constants
 	data := struct {
 		// Content
@@ -141,7 +145,7 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 		ResponseFormat             string
 	}{
 		// Content
-		Content:          content,
+		Content:          sanitizedContent,
 		SpecContext:      specContext.String(),
 		CompoundEvidence: compoundEvidence,
 
@@ -213,6 +217,9 @@ func performClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, content str
 
 // performQuickClaimCheck performs quick fact-checking for a single claim
 func performQuickClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, claim string, specMatches []tools.SearchResult) (*FactCheckResult, error) {
+	// Sanitize claim before embedding in prompt
+	sanitizedClaim := security.SanitizeForPrompt(claim)
+
 	// Build context from spec matches
 	var specContext strings.Builder
 	for i, match := range specMatches {
@@ -240,7 +247,7 @@ func performQuickClaimCheck(ctx context.Context, llmFunc LLMCompleteFunc, claim 
 		CommonResponseRequirements string
 		ResponseFormat             string
 	}{
-		Claim:                      claim,
+		Claim:                      sanitizedClaim,
 		SpecContext:                specContext.String(),
 		SystemPrompt:               rules.QuickClaimSystemPrompt,
 		ClaimHeader:                rules.QuickClaimHeader,
