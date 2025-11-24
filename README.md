@@ -2,7 +2,7 @@
 
 An MCP Server for validating code or content against the official **Model Context Protocol (MCP)** specification to ensure technical accuracy and prevent the spread of misinformation.
 
-📦 **[View in MCP Registry](https://registry.modelcontextprotocol.io/v0/servers/io.github.carlisia%2Fmcp-factcheck)** - Available in the official MCP Registry
+📦 **[View in MCP Registry](https://registry.modelcontextprotocol.io/?q=mcp-factcheck)** - Available in the official MCP Registry
 
 📋 **[View Project Roadmap](ROADMAP.md)** - See planned features and development progress
 
