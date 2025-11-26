@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools/validation"
@@ -35,20 +36,20 @@ type mockConfig struct {
 
 // setupMocksWithConfig creates mock functions with specific behavior
 func setupMocksWithConfig(config mockConfig) mockDependencies {
-	embedCallCount := 0
-	llmCallCount := 0
+	var embedCallCount int64
+	var llmCallCount int64
 
 	return mockDependencies{
 		embedFunc: func(ctx context.Context, content string) ([]float64, error) {
-			embedCallCount++
+			currentCall := int(atomic.AddInt64(&embedCallCount, 1))
 
 			// Check if we should fail on this specific call
 			for _, failCall := range config.embedErrorOnCall {
-				if embedCallCount == failCall {
+				if currentCall == failCall {
 					if config.embedError != nil {
 						return nil, config.embedError
 					}
-					return nil, fmt.Errorf("embedding error on call %d", embedCallCount)
+					return nil, fmt.Errorf("embedding error on call %d", currentCall)
 				}
 			}
 
@@ -82,14 +83,14 @@ func setupMocksWithConfig(config mockConfig) mockDependencies {
 		},
 
 		llmFunc: func(ctx context.Context, prompt string, temperature float64, maxTokens int) (string, error) {
-			llmCallCount++
+			currentCall := int(atomic.AddInt64(&llmCallCount, 1))
 
 			if config.llmError != nil {
 				return "", config.llmError
 			}
 
 			if config.llmResponseBuilder != nil {
-				return config.llmResponseBuilder(llmCallCount, prompt), nil
+				return config.llmResponseBuilder(currentCall, prompt), nil
 			}
 
 			if config.defaultLLMResponse != "" {

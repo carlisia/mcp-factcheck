@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/carlisia/mcp-factcheck/internal/capabilities/tools"
@@ -73,17 +74,17 @@ func TestChunkingAutoEnabled(t *testing.T) {
 	longContent := generateRepeatedContent(testContentRepeatPhrase, 100)
 	t.Logf("Content length: %d chars (threshold: %d)", len(longContent), chunkThresholdChars)
 
-	// GIVEN: Mock dependencies that track chunking behavior
-	chunkingDetected := false
-	llmCallCount := 0
+	// GIVEN: Mock dependencies that track chunking behavior (thread-safe)
+	var chunkingDetected atomic.Bool
+	var llmCallCount atomic.Int64
 
 	config := mockConfig{
 		llmResponseBuilder: func(callCount int, prompt string) string {
-			llmCallCount = callCount
+			llmCallCount.Store(int64(callCount))
 
 			// Use helper to detect if chunking is active
 			if detectChunkUsage(prompt, callCount, len(longContent)) {
-				chunkingDetected = true
+				chunkingDetected.Store(true)
 				t.Logf("Chunking detected on LLM call %d", callCount)
 			}
 
@@ -110,9 +111,10 @@ func TestChunkingAutoEnabled(t *testing.T) {
 	require.NoError(t, err, "Validation should not fail")
 
 	// THEN: Chunking should be detected during validation
-	t.Logf("LLM was called %d times", llmCallCount)
-	assert.True(t, chunkingDetected, "Expected chunking to be detected")
-	assert.GreaterOrEqual(t, llmCallCount, 2, "Expected multiple LLM calls for chunks")
+	finalCallCount := llmCallCount.Load()
+	t.Logf("LLM was called %d times", finalCallCount)
+	assert.True(t, chunkingDetected.Load(), "Expected chunking to be detected")
+	assert.GreaterOrEqual(t, int(finalCallCount), 2, "Expected multiple LLM calls for chunks")
 
 	// THEN: Validation should succeed
 	assert.True(t, result.IsValid, "Expected validation to succeed")
@@ -129,11 +131,11 @@ func TestChunkValidationAggregation(t *testing.T) {
 	 * 5. All claims from chunks are collected
 	 */
 
-	// GIVEN: Mock dependencies that return different results for different chunks
-	chunkCount := 0
+	// GIVEN: Mock dependencies that return different results for different chunks (thread-safe)
+	var chunkCount atomic.Int64
 	config := mockConfig{
 		llmResponseBuilder: func(callCount int, prompt string) string {
-			chunkCount = callCount
+			chunkCount.Store(int64(callCount))
 
 			// First chunk: INVALID with issues and missing best practices
 			if callCount == 1 {
@@ -192,8 +194,9 @@ func TestChunkValidationAggregation(t *testing.T) {
 	assert.NotEmpty(t, result.FactCheckResult.MissingBestPractices, "Expected missing best practices to be aggregated from chunks")
 
 	// THEN: All claims should be collected
-	assert.GreaterOrEqual(t, len(result.FactCheckResult.Claims), chunkCount,
-		"Expected at least %d claims (one per chunk), got %d", chunkCount, len(result.FactCheckResult.Claims))
+	finalChunkCount := int(chunkCount.Load())
+	assert.GreaterOrEqual(t, len(result.FactCheckResult.Claims), finalChunkCount,
+		"Expected at least %d claims (one per chunk), got %d", finalChunkCount, len(result.FactCheckResult.Claims))
 
 	// THEN: Issues should be deduplicated
 	assert.False(t, hasDuplicates(result.Issues),
@@ -214,8 +217,8 @@ func TestChunkingErrorHandling(t *testing.T) {
 	 * 4. Warning message is added to issues about failed chunks
 	 */
 
-	// GIVEN: Mock dependencies that fail on specific chunks
-	embedCallCount := 0
+	// GIVEN: Mock dependencies that fail on specific chunks (thread-safe)
+	var embedCallCount atomic.Int64
 	config := mockConfig{
 		embedErrorOnCall: []int{2, 4}, // Fail on chunks 2 and 4
 		embedError:       nil,         // Use default error message
@@ -232,11 +235,11 @@ func TestChunkingErrorHandling(t *testing.T) {
 	// Wrap embedFunc to count calls and log when errors occur
 	originalEmbed := mocks.embedFunc
 	mocks.embedFunc = func(ctx context.Context, content string) ([]float64, error) {
-		embedCallCount++
+		currentCall := embedCallCount.Add(1)
 		result, err := originalEmbed(ctx, content)
 		if err != nil {
 			// Log when chunks fail for debugging purposes
-			t.Logf("Chunk %d failed with error (expected for chunks 2 and 4): %v", embedCallCount, err)
+			t.Logf("Chunk %d failed with error (expected for chunks 2 and 4): %v", currentCall, err)
 		}
 		return result, err
 	}
@@ -274,7 +277,7 @@ func TestChunkingErrorHandling(t *testing.T) {
 	}
 	assert.True(t, hasWarning, "Expected warning about failed chunks in issues, got: %v", result.Issues)
 
-	t.Logf("Total embed calls: %d (some failed as expected)", embedCallCount)
+	t.Logf("Total embed calls: %d (some failed as expected)", embedCallCount.Load())
 }
 
 // TestChunkingDeduplication verifies that duplicate issues and claims are properly deduplicated
@@ -387,12 +390,12 @@ Implementations should follow security best practices.`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Track number of chunks processed
-			chunkCount := 0
+			// Track number of chunks processed (thread-safe)
+			var chunkCount atomic.Int64
 
 			config := mockConfig{
 				llmResponseBuilder: func(callCount int, prompt string) string {
-					chunkCount = callCount
+					chunkCount.Store(int64(callCount))
 					return buildValidationResponse(true, []string{}, []string{})
 				},
 			}
@@ -409,8 +412,9 @@ Implementations should follow security best practices.`,
 
 			assert.True(t, result.IsValid, "%s: expected valid result", tt.description)
 
-			assert.GreaterOrEqual(t, chunkCount, tt.wantChunks,
-				"%s: expected at least %d chunks, got %d", tt.description, tt.wantChunks, chunkCount)
+			finalChunkCount := int(chunkCount.Load())
+			assert.GreaterOrEqual(t, finalChunkCount, tt.wantChunks,
+				"%s: expected at least %d chunks, got %d", tt.description, tt.wantChunks, finalChunkCount)
 		})
 	}
 }

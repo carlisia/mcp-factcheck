@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"strings"
+	"sync"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/buffer"
@@ -12,6 +13,7 @@ import (
 
 var (
 	globalLogger *zap.Logger
+	loggerMu     sync.RWMutex
 )
 
 // orderedJSONEncoder is a custom zapcore.Encoder that ensures timestamp appears
@@ -156,7 +158,9 @@ func Initialize(isDevelopment bool) error {
 
 	logger := zap.New(core, zap.AddCaller())
 
+	loggerMu.Lock()
 	globalLogger = logger
+	loggerMu.Unlock()
 
 	return nil
 }
@@ -164,18 +168,31 @@ func Initialize(isDevelopment bool) error {
 // Get returns the global logger instance.
 // If not initialized, it returns a no-op logger to prevent nil panics.
 func Get() *zap.Logger {
-	if globalLogger == nil {
+	loggerMu.RLock()
+	logger := globalLogger
+	loggerMu.RUnlock()
+
+	if logger == nil {
 		// Fallback to no-op logger if not initialized
-		globalLogger = zap.NewNop()
+		loggerMu.Lock()
+		if globalLogger == nil {
+			globalLogger = zap.NewNop()
+		}
+		logger = globalLogger
+		loggerMu.Unlock()
 	}
-	return globalLogger
+	return logger
 }
 
 // Sync flushes any buffered log entries. Returns error if sync fails.
 // This should be called before program exit to ensure all logs are written.
 func Sync() error {
-	if globalLogger != nil {
-		return globalLogger.Sync()
+	loggerMu.RLock()
+	logger := globalLogger
+	loggerMu.RUnlock()
+
+	if logger != nil {
+		return logger.Sync()
 	}
 	return nil
 }
